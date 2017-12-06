@@ -1,0 +1,7 @@
+{
+    "name": "spike-compiler",
+    "version": "2.1.0.",
+    "main": "build/libs/spike-compiler.jar",
+    "ignore": [],
+    "dependencies": {}
+}

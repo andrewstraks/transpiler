@@ -1,0 +1,9 @@
+/.gradle
+/.idea
+/build/classes
+/build/tmp
+/scripts_input
+/scripts_output
+/cli
+/templates_input
+/templates_output
