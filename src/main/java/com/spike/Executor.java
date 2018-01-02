@@ -66,8 +66,8 @@ public class Executor {
 
         if (type.equals("transpiler")) {
 
-            String fileBody = importsCompiler.compileImports(new File(args[1]), false);
-            fileBody = scriptsCompiler.compileSyntax(fileBody);
+            //String fileBody = importsCompiler.compileImports(new File(args[1]), false);
+            String fileBody = scriptsCompiler.compileSyntax(scriptsIO.getFileContentBuffered(new File(args[1])));
 
             scriptsIO.saveFile(fileBody, args[2]);
 

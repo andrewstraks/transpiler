@@ -1,0 +1,163 @@
+'import $dicts from app.service.Dict';
+'import $menu from app.component.Menu';
+
+<div class="testClass">
+
+    <!--
+        Multi line comment test
+        <spike [print]="$local.person.name"></spike>
+
+        <div>[[ $local.person.name ]]</div>
+    -->
+
+    <!-- Print test with @spike tag-->
+    <spike [print]="$local.person.name"></spike>
+
+    <!-- Print test with @div tag-->
+    <div [print]="$local.person.name"></div>
+
+    <!-- Print test with brackets-->
+    <div>[[ $local.person.name ]]</div>
+    [[ $menu.getCategories($local.pageTitle) ]]
+
+    <!-- Translation test -->
+    <div [translation]="test_translation"></div>
+
+    <!-- Translation with params test -->
+    <div [translation]="test_translation_with_params" [params]="$local.person.id, $local.person.name"></div>
+
+    <!-- Translation variation test -->
+    <div [translation]="[[ $message.get('test_translation') ]]"></div>
+
+    <!-- Placeholder test -->
+    <div [placeholder]="test_placeholder"></div>
+
+    <!-- Placeholder test params -->
+    <div [placeholder]="test_placeholder" [params]="$local.person.id, $local.person.name"></div>
+
+    <!-- Placeholder test -->
+    <input placeholder="[[ $message.get('test_placeholder') ]]" />
+
+    <!-- Condition IF test with @spike tag-->
+    <spike [if]="$local.user.id > 10">
+        <span [if]="$local.user.id > 11">Show me if user id > 11</span>
+        Show me if user id > 10
+        <div>
+            Some inner child 1
+        </div>
+        <div>
+            Some inner child 2
+        </div>
+    </spike>
+
+    <!-- Condition IF test with @div tag-->
+    <div [if]="$local.user.id < 10">
+        Remove me if user id > 10
+        <div>
+            Some inner child 1
+        </div>
+        <div>
+            Some inner child 2
+        </div>
+    </div>
+
+    <!-- Condition IF-ELSE test with @spike tag-->
+    <spike [if]="$local.user.id > 10">
+        Show me if user id > 10
+    </spike>
+    <spike [else]>
+        Show me if first statement false
+    </spike>
+
+
+    <!-- Condition IF-ELSEIF-ELSE test with @spike tag-->
+    <spike [if]="$local.user.id > 10">
+        Show me if user id > 10 <div id="dsd"></div>
+    </spike>
+    <spike [elseif]="$local.user.id < 5">
+        Show me if user id < 5
+    </spike>
+    <spike [else]>
+        Show me if first statement false
+    </spike>
+
+    <!-- Condition SWITCH test -->
+    <spike [switch]="$local.status">
+
+        <spike [case]="200" [break]>
+            <div class="success">OK</div>
+        </spike>
+
+        <spike [case]="'error'"></spike>
+        <spike [case]="404">
+            <div class="error">ERROR</div>
+        </spike>
+
+        <spike [default]>
+            <div class="error">ERROR</div>
+        </spike>
+
+    </spike>
+
+    <!-- For test -->
+    <spike [for]="index in $local.names">
+        <p>Name: [[user.name]]</p>
+    </spike>
+
+    <spike [for]="user, index in $local.names">
+        <p>Index: [[index]]; Name: [[user.name]]</p>
+    </spike>
+
+    <div [for]="user, index in $local.names">
+        <p>Index: [[index]]; Name: [[user.name]]</p>
+    </div>
+
+    <!-- Foreach test -->
+    <spike [foreach]="user in $local.names">
+        <p>Name: [[user.name]]</p>
+    </spike>
+
+    <spike [foreach]="user, index in $local.names">
+        <p>Index: [[index]]; Name: [[user.name]]</p>
+    </spike>
+
+    <div [foreach]="user, index in $local.names">
+        <p>Index: [[index]]; Name: [[user.name]]</p>
+    </div>
+
+    <!-- While test -->
+
+    <spike [while]="$local.count < 10">
+        <spike [js]="$local.count++"></spike>
+    </spike>
+
+    <!-- Events test -->
+    <button [click]="app.router.location([[['/post/1']]])">Click me</button>
+    <select [change]="$menu.changeOption(event)">
+        <option value="1">Test</option>
+    </select>
+
+    <!-- Template test -->
+    <spike [template]="templateName"></spike>
+
+    <!-- Partial include test -->
+    <spike [include]="$somePartial" [params]="user: $local.user"></spike>
+    <spike [include]="$somePartial"></spike>
+
+    <!-- Inline JS test -->
+    <spike [js]="var demo = 'test'"></spike>
+
+    <!-- Plain JS test -->
+    <spike [js]>
+
+        var declareObject = {
+            name: "Ok",
+            id: 5,
+        };
+
+        var x = 'kk';
+        var c = "OK";
+
+    </spike>
+
+</div>

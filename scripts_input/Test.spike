@@ -1,0 +1,86 @@
+package app.model.abstract;
+
+class Person {
+
+    name: null,
+    surname: {
+        name: null,
+        surname: null
+    },
+    age: null,
+
+    Person: function(name, surname){
+        this.name = name;
+        this.surname = surname;
+    }
+
+    Person: function(name, surname, age){
+        this.name = name;
+        this.surname = surname;
+        this.age = age;
+    }
+
+    setName: function(name){
+        this.name = name;
+    }
+
+}
+
+
+private class Helper {
+
+    getInfo: function(){
+        return "this is private class";
+    }
+
+}
+
+package app.model;
+
+import Person from app.model.abstract.Person;
+
+class Manager extends Person {
+
+    isManager: true,
+    person: null,
+
+    Manager: function(name, surname){
+        this.name = name;
+        this.surname = surname;
+
+        this.person = new Person();
+
+        var person2 = new Person("surname", "name");
+
+    }
+
+    Manager: function(isManager){
+        this.isManager = isManager;
+    },
+
+    getIsManager: function(){
+        return this.isManager;
+    }
+
+}
+
+package app.services;
+
+static class Documents extends Service {
+
+    documents: [],
+
+    getDocuments: function(){
+        return this.documents;
+    }
+
+}
+
+
+static class Service  {
+
+    serviceMethod: function(){
+        return "OK";
+    }
+
+}
