@@ -36,8 +36,6 @@ public class Executor {
     static NewTemplateCompiler templatesCompiler = new NewTemplateCompiler();
     static NewImportCompiler importsCompiler = new NewImportCompiler();
 
-    public static List<String> afterImportsTemplates = new ArrayList<>();
-
     public static void main(String[] args) throws Exception {
 
         String type = args[0];
@@ -47,7 +45,7 @@ public class Executor {
             args = new String[]{null, "templates_input/", "templates_output/templates.js"};
         } else if (type.equals("test-transpiler")) {
             type = "transpiler";
-            args = new String[]{null, "scripts_input/Test.spike", "scripts_output/compiled.js"};
+            args = new String[]{null, "scripts_input/spike-framework.spike", "scripts_output/compiled.js"};
         } else if (type.equals("test-cli")) {
             args = new String[]{"cli", "cli/test/component/", "component", "UserPanel"};
             cli(args);
@@ -75,14 +73,9 @@ public class Executor {
 
             List<File> files = templatesIO.getFileList(args[1]);
             List<String> functionBodies = new ArrayList<>();
-            functionBodies.add(templatesCompiler.getTemplatesDeclaration());
 
             for (File file : files) {
-                afterImportsTemplates.add(importsCompiler.compileImports(file, true));
-            }
-
-            for (String afterImport : afterImportsTemplates) {
-                functionBodies.add(templatesCompiler.parseSpikeTemplate(args[1], afterImport));
+                functionBodies.add(templatesCompiler.parseSpikeTemplate(file, args[1], importsCompiler.compileImports(file, true)));
             }
 
             templatesIO.saveConcatedFiles(functionBodies, args[2]);

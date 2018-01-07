@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,7 +20,6 @@ import java.util.Map;
  */
 public class NewTemplateCompiler {
 
-    public static final String templatesGlobalDeclaration = "_spike_templates";
     public static final String TEMPLATE_SPIKE = "@template";
     public static final String INCLUDE_SPIKE = "app.partial.include";
     public static final String JS_HINT_LINE = "#js__line#";
@@ -30,10 +30,6 @@ public class NewTemplateCompiler {
     public static final String BRACKET_LEFT = "[[";
     public static final String BRACKET_RIGHT = "]]";
     public static final  String PARAMS = U.s("params");
-
-    public String getTemplatesDeclaration() {
-        return "; window['" + templatesGlobalDeclaration + "'] = {} \n";
-    }
 
     String getFileName(File templateFile) {return templateFile.getPath().replaceAll("\\\\", "/");}
 
@@ -81,9 +77,10 @@ public class NewTemplateCompiler {
         commands.put(U.s("template"), new TemplateProcessor());
         commands.put(U.s("include"), new IncludeProcessor());
         commands.put(U.s("js"), new JsProcessor());
+        commands.put(U.s("spike-href"), new HrefProcessor());
     }
 
-    public String parseSpikeTemplate(String rootDir, String template) throws Exception {
+    public String parseSpikeTemplate(File templateFile, String rootDir, String template) throws Exception {
 
         long start = System.currentTimeMillis();
 
@@ -101,6 +98,7 @@ public class NewTemplateCompiler {
             }
 
         }
+
 
         String output = doc.outerHtml();
         output = output.replace("<html>","").replace("</html>","").replace("<head></head>","").replace("<body>","").replace("</body>","");
@@ -143,7 +141,7 @@ public class NewTemplateCompiler {
 
         //TODO replace all $local with some short
        // output = output.replaceAll([\\$local\], "_l");
-        output = "window.__st['']=function($local){var t='';" + stringBuilder.toString() +" return t;}";
+        output = "Templates.templates['"+templateFile.getPath()+"']=function(model){var t='';" + stringBuilder.toString() +" return t;}";
 
         for(String line : output.split("\n")){
             System.out.println(line);

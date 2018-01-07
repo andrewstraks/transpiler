@@ -11,6 +11,10 @@ import java.util.regex.Pattern;
  */
 public class ScriptsCompiler {
 
+    static HashMap<String, String> extendingFromTo = new HashMap<>();
+
+    static int totalNamespaces = 0;
+
     static NewImportCompiler importsCompiler = new NewImportCompiler();
 
     static int PRIVATE_COUNTER = 100;
@@ -43,7 +47,7 @@ public class ScriptsCompiler {
 
         public List<String> classNames = new ArrayList<>();
         public HashMap<String, String> privateClassNames = new HashMap<>();
-        public HashMap<String, Map<String, String>> constructorsMap = new HashMap<>();
+        public HashMap<String, HashMap<Integer, String>> constructorsMap = new HashMap<String, HashMap<Integer, String>>();
 
         public JsNode(String body, NestedLevel level, Boolean complete) {
             this.body = body;
@@ -362,17 +366,18 @@ public class ScriptsCompiler {
                 }
 
                 String constructorNamesArgs = "";
-                for(String constructorNameSpace : constructorsNamespaces){
-                    constructorNamesArgs += ",'" + constructorNameSpace.replace(packageName+".","")+"'";
+                for (String constructorNameSpace : constructorsNamespaces) {
+                    constructorNamesArgs += ",'" + constructorNameSpace.replace(packageName + ".", "") + "'";
                 }
 
-                this.compiled = "SpikeAssembler.defineNamespace('"+packageName+"',["+constructorNamesArgs.substring(1, constructorNamesArgs.length())+"], function(){" +  this.compiled + " });";
+                this.compiled = "spike.core.Assembler.defineNamespace('" + packageName + "',[" + constructorNamesArgs.substring(1, constructorNamesArgs.length()) + "], function(){" + this.compiled + " });";
+                totalNamespaces++;
 
             } else {
 
                 String classBody = this.body.substring(this.body.indexOf("{"), this.body.length());
-                this.compiled += "SpikeAssembler.createStaticClass('" + packageName + "','" + className + "', " + (extendsName != null ?  "'" + (extendsName.indexOf(".") == -1 ? packageName+"."+extendsName : extendsName ) + "'" : "null") + "," + classBody + ");";
-
+                this.compiled += "spike.core.Assembler.createStaticClass('" + packageName + "','" + className + "', " + (extendsName != null ? "'" + (extendsName.indexOf(".") == -1 ? packageName + "." + extendsName : extendsName) + "'" : "null") + "," + classBody + ");";
+                totalNamespaces++;
             }
 
         }
@@ -396,6 +401,25 @@ public class ScriptsCompiler {
             return this.body.substring(this.body.indexOf("(") + 1, this.body.indexOf(")")).trim().length() == 0;
         }
 
+        public int getFunctionArgumentsLenght(String functionArguments){
+
+            int functionArgumentsLength = 0;
+
+            if(!functionArguments.isEmpty()){
+
+                if(functionArguments.contains(",")){
+                    functionArgumentsLength = functionArguments.split(",").length - 1;
+                }else{
+                    functionArgumentsLength = 1;
+                }
+
+            }
+
+            return functionArgumentsLength;
+
+        }
+
+
         public JsNode createDefaultConstructor(String packageName, JsNode classNode, String className, String extendsName) {
 
             String compiled = "";
@@ -405,7 +429,7 @@ public class ScriptsCompiler {
             System.out.println("Creating for class full name: " + classNode.name);
             System.out.println("Creating for class extends name: " + extendsName);
 
-            compiled = className + " : function(){ }";
+            compiled = className + " : function(){    }";
 
             System.out.println("Created default constructor: " + compiled);
 
@@ -419,8 +443,8 @@ public class ScriptsCompiler {
             String constructorClassName = packageName + "." + className;
             String superConstructorName = packageName + "." + this.body.substring(0, this.body.indexOf(":"));
 
-            System.out.println("Compiling constructor name: " + this.name);
-            System.out.println("Compiling constructor body: " + this.body);
+            System.out.println("Compiling constructor name2: " + this.name);
+            System.out.println("Compiling constructor body2: " + this.body);
 
 
             System.out.println("Compiling for class full name: " + classNode.name);
@@ -436,11 +460,14 @@ public class ScriptsCompiler {
                 }
             }
 
-            if(rootNode.constructorsMap.get(className) == null){
-                rootNode.constructorsMap.put(className, new HashMap<String, String>());
+            if (rootNode.constructorsMap.get(packageName + "." + className) == null) {
+                rootNode.constructorsMap.put(packageName + "." + className, new HashMap<Integer, String>());
             }
 
-            rootNode.constructorsMap.get(className).put(constructorClassName, functionArguments);
+
+            int functionArgumentsLenght = this.getFunctionArgumentsLenght(functionArguments);
+
+            rootNode.constructorsMap.get(packageName + "." + className).put(functionArgumentsLenght, constructorClassName + ";" + functionArguments);
 
             constructorClassName = constructorClassName.trim();
             superConstructorName = superConstructorName.trim();
@@ -451,9 +478,23 @@ public class ScriptsCompiler {
             System.out.println("Constructor constructorClassName :" + constructorClassName);
 
             if (!superConstructorName.equals(constructorClassName)) {
-                this.compiled += superConstructorName + ".apply(this, []);";
-            }else if (extendsName != null) {
-                this.compiled += constructorClassName + "." + extendsName + ".apply(this, []);";
+              //  this.compiled += superConstructorName + ".apply(this, []);";
+
+                //this.compiled += packageName + "." + className+".prototype = new "+superConstructorName+"();";
+
+                extendingFromTo.put(superConstructorName, packageName + "." + className);
+                //zbudowac lancuch dziedziczenia w transpilerze i na jego podstawie sortowac dziedziczenie
+
+                //    extend(Config1.prototype, Config2.prototype);
+
+            } else if (extendsName != null) {
+             //   this.compiled += extendsName +  ".apply(this, []);";
+               // this.compiled += packageName + "." + className+".prototype = new "+extendsName+"();";
+              //  this.compiled += "if (!(this instanceof "+packageName+"."+className+")){    return new "+packageName+"."+className+"();  }";
+
+                extendingFromTo.put(extendsName,packageName + "." + className);
+                //zbudowac lancuch dziedziczenia w transpilerze i na jego podstawie sortowac dziedziczenie
+
             }
 
             if (this.body.trim().endsWith(",")) {
@@ -478,13 +519,16 @@ public class ScriptsCompiler {
             if (this.body.trim().indexOf("function") > -1) {
 
                 String functionDeclaration = this.body.trim().substring(0, this.body.indexOf(")") - 1);
-                String functionBody = this.body.replace(functionDeclaration, "");
+                String functionBody = this.body.replace(functionDeclaration, "").trim();
 
                 if (functionBody.trim().endsWith(",")) {
-                    functionBody = functionBody.substring(0, functionBody.lastIndexOf(",") - 1);
+                    functionBody = functionBody.substring(0, functionBody.lastIndexOf(","));
                 }
 
+
                 this.compiled += constructorClassName + ".prototype." + functionDeclaration.replace(":", "=") + functionBody + ";";
+
+                System.out.println("Compiled fn: "+constructorClassName + ".prototype." + functionDeclaration.replace(":", "=") + functionBody + ";");
 
                 //Fields compile
             } else {
@@ -508,15 +552,26 @@ public class ScriptsCompiler {
 
         public void compilePackageImports() {
 
-            for(JsNode importNode : this.imports){
+            for (JsNode importNode : this.imports) {
 
                 String importName = importNode.body.substring(0, importNode.body.indexOf("from"));
                 importName = importName.replace("import", "").trim();
 
                 String importFullPath = importNode.body.substring(importNode.body.indexOf("from"), importNode.body.length());
-                importFullPath = importFullPath.replace("from", "").replace(";","").trim();
+                importFullPath = importFullPath.replace("from", "").replace(";", "").trim();
 
-                System.out.println("Replacing import "+importName + " - "+importFullPath);
+                System.out.println("Replacing import " + importName + " - " + importFullPath);
+
+              Pattern p = Pattern.compile("\\b" + Pattern.quote(importFullPath) + "\\b");
+                Matcher m = p.matcher(this.compiled);
+                while (m.find()) {
+                String temp = m.group();
+
+                System.out.println("Found to replace: "+temp);
+
+              //  this.compiled = this.compiled.replace(temp, temp.replaceAll("\\s", ""));
+                }
+
                 this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importFullPath) + "\\b", importName);
                 this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importName) + "\\b", importFullPath);
 
@@ -524,32 +579,82 @@ public class ScriptsCompiler {
 
         }
 
-        public void compileConstructorUsages() {
+        public void compileConstructorUsages() throws Exception {
 
-            Pattern p = Pattern.compile("s\\([^\\)]*\\s+[^\\)]*\\)");
-            Matcher m = p.matcher(this.compiled);
-            while (m.find()) {
-                String temp = m.group();
-                this.compiled = this.compiled.replace(temp, temp.replaceAll("\\s", ""));
-            }
+//            Pattern p = Pattern.compile("s\\([^\\)]*\\s+[^\\)]*\\)");
+//            Matcher m = p.matcher(this.compiled);
+//            while (m.find()) {
+//                String temp = m.group();
+//                this.compiled = this.compiled.replace(temp, temp.replaceAll("\\s", ""));
+//            }
 
 
             System.out.println(this.classNames);
             System.out.println(this.privateClassNames);
             System.out.println(this.constructorsMap);
 
-            for(Map.Entry<String, Map<String, String>> entry : this.constructorsMap.entrySet()){
+            for (Map.Entry<String, HashMap<Integer, String>> entry : this.constructorsMap.entrySet()) {
 
-                Map<String, String> constructors = entry.getValue();
+                Map<Integer, String> constructors = entry.getValue();
 
                 String baseClassName = entry.getKey();
 
-                for(Map.Entry<String, String> constructorEntry : constructors.entrySet()){
+                Pattern p = Pattern.compile("(new*\\s+[^\\)]*)");
+                Matcher m = p.matcher(this.compiled);
+                while (m.find()) {
 
-                    String fullPathName = constructorEntry.getKey();
-                    String arguments = constructorEntry.getValue();
+
+                    String matchedConstructor = m.group();
+
+                    if (matchedConstructor.contains(baseClassName)) {
+
+
+                        System.out.println("matchedConstructor: " + matchedConstructor);
+
+                        String className = matchedConstructor.substring(0, matchedConstructor.lastIndexOf("("));
+                        String argumentsList = matchedConstructor.substring(matchedConstructor.indexOf("("), matchedConstructor.length()).replace("(", "").trim();
+
+                        System.out.println("matchedConstructor className: " + className);
+                        System.out.println("matchedConstructor argumentsList: " + argumentsList);
+
+
+                        System.out.println("constructors : " + constructors);
+
+
+                        int functionArgumentsLenght = this.getFunctionArgumentsLenght(argumentsList);
+
+                        String constructorDetails = constructors.get(functionArgumentsLenght);
+
+                        if (constructorDetails == null) {
+
+                            System.out.println("total contructor : " + this.constructorsMap);
+                            throw new Exception("No matching constructor found for: " + matchedConstructor);
+                        }
+
+
+                        System.out.println("constructorDetails : " + constructorDetails);
+
+                        String[] constructorDetails2 = constructorDetails.split(";");
+
+                        System.out.println("replacing from "+matchedConstructor);
+                        System.out.println("to: "+matchedConstructor.replace(className, constructorDetails2[0]));
+
+                        if(constructorDetails2[0].contains("_")){
+                            this.compiled = this.compiled.replace(matchedConstructor, "new "+matchedConstructor.replace(className, constructorDetails2[0]));
+                        }
+
+                    }
 
                 }
+
+//                for(Map.Entry<String, String> constructorEntry : constructors.entrySet()){
+//
+//                    String fullPathName = constructorEntry.getKey();
+//                    String arguments = constructorEntry.getValue();
+//
+//                    System.out.println("Compiling full path name " +fullPathName);
+//
+//                }
 
             }
 
@@ -583,8 +688,10 @@ public class ScriptsCompiler {
     }
 
 
-
     public String compileSyntax(String fileBody) throws Exception {
+
+        long start = System.currentTimeMillis();
+
         fileBody = removeComments(fileBody);
 
         if (hasClass(fileBody)) {
@@ -595,6 +702,23 @@ public class ScriptsCompiler {
 
             JsNode rootNode = new JsNode(fileBody, NestedLevel.FILE);
             this.compileNodes(rootNode);
+
+            rootNode.compiled = "var __spike_tn = "+totalNamespaces+";"+rootNode.compiled;
+
+            //zbudowac lancuch dziedziczenia w transpilerze i na jego podstawie sortowac dziedziczenie
+            // compiloewac importy ponownie
+            for(Map.Entry<String, String> extendingMap : extendingFromTo.entrySet()) {
+//
+//                    String fullPathName = constructorEntry.getKey();
+//                    String arguments = constructorEntry.getValue();
+
+                rootNode.compiled += "extend("+extendingMap.getKey()+","+extendingMap.getValue()+");";
+            }
+
+           // extendingFromTo.put(extendsName,packageName + "." + className);
+
+
+            System.out.println("Transpilation takes: "+(System.currentTimeMillis() - start) +"ms");
 
             return rootNode.compiled;
 

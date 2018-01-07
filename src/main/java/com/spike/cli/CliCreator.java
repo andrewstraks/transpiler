@@ -43,7 +43,7 @@ public class CliCreator {
         componentHTML += "\n";
         componentHTML += "</div>\n";
 
-        file = new File((distPath.endsWith("/") ? distPath : distPath + "/") + componentNameFromLower + "/" + componentNameFromLower + ".view.html");
+        file = new File((distPath.endsWith("/") ? distPath : distPath + "/") + componentNameFromLower + "/" + componentNameFromLower + ".html");
         FileUtils.writeStringToFile(file, componentHTML, "UTF-8");
 
         String componentCSS = "";

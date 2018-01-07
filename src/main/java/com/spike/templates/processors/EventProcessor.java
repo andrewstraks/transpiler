@@ -4,10 +4,15 @@ import com.spike.templates.NewTemplateCompiler;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.TextNode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by Dawid on 2017-09-06.
  */
 public class EventProcessor implements Processor {
+
+    static private int eventId = 0;
 
     @Override
     public void process(Element element, String event) throws Exception {
@@ -23,6 +28,13 @@ public class EventProcessor implements Processor {
 
             element.attr("spike-unbinded", "");
             element.attr("spike-event-"+event, eventBody);
+
+            if(element.id().isEmpty()){
+                eventId++;
+                element.attr("id", "spike-event-"+eventId);
+            }else{
+                throw new Exception("Spike Compiler: Events binding not allowed on elements with id attribute");
+            }
 
         }
 
