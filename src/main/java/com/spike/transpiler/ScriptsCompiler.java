@@ -29,6 +29,19 @@ public class ScriptsCompiler {
 
     }
 
+    static ArrayList<ClassNode> classNodes = new ArrayList<>();
+
+    class ClassNode {
+        public String className;
+        public ClassNode extend;
+
+        public ClassNode(String className, ClassNode extend) {
+            this.className = className;
+            this.extend = extend;
+        }
+
+    }
+
     enum FunctionType {
         CONSTRUCTOR,
         FIELD,
@@ -36,6 +49,12 @@ public class ScriptsCompiler {
     }
 
     class JsNode {
+
+        public void addClassNode(String className, String extendsName){
+
+            classNodes.add(new ClassNode());
+
+        }
 
         String compiled;
         String name;
@@ -318,6 +337,8 @@ public class ScriptsCompiler {
 
             if (this.isNotStatic()) {
 
+
+                addClassNode(className, extendsName);
 
                 List<JsNode> constructors = new ArrayList<>();
                 List<JsNode> functionsAndFields = new ArrayList<>();
