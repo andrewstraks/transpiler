@@ -12,10 +12,10 @@ import java.util.regex.Pattern;
 public class ScriptsCompiler {
 
     static HashMap<String, String> extendingFromTo = new HashMap<>();
+    static HashMap<String, HashMap<String, String>> importsCache = new HashMap<>();
 
     static int totalNamespaces = 0;
 
-    static NewImportCompiler importsCompiler = new NewImportCompiler();
 
     static int PRIVATE_COUNTER = 100;
 
@@ -32,14 +32,28 @@ public class ScriptsCompiler {
     static ArrayList<ClassNode> classNodes = new ArrayList<>();
 
     class ClassNode {
+
+        public String extendClassName;
         public String className;
         public ClassNode extend;
+        public String packageName;
 
-        public ClassNode(String className, ClassNode extend) {
-            this.className = className;
-            this.extend = extend;
+        public ClassNode() {
         }
 
+        public ClassNode(String className, String extendClassName) {
+            this.className = className;
+            this.extendClassName = extendClassName;
+        }
+
+        @Override
+        public String toString() {
+            return "ClassNode{" +
+                    "extendClassName='" + extendClassName + '\'' +
+                    ", className='" + className + '\'' +
+                    ", extend=" + extend +
+                    '}';
+        }
     }
 
     enum FunctionType {
@@ -50,9 +64,28 @@ public class ScriptsCompiler {
 
     class JsNode {
 
-        public void addClassNode(String className, String extendsName){
+        public void addClassNode(String className, String extendsName) {
 
-            classNodes.add(new ClassNode());
+            ClassNode newClassNode = new ClassNode(className, extendsName);
+            classNodes.add(newClassNode);
+
+        }
+
+        public HashMap<String, List<String>> normalizeClassNodes() {
+
+            HashMap<String, List<String>> groupe = new HashMap<>();
+
+            for (ClassNode classNode : classNodes) {
+
+                if (groupe.get(classNode.extendClassName) == null) {
+                    groupe.put(classNode.extendClassName, new ArrayList<String>());
+                }
+
+                groupe.get(classNode.extendClassName).add(classNode.className);
+
+            }
+
+            return groupe;
 
         }
 
@@ -60,6 +93,11 @@ public class ScriptsCompiler {
         String name;
         String body;
         NestedLevel level;
+
+        String className;
+        String extendsName;
+
+        String header;
 
         List<JsNode> nodes;
         List<JsNode> imports = new ArrayList<>();
@@ -74,11 +112,12 @@ public class ScriptsCompiler {
             this.level = level;
         }
 
-        public JsNode(String body, NestedLevel level) {
+        public JsNode(String body, NestedLevel level, String header) {
 
             this.compiled = "";
             this.level = level;
             this.body = body.trim();
+            this.header = header;
 
             switch (level) {
                 case CLASS:
@@ -153,7 +192,7 @@ public class ScriptsCompiler {
                     if (!nodeCollecting) {
 
                         if (line.indexOf(":") > -1 && line.endsWith(",")) {
-                            this.nodes.add(new JsNode(line, NestedLevel.FUNCTIONS));
+                            this.nodes.add(new JsNode(line, NestedLevel.FUNCTIONS, ""));
                         } else if (line.indexOf(":") > -1 && line.indexOf("function") > -1) {
                             nodeCollecting = true;
                             nodeBody = new StringBuilder();
@@ -184,7 +223,7 @@ public class ScriptsCompiler {
                                 functionCollecting = false;
                                 nodeCollecting = false;
                                 nodeBody.append(line + "\n");
-                                this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS));
+                                this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS, ""));
                             }
 
                         } else if (propCollecting) {
@@ -195,7 +234,7 @@ public class ScriptsCompiler {
                                     propCollecting = false;
                                     nodeCollecting = false;
                                     nodeBody.append(line + "\n");
-                                    this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS));
+                                    this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS, ""));
                                 }
 
                                 int spaces = line.length() - line.replaceAll(" ", "").length();
@@ -205,14 +244,14 @@ public class ScriptsCompiler {
                                     nodeCollecting = false;
                                     propCollecting = false;
                                     nodeBody.append(line + "\n");
-                                    this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS));
+                                    this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS, ""));
                                 }
 
                             } else {
                                 nodeCollecting = false;
                                 propCollecting = false;
                                 nodeBody.append(line + "\n");
-                                this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS));
+                                this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS, ""));
                             }
 
 
@@ -240,7 +279,7 @@ public class ScriptsCompiler {
             for (String packageScope : packagesDeclarations) {
 
                 if (packageScope.trim().length() > 0) {
-                    this.nodes.add(new JsNode("package" + packageScope, NestedLevel.ROOT));
+                    this.nodes.add(new JsNode("package" + packageScope, NestedLevel.ROOT, ""));
                 }
 
             }
@@ -249,6 +288,7 @@ public class ScriptsCompiler {
 
         public void createClassNodes() {
 
+            String imports = "";
             boolean nodeCollecting = false;
             StringBuilder nodeBody = null;
             String[] lines = this.body.split("\n");
@@ -263,7 +303,8 @@ public class ScriptsCompiler {
 
                     switch (keyword) {
                         case "import":
-                            this.imports.add(new JsNode(line, NestedLevel.IMPORT));
+                            this.imports.add(new JsNode(line, NestedLevel.IMPORT,""));
+                            imports += line;
                             break;
                         case "private":
                         case "static":
@@ -271,7 +312,7 @@ public class ScriptsCompiler {
 
                             if (nodeCollecting) {
                                 nodeCollecting = false;
-                                this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.CLASS));
+                                this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.CLASS, imports));
                                 nodeBody = null;
                             }
 
@@ -285,7 +326,7 @@ public class ScriptsCompiler {
                 if (i == l - 1) {
                     nodeBody.append(lines[i] + "\n");
                     nodeCollecting = false;
-                    this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.CLASS));
+                    this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.CLASS, imports));
                     nodeBody = null;
                 }
 
@@ -304,6 +345,15 @@ public class ScriptsCompiler {
                     ", body='" + body + '\'' +
                     ", nodes=" + nodes +
                     '}';
+        }
+
+        public String getExtendsFullNameFromImports(String extendsName){
+
+            System.out.println("getExtendsFullNameFromImports");
+            System.out.println(this.header);
+
+            return null;
+
         }
 
         public void compileClass(JsNode rootNode, JsNode packageNode, String packageName) {
@@ -335,10 +385,12 @@ public class ScriptsCompiler {
 
             System.out.println("Compiling class strict name: " + className);
 
+            this.className = className;
+            this.extendsName = extendsName;
+
             if (this.isNotStatic()) {
 
 
-                addClassNode(className, extendsName);
 
                 List<JsNode> constructors = new ArrayList<>();
                 List<JsNode> functionsAndFields = new ArrayList<>();
@@ -384,7 +436,12 @@ public class ScriptsCompiler {
 
                     this.compiled += this.createClassFunctions(packageName, className, extendsName, constructorClassName);
 
+
+                    addClassNode(constructorClassName, this.getExtendsFullNameFromImports(extendsName));
+
                 }
+
+
 
                 String constructorNamesArgs = "";
                 for (String constructorNameSpace : constructorsNamespaces) {
@@ -422,15 +479,15 @@ public class ScriptsCompiler {
             return this.body.substring(this.body.indexOf("(") + 1, this.body.indexOf(")")).trim().length() == 0;
         }
 
-        public int getFunctionArgumentsLenght(String functionArguments){
+        public int getFunctionArgumentsLenght(String functionArguments) {
 
             int functionArgumentsLength = 0;
 
-            if(!functionArguments.isEmpty()){
+            if (!functionArguments.isEmpty()) {
 
-                if(functionArguments.contains(",")){
+                if (functionArguments.contains(",")) {
                     functionArgumentsLength = functionArguments.split(",").length - 1;
-                }else{
+                } else {
                     functionArgumentsLength = 1;
                 }
 
@@ -499,7 +556,7 @@ public class ScriptsCompiler {
             System.out.println("Constructor constructorClassName :" + constructorClassName);
 
             if (!superConstructorName.equals(constructorClassName)) {
-              //  this.compiled += superConstructorName + ".apply(this, []);";
+                //  this.compiled += superConstructorName + ".apply(this, []);";
 
                 //this.compiled += packageName + "." + className+".prototype = new "+superConstructorName+"();";
 
@@ -509,11 +566,11 @@ public class ScriptsCompiler {
                 //    extend(Config1.prototype, Config2.prototype);
 
             } else if (extendsName != null) {
-             //   this.compiled += extendsName +  ".apply(this, []);";
-               // this.compiled += packageName + "." + className+".prototype = new "+extendsName+"();";
-              //  this.compiled += "if (!(this instanceof "+packageName+"."+className+")){    return new "+packageName+"."+className+"();  }";
+                //   this.compiled += extendsName +  ".apply(this, []);";
+                // this.compiled += packageName + "." + className+".prototype = new "+extendsName+"();";
+                //  this.compiled += "if (!(this instanceof "+packageName+"."+className+")){    return new "+packageName+"."+className+"();  }";
 
-                extendingFromTo.put(extendsName,packageName + "." + className);
+                extendingFromTo.put(extendsName, packageName + "." + className);
                 //zbudowac lancuch dziedziczenia w transpilerze i na jego podstawie sortowac dziedziczenie
 
             }
@@ -549,7 +606,7 @@ public class ScriptsCompiler {
 
                 this.compiled += constructorClassName + ".prototype." + functionDeclaration.replace(":", "=") + functionBody + ";";
 
-                System.out.println("Compiled fn: "+constructorClassName + ".prototype." + functionDeclaration.replace(":", "=") + functionBody + ";");
+                System.out.println("Compiled fn: " + constructorClassName + ".prototype." + functionDeclaration.replace(":", "=") + functionBody + ";");
 
                 //Fields compile
             } else {
@@ -571,7 +628,14 @@ public class ScriptsCompiler {
 
         }
 
-        public void compilePackageImports() {
+        public void compilePackageImports(String packageName) {
+
+            HashMap<String, String> importsFromTo = new HashMap<>();
+
+
+            if(importsCache.get(packageName) != null) {
+                importsFromTo = importsCache.get(packageName);
+            }
 
             for (JsNode importNode : this.imports) {
 
@@ -583,20 +647,16 @@ public class ScriptsCompiler {
 
                 System.out.println("Replacing import " + importName + " - " + importFullPath);
 
-              Pattern p = Pattern.compile("\\b" + Pattern.quote(importFullPath) + "\\b");
-                Matcher m = p.matcher(this.compiled);
-                while (m.find()) {
-                String temp = m.group();
-
-                System.out.println("Found to replace: "+temp);
-
-              //  this.compiled = this.compiled.replace(temp, temp.replaceAll("\\s", ""));
-                }
+                importsFromTo.put(importName, importFullPath);
 
                 this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importFullPath) + "\\b", importName);
                 this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importName) + "\\b", importFullPath);
 
+
             }
+
+
+            importsCache.put(packageName, importsFromTo);
 
         }
 
@@ -657,11 +717,11 @@ public class ScriptsCompiler {
 
                         String[] constructorDetails2 = constructorDetails.split(";");
 
-                        System.out.println("replacing from "+matchedConstructor);
-                        System.out.println("to: "+matchedConstructor.replace(className, constructorDetails2[0]));
+                        System.out.println("replacing from " + matchedConstructor);
+                        System.out.println("to: " + matchedConstructor.replace(className, constructorDetails2[0]));
 
-                        if(constructorDetails2[0].contains("_")){
-                            this.compiled = this.compiled.replace(matchedConstructor, "new "+matchedConstructor.replace(className, constructorDetails2[0]));
+                        if (constructorDetails2[0].contains("_")) {
+                            this.compiled = this.compiled.replace(matchedConstructor, "new " + matchedConstructor.replace(className, constructorDetails2[0]));
                         }
 
                     }
@@ -698,7 +758,7 @@ public class ScriptsCompiler {
                 packageNode.compiled += classNode.compiled;
             }
 
-            packageNode.compilePackageImports();
+            packageNode.compilePackageImports(packageName);
 
             rootNode.compiled += packageNode.compiled;
 
@@ -721,25 +781,33 @@ public class ScriptsCompiler {
                 throw new Exception("Class file has to have package declaration");
             }
 
-            JsNode rootNode = new JsNode(fileBody, NestedLevel.FILE);
+            JsNode rootNode = new JsNode(fileBody, NestedLevel.FILE, "");
             this.compileNodes(rootNode);
 
-            rootNode.compiled = "var __spike_tn = "+totalNamespaces+";"+rootNode.compiled;
+            rootNode.compiled = "var __spike_tn = " + totalNamespaces + ";" + rootNode.compiled;
 
-            //zbudowac lancuch dziedziczenia w transpilerze i na jego podstawie sortowac dziedziczenie
-            // compiloewac importy ponownie
-            for(Map.Entry<String, String> extendingMap : extendingFromTo.entrySet()) {
-//
-//                    String fullPathName = constructorEntry.getKey();
-//                    String arguments = constructorEntry.getValue();
+            HashMap<String, List<String>> groupedExtending = rootNode.normalizeClassNodes();
 
-                rootNode.compiled += "extend("+extendingMap.getKey()+","+extendingMap.getValue()+");";
+            System.out.println(groupedExtending);
+
+            String compiledExtending = "";
+            for (Map.Entry<String, List<String>> extendingGroup : groupedExtending.entrySet()) {
+
+                String extendsFrom = extendingGroup.getKey();
+                List<String> extendingClasses = extendingGroup.getValue();
+
+                if (extendsFrom != null) {
+                    for (String className : extendingClasses) {
+                        compiledExtending += "spike.core.Assembler.extend(" + extendsFrom + "," + className + ");";
+                    }
+                }
+
+
             }
 
-           // extendingFromTo.put(extendsName,packageName + "." + className);
+            System.out.println(importsCache);
 
-
-            System.out.println("Transpilation takes: "+(System.currentTimeMillis() - start) +"ms");
+            System.out.println("Transpilation takes: " + (System.currentTimeMillis() - start) + "ms");
 
             return rootNode.compiled;
 
