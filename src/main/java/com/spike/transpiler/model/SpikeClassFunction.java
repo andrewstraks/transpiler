@@ -2,50 +2,97 @@ package com.spike.transpiler.model;
 
 public class SpikeClassFunction {
 
-    public String argumentsStr;
-    public String body;
-    public String compiled;
+    public SpikeClass spikeClass = null;
 
-//    public void compileFunction(String packageName, JsNode classNode, String className, String extendsName, String constructorClassName) {
+    public String arguments = null;
+    public String functionName = null;
+    public String body = null;
+    public String compiled = null;
+
+    public SpikeClassFunction(SpikeClass spikeClass, String body) {
+        this.spikeClass = spikeClass;
+        this.body = body.trim();
+        this.collectFunctionName();
+        this.collectArguments();
+    }
+
+    private void collectArguments() {
+        this.arguments = this.body.substring(this.body.indexOf("(") + 1, this.body.indexOf(")")).trim();
+    }
+
+    private void collectFunctionName() {
+        this.functionName = this.body.substring(0, this.body.indexOf("function")).replaceAll(":", "").trim();
+    }
+
+    public void compile() {
+
+        if (this.spikeClass.isStatic()) {
+
+            if(this.body.endsWith(";")){
+                this.body = this.body.substring(0, this.body.lastIndexOf(";"));
+            }
+
+            if(!this.body.endsWith(",")){
+                this.body = this.body+",";
+            }
+
+            this.compiled = this.addThisKeywordReferenceStatic(this.body);
+        } else {
+
+            String functionBody = this.body.substring(this.body.indexOf("{"), this.body.length()).trim();
+
+            if (functionBody.trim().endsWith(",")) {
+                functionBody = functionBody.substring(0, functionBody.lastIndexOf(","));
+            }
+
+            StringBuilder compiledBuilder = new StringBuilder();
+
+            compiledBuilder
+                    .append(this.spikeClass.classFullName)
+                    .append(".prototype.")
+                    .append(this.functionName)
+                    .append("=function(")
+                    .append(this.arguments)
+                    .append(")")
+                    .append(this.addThisKeywordReference(functionBody));
+
+            if (!functionBody.endsWith(";")) {
+                compiledBuilder.append(";");
+            }
+
+
+//            for (SpikeClassConstructor spikeClassConstructor : this.spikeClass.constructors) {
 //
-//        System.out.println("Compiling function name: " + this.name);
-//        System.out.println("Compiling function body: " + this.body);
+//                if(!spikeClassConstructor.isDefaultConstructor){
 //
-//        System.out.println("Compiling for class full name: " + classNode.name);
-//        System.out.println("Compiling for class extends name: " + extendsName);
+//                    compiledBuilder
+//                            .append(this.spikeClass.classPackage.packageName)
+//                            .append(".")
+//                            .append(spikeClassConstructor.constructorArgumentsUniqueName)
+//                            .append(".prototype.")
+//                            .append(this.functionName)
+//                            .append("=")
+//                            .append(this.spikeClass.classFullName)
+//                            .append(".")
+//                            .append(this.functionName)
+//                            .append(";");
 //
-//        if (this.body.trim().indexOf("function") > -1) {
+//                }
 //
-//            String functionDeclaration = this.body.trim().substring(0, this.body.indexOf(")") - 1);
-//            String functionBody = this.body.replace(functionDeclaration, "").trim();
-//
-//            if (functionBody.trim().endsWith(",")) {
-//                functionBody = functionBody.substring(0, functionBody.lastIndexOf(","));
 //            }
-//
-//
-//            this.compiled += constructorClassName + ".prototype." + functionDeclaration.replace(":", "=") + functionBody + ";";
-//
-//            System.out.println("Compiled fn: " + constructorClassName + ".prototype." + functionDeclaration.replace(":", "=") + functionBody + ";");
-//
-//            //Fields compile
-//        } else {
-//
-//            System.out.println("Compiling field " + this.body);
-//
-//            String fieldBody = this.body.substring(0, this.body.indexOf(":")) + "=" + this.body.substring(this.body.indexOf(":") + 1, this.body.length());
-//
-//            if (fieldBody.trim().endsWith(",")) {
-//                fieldBody = fieldBody.substring(0, fieldBody.lastIndexOf(","));
-//            }
-//
-//
-//            this.compiled += constructorClassName + ".prototype." + fieldBody + ";";
-//
-//
-//        }
-//
-//
-//    }
+
+            this.compiled = compiledBuilder.toString();
+
+        }
+
+    }
+
+    private String addThisKeywordReference(String functionBody) {
+        return "{var $this=this;" + functionBody.substring(functionBody.indexOf("{") + 1, functionBody.length());
+    }
+
+    private String addThisKeywordReferenceStatic(String functionBody) {
+        return functionBody.substring(0, functionBody.indexOf("{")) + "{var $this=this;" + functionBody.substring(functionBody.indexOf("{") + 1, functionBody.length());
+    }
 
 }

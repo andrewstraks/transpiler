@@ -1,31 +1,337 @@
-spike.core.Assembler.resetNamespaces(23, 'spike.core');
+(function (history) {
+
+    var pushState = history.pushState;
+
+    history.pushState = function (state) {
+
+        if (typeof history.onpushstate === "function") {
+            history.onpushstate({state: state});
+        }
+
+        var result = pushState.apply(history, arguments);
+        spike.core.Router.onHistoryChanges();
+
+        return result;
+
+    };
+
+    window.addEventListener('popstate', function (e) {
+        spike.core.Router.onHistoryChanges();
+    });
+
+})(window.history);
+var spike = {
+    core: {}
+};
+
+spike.core.Assembler = {
+
+    templatesLoaded: false,
+    appLoaded: false,
+
+    namespacesCount: 0,
+
+    staticClasses: {},
+    objectiveClasses: {},
+
+    /**
+     var newObjectShallow = extend(object1, object2, object3);
+     var newObjectDeep = extend(true, object1, object2, object3);
+     */
+    extend: function () {
+        var extended = {};
+        var deep = false;
+        var i = 0;
+        var length = arguments.length;
+
+        if (Object.prototype.toString.call(arguments[0]) === '[object Boolean]') {
+            deep = arguments[0];
+            i++;
+        }
+
+        var merge = function (obj) {
+            for (var prop in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, prop)) {
+                    if (deep && Object.prototype.toString.call(obj[prop]) === '[object Object]') {
+                        extended[prop] = extend(true, extended[prop], obj[prop]);
+                    } else {
+                        extended[prop] = obj[prop];
+                    }
+                }
+            }
+        };
+
+        for (; i < length; i++) {
+            var obj = arguments[i];
+            merge(obj);
+        }
+
+        return extended;
+    },
+
+    getDotPath: function (package) {
+
+        var obj = window;
+
+        package = package.split(".");
+        for (var i = 0, l = package.length; i < l; i++) {
+
+            if (obj[package[i]] === undefined) {
+                break;
+            }
+
+            obj = obj[package[i]];
+
+        }
+
+        return obj;
+
+    },
+
+    createDotPath: function (package, fillObject) {
+
+        if (package.trim().length === 0) {
+            throw new Error();
+        }
+
+        //  package = package.substring(4, package.length);
+
+
+        var createNodesFnBody = '';
+        var splitPackage = package.split('.');
+
+        var packageCheck = 'window';
+        for (var i = 0, l = splitPackage.length; i < l; i++) {
+
+            packageCheck += '.' + splitPackage[i];
+
+            createNodesFnBody += 'if(' + packageCheck + ' === undefined){';
+            createNodesFnBody += '    ' + packageCheck + ' = {};';
+            createNodesFnBody += '}';
+
+        }
+
+        createNodesFnBody += '    ' + packageCheck + ' = fillObject';
+
+        Function('fillObject', createNodesFnBody)(fillObject);
+
+    },
+
+    defineNamespace: function (package, names, namespaceCreator) {
+
+        this.namespacesCount++;
+        for (var i = 0, l = names.length; i < l; i++) {
+            this.createDotPath(package + '.' + names[i], null);
+        }
+
+        //     namespaceCreator();
+        // }else{
+        this.objectiveClasses[package + '.' + names[0]] = namespaceCreator;
+
+        this.checkIfCanBootstrap();
+
+    },
+
+    createStaticClass: function (package, name, inherits, classBody) {
+
+        if (name.indexOf(package) > -1) {
+            name = name.replace(package + '.', '');
+        }
+
+        this.namespacesCount++;
+        this.createDotPath(package + '.' + name, null);
+
+        if (inherits === null) {
+            inherits = {};
+        } else {
+            inherits = this.getDotPath(inherits);
+        }
+
+        //if(package.indexOf('spike.core') > -1){
+        //     this.createDotPath(package + '.' + name, this.extend({}, inherits, classBody));
+        // }else{
+        this.staticClasses[package + '.' + name] = {
+            package: package + '.' + name,
+            inherits: inherits,
+            classBody: classBody
+        };
+        //  }
+
+        this.checkIfCanBootstrap();
+
+    },
+
+
+    checkIfCanBootstrap: function () {
+
+        if (this.namespacesCount === window.__spike_tn) {
+            this.bootstrap();
+
+            if (this.appLoaded === true) {
+                spike.core.System.init();
+            }
+
+        }
+
+    },
+
+    bootstrap: function () {
+
+        var arrayOrder = [];
+        var mapOrdered = {};
+        var orderPrefix = 0;
+
+        for (var className in this.staticClasses) {
+
+            var classDefinition = this.staticClasses[className];
+            mapOrdered[orderPrefix + '_' + Object.keys(classDefinition.inherits).length] = classDefinition;
+            arrayOrder.push(orderPrefix + '_' + Object.keys(classDefinition.inherits).length);
+
+            orderPrefix++;
+        }
+
+        arrayOrder.sort(function (a, b) {
+            return a.split('_')[1] > b.split('_')[1] ? 1 : -1;
+        });
+
+        for (var i = 0; i < arrayOrder.length; i++) {
+            this.createDotPath(mapOrdered[arrayOrder[i]].package, this.extend({}, mapOrdered[arrayOrder[i]].inherits, mapOrdered[arrayOrder[i]].classBody));
+        }
+
+        for (var className in this.objectiveClasses) {
+            this.objectiveClasses[className]();
+        }
+
+        this.loadTemplates();
+
+    },
+
+    loadTemplates: function () {
+
+        var self = this;
+
+        if (this.templatesLoaded === false) {
+
+            if (document.querySelector('[templates-src]') === null) {
+                throw new Error('Spike Framework: Cannot find script tag with templates-src definition')
+            }
+
+            if (document.querySelector('[app-src]') === null) {
+                throw new Error('Spike Framework: Cannot find script tag with app-src definition')
+            }
+
+            var script = document.createElement("script");
+            script.type = "application/javascript";
+            script.src = document.querySelector('[templates-src]').getAttribute('templates-src');
+            script.onload = function () {
+                self.templatesLoaded = true;
+
+                self.namespacesCount = 0;
+                self.appLoaded = true;
+                var script2 = document.createElement("script");
+                script2.type = "application/javascript";
+                script2.src = document.querySelector('[app-src]').getAttribute('app-src');
+                document.body.appendChild(script2);
+
+            };
+
+            document.body.appendChild(script);
+
+        }
+
+    },
+
+    findLoaderClass: function () {
+
+        for (var className in this.objectiveClasses) {
+
+            if (this.objectiveClasses[className].toString().indexOf('LoaderInterface.apply') > -1) {
+
+                var loader = window;
+
+                var split = className.split('.');
+                for (var i = 0; i < split.length; i++) {
+
+                    loader = loader[split[i]];
+
+                }
+
+                loader = new loader();
+
+                return loader;
+            }
+
+        }
+
+        throw new Error('Spike Framework: No loader defined');
+
+    },
+
+    getClassObject: function (className, argsArray) {
+
+        function getObjectFromPath(path) {
+            var obj = window;
+
+            var split = path.split('.');
+            for (var i = 0; i < split.length; i++) {
+                obj = obj[split[i]];
+            }
+
+            return obj;
+        }
+
+        function countArgs(str) {
+            return str.split('_').length - 1;
+        }
+
+        var classObject = null;
+
+        var classArgs = countArgs(className);
+
+        if (classArgs !== argsArray.length) {
+
+            var classStrictName = className.split('.')[className.split('.').length - 1];
+
+            var classPackage = getObjectFromPath(className.replace('.' + classStrictName, ''));
+
+
+            for (var classNameInPackage in classPackage) {
+
+                if (countArgs(classNameInPackage) === argsArray.length) {
+                    classObject = classPackage[classNameInPackage];
+                }
+
+            }
+
+        }
+
+        console.log(classObject);
+        console.log(className);
+
+        if (classObject == null) {
+            classObject = getObjectFromPath(className);
+        }
+
+        console.log(classObject);
+
+        if (classObject.length !== argsArray.length) {
+            spike.core.Log.warn('Spike Assembler: Skipping arguments for {0}', [className]);
+        }
+
+        classObject = classObject.apply(this, argsArray);
+
+        console.log(classObject);
+
+        return classObject;
+
+    }
+
+};
+
+var __spike_tn = 21;
 spike.core.Assembler.defineNamespace('spike.core', ['Config'], function () {
     spike.core.Config = function () {
     };
-    spike.core.Config.prototype.allowedEvents = [
-        'click',
-        'change',
-        'keyup',
-        'keydown',
-        'keypress',
-        'blur',
-        'focus',
-        'dblclick',
-        'die',
-        'hover',
-        'keydown',
-        'mousemove',
-        'mouseover',
-        'mouseenter',
-        'mousedown',
-        'mouseleave',
-        'mouseout',
-        'submit',
-        'trigger',
-        'toggle',
-        'load',
-        'unload'
-    ];
     spike.core.Config.prototype.html5Mode = false;
     spike.core.Config.prototype.mobileRun = false;
     spike.core.Config.prototype.showLog = true;
@@ -37,15 +343,14 @@ spike.core.Assembler.defineNamespace('spike.core', ['Config'], function () {
     spike.core.Config.prototype.initialView = null;
     spike.core.Config.prototype.rootPath = 'app';
     spike.core.Config.prototype.getSuper = function () {
-        var $this = this;
-        return 'null';
+        return 'spike.core.Config';
     };
     spike.core.Config.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.Config';
     };
 });
-spike.core.Assembler.createStaticClass('spike.core', 'Errors', 'null', {
+spike.core.Assembler.createStaticClass('spike.core', 'Errors', null, {
+
     messages: {
 
         CACHED_PROMISE_DEPRECADES: '@createCachedPromise has been deprecated. Use @cache param instead',
@@ -78,33 +383,34 @@ spike.core.Assembler.createStaticClass('spike.core', 'Errors', 'null', {
         REQUEST_WRONG_PARAMS: 'Request url and type not defined',
         JSON_PARSE_ERROR: 'JSON parse error during execution {0}'
 
-    }, errors: [], throwError: function (errorMessage, errorMessageBinding) {
-        var $this = this;
+    },
+
+    throwError: function (errorMessage, errorMessageBinding) {
 
         var error = 'Spike Framework: ' + spike.core.Util.bindStringParams(errorMessage, errorMessageBinding);
         this.errors.push(error);
         this.printExceptions();
         throw new Error(error);
 
-    }, printExceptions: function () {
-        var $this = this;
+    },
+
+    errors: [],
+
+    printExceptions: function () {
 
         for (var i = 0; i < this.errors.length; i++) {
             console.error('Error ' + i + ': ' + this.errors[i]);
         }
 
-    }, throwWarn: function (warnMessage, warnMessageBinding) {
-        var $this = this;
-        spike.core.Log.warn('Spike Framework: ' + spike.core.Util.bindStringParams(warnMessage, warnMessageBinding));
-    }, getSuper: function () {
-        var $this = this;
-        return 'null';
-    }, getClass: function () {
-        var $this = this;
-        return 'spike.core.Errors';
     },
+
+    throwWarn: function (warnMessage, warnMessageBinding) {
+        spike.core.Log.warn('Spike Framework: ' + spike.core.Util.bindStringParams(warnMessage, warnMessageBinding));
+    }
+
 });
-spike.core.Assembler.createStaticClass('spike.core', 'Events', 'null', {
+spike.core.Assembler.createStaticClass('spike.core', 'Events', null, {
+
     allowedEvents: [
         'click',
         'change',
@@ -128,8 +434,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Events', 'null', {
         'toggle',
         'load',
         'unload'
-    ], bindEvents: function (element) {
-        var $this = this;
+    ],
+
+    bindEvents: function (element) {
 
         for (var i = 0; i < element.childElements.length; i++) {
 
@@ -141,8 +448,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Events', 'null', {
 
         }
 
-    }, bindEventsForElement: function (element) {
-        var $this = this;
+    },
+
+    bindEventsForElement: function (element) {
 
         for (var i = 0; i < element.eventsSelectors.length; i++) {
 
@@ -162,46 +470,32 @@ spike.core.Assembler.createStaticClass('spike.core', 'Events', 'null', {
 
         }
 
-    }, getSuper: function () {
-        var $this = this;
-        return 'null';
-    }, getClass: function () {
-        var $this = this;
-        return 'spike.core.Events';
     },
+
 });
 spike.core.Assembler.defineNamespace('spike.core', ['EventsInterface'], function () {
     spike.core.EventsInterface = function () {
     };
     spike.core.EventsInterface.prototype.onRender = function () {
-        var $this = this;
 
     };
     spike.core.EventsInterface.prototype.domEvents = function () {
-        var $this = this;
 
     };
     spike.core.EventsInterface.prototype.onOnline = function () {
-        var $this = this;
     };
     spike.core.EventsInterface.prototype.onOffline = function () {
-        var $this = this;
     };
     spike.core.EventsInterface.prototype.onBack = function () {
-        var $this = this;
     };
     spike.core.EventsInterface.prototype.onDeviceReady = function () {
-        var $this = this;
     };
     spike.core.EventsInterface.prototype.onReady = function () {
-        var $this = this;
     };
     spike.core.EventsInterface.prototype.getSuper = function () {
-        var $this = this;
-        return 'null';
+        return 'spike.core.EventsInterface';
     };
     spike.core.EventsInterface.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.EventsInterface';
     };
 });
@@ -209,15 +503,12 @@ spike.core.Assembler.defineNamespace('spike.core', ['RoutingInterface'], functio
     spike.core.RoutingInterface = function () {
     };
     spike.core.RoutingInterface.prototype.create = function (router) {
-        var $this = this;
 
     };
     spike.core.RoutingInterface.prototype.getSuper = function () {
-        var $this = this;
-        return 'null';
+        return 'spike.core.RoutingInterface';
     };
     spike.core.RoutingInterface.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.RoutingInterface';
     };
 });
@@ -225,18 +516,14 @@ spike.core.Assembler.defineNamespace('spike.core', ['LoaderInterface'], function
     spike.core.LoaderInterface = function () {
     };
     spike.core.LoaderInterface.prototype.loadApplication = function () {
-        var $this = this;
 
     };
     spike.core.LoaderInterface.prototype.onLoadApplication = function () {
-        var $this = this;
     };
     spike.core.LoaderInterface.prototype.getSuper = function () {
-        var $this = this;
-        return 'null';
+        return 'spike.core.LoaderInterface';
     };
     spike.core.LoaderInterface.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.LoaderInterface';
     };
 });
@@ -245,25 +532,20 @@ spike.core.Assembler.defineNamespace('spike.core', ['ModalInterface'], function 
     };
     spike.core.ModalInterface.prototype.modals = [];
     spike.core.ModalInterface.prototype.onRender = function (modal) {
-        var $this = this;
         this.clearDestroyedModals();
         this.modals.push(modal);
     };
     spike.core.ModalInterface.prototype.onShow = function (modal) {
-        var $this = this;
         modal.rootSelector().style = 'display: block;';
     };
     spike.core.ModalInterface.prototype.onHide = function (modal) {
-        var $this = this;
         modal.rootSelector().style = 'display: hide;';
     };
     spike.core.ModalInterface.prototype.onDestroy = function (modal) {
-        var $this = this;
         modal.rootSelector().style = 'display: none;';
         modal.destroy();
     };
     spike.core.ModalInterface.prototype.invalidateAll = function () {
-        var $this = this;
 
         for (var i = 0; i < this.modals.length; i++) {
             this.onDestroy(this.modals[i]);
@@ -271,7 +553,6 @@ spike.core.Assembler.defineNamespace('spike.core', ['ModalInterface'], function 
 
     };
     spike.core.ModalInterface.prototype.clearDestroyedModals = function () {
-        var $this = this;
 
         var modals = [];
         for (var i = 0; i < this.modals.length; i++) {
@@ -284,53 +565,53 @@ spike.core.Assembler.defineNamespace('spike.core', ['ModalInterface'], function 
 
     };
     spike.core.ModalInterface.prototype.getSuper = function () {
-        var $this = this;
-        return 'null';
+        return 'spike.core.ModalInterface';
     };
     spike.core.ModalInterface.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.ModalInterface';
     };
 });
-spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null', {
+spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', null, {
+
     config: null,
     eventsInterface: null,
     modalInterface: null,
     routing: null,
+
+    setConfig: function (configObject) {
+        this.config = configObject;
+    },
+
+    setRouting: function (routing) {
+        this.routing = routing;
+    },
+
+    setEventsInterface: function (eventsInterface) {
+        this.eventsInterface = eventsInterface;
+    },
+
+    setModalInterface: function (modalInterface) {
+        this.modalInterface = modalInterface;
+    },
+
     idCounter: 1,
+    assignId: function () {
+        idCounter++;
+        return 'element-' + idCounter;
+    },
+
     attributes: {
         VIEW: 'spike-view',
         MODALS: 'spike-modals',
     },
+
     version: '3.0.0',
+
     currentController: null,
+
     previousController: null,
-    viewSelector: null,
-    modalsSelector: null,
-    loader: null,
-    setConfig: function (configObject) {
-        var $this = this;
-        this.config = configObject;
-    },
-    setRouting: function (routing) {
-        var $this = this;
-        this.routing = routing;
-    },
-    setEventsInterface: function (eventsInterface) {
-        var $this = this;
-        this.eventsInterface = eventsInterface;
-    },
-    setModalInterface: function (modalInterface) {
-        var $this = this;
-        this.modalInterface = modalInterface;
-    },
-    assignId: function () {
-        var $this = this;
-        idCounter++;
-        return 'element-' + idCounter;
-    },
+
     getCurrentController: function () {
-        var $this = this;
 
         var endpoint = spike.core.Router.getCurrentViewData().endpoint;
 
@@ -340,16 +621,18 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
 
         return this.currentController || spike.core.System.config.mainController;
     },
+
+
     execOnRenderEvent: function () {
-        var $this = this;
 
         if (Events.onRender) {
             Events.onRender();
         }
 
     },
+
+
     renderModal: function (modalObject, modalInitialData, afterRenderCallback) {
-        var $this = this;
 
         spike.core.Log.debug('Invoke system.renderModal', []);
         spike.core.Log.log('Rendering modal {0}', [modalObject.name]);
@@ -371,8 +654,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
         }
 
     },
+
     renderController: function (controller, afterRenderCallback) {
-        var $this = this;
         spike.core.Log.debug('Invoke system.renderController with params', []);
         spike.core.Log.log('Rendering controller {0}', [controller.getClass()]);
 
@@ -383,7 +666,7 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
         this.modalInterface.invalidateAll();
 
 
-        spike.core.System.clearSelectorsCache();
+        spike.core.Selectors.clearSelectorsCache();
 
         controller.render();
 
@@ -393,13 +676,11 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
             afterRenderCallback();
         }
 
-        spike.core.Log.ok('Selectors cache usage during app lifecycle: ' + spike.core.System.cacheUsageCounter);
+        spike.core.Log.ok('spike.core.Selectors cache usage during app lifecycle: ' + spike.core.System.cacheUsageCounter);
 
     },
-    render: function (moduleClass, moduleInitialModel, afterRenderCallback) {
-        var $this = this;
 
-        console.log(moduleClass);
+    render: function (moduleClass, moduleInitialModel, afterRenderCallback) {
 
         if (!moduleClass) {
             spike.core.Errors.throwError(spike.core.Errors.messages.MODULE_NOT_EXIST);
@@ -407,7 +688,7 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
 
         spike.core.Router.clearCacheViewData();
 
-        var module = new moduleClass(moduleInitialModel);
+        var module = spike.core.Assembler.getClassObject(moduleClass, [moduleInitialModel]);
 
         if (module.getSuper() === 'spike.core.Controller') {
             spike.core.System.renderController(module, afterRenderCallback);
@@ -416,8 +697,10 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
         }
 
     },
+
+    viewSelector: null,
+
     getView: function () {
-        var $this = this;
 
         if (this.viewSelector === null) {
             this.viewSelector = document.querySelector('[' + this.attributes.VIEW + ']');
@@ -426,8 +709,10 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
         return this.viewSelector;
 
     },
+
+    modalsSelector: null,
+
     getModalsView: function () {
-        var $this = this;
 
         if (this.modalsSelector === null) {
             this.modalsSelector = document.querySelector('[' + this.attributes.MODALS + ']');
@@ -436,16 +721,16 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
         return this.modalsSelector;
 
     },
+
     verifyViews: function () {
-        var $this = this;
 
         if (this.getView() === null || this.getModalsView() === null) {
             spike.core.Errors.throwError(spike.core.Errors.messages.SPIKE_APP_NOT_DEFINED, [this.attributes.VIEW, this.attributes.MODALS]);
         }
 
     },
+
     renderInitialView: function () {
-        var $this = this;
         spike.core.Log.debug('Running system.initialView');
 
         if (spike.core.System.config.initialView !== undefined) {
@@ -466,8 +751,10 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
 
 
     },
+
+    loader: null,
+
     init: function () {
-        var $this = this;
 
         this.loader = spike.core.Assembler.findLoaderClass();
         this.loader.loadApplication();
@@ -475,7 +762,7 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
         spike.core.Log.debug('Invoke spike.core.System.init with params', []);
 
         if (spike.core.System.config === null) {
-            this.setConfig(new spike.core.Router.spike.core.System.config());
+            this.setConfig(new spike.core.spike.core.System.config());
         }
 
         if (this.modalInterface === null) {
@@ -509,8 +796,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
         spike.core.Log.ok('Spike application ready to work...');
 
     },
+
     initGlobalElements: function () {
-        var $this = this;
 
         var globalElements = this.getView().getElementsByTagName('element');
 
@@ -524,60 +811,59 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.System', 'null'
 
         }
 
-    },
-    getSuper: function () {
-        var $this = this;
-        return 'null';
-    },
-    getClass: function () {
-        var $this = this;
-        return 'spike.core.System';
-    },
+    }
+
 });
-spike.core.Assembler.createStaticClass('spike.core', 'Log', 'null', {
+spike.core.Assembler.createStaticClass('spike.core', 'Log', null, {
+
     obj: function (jsObject) {
-        var $this = this;
 
         if (spike.core.System.config.showObj) {
             console.log(jsObject);
         }
 
-    }, log: function (logMessage, logData) {
-        var $this = this;
+    },
+
+    log: function (logMessage, logData) {
 
         if (spike.core.System.config.showLog) {
             app.print(logMessage, logData, 'LOG');
         }
 
-    }, error: function (errorMessage, errorData) {
-        var $this = this;
+    },
+
+    error: function (errorMessage, errorData) {
 
         if (spike.core.System.config.showError) {
             app.print(errorMessage, errorData, 'ERROR');
         }
-    }, debug: function (debugMessage, debugData) {
-        var $this = this;
+    },
+
+    debug: function (debugMessage, debugData) {
 
         if (spike.core.System.config.showDebug) {
             app.print(debugMessage, debugData, 'DEBUG');
         }
 
-    }, warn: function (warnMessage, warnData) {
-        var $this = this;
+    },
+
+    warn: function (warnMessage, warnData) {
 
         if (spike.core.System.config.showWarn) {
             app.print(warnMessage, warnData, 'WARN');
         }
 
-    }, ok: function (okMessage, okData) {
-        var $this = this;
+    },
+
+    ok: function (okMessage, okData) {
 
         if (spike.core.System.config.showOk) {
             app.print(okMessage, okData, 'OK');
         }
 
-    }, print: function (message, data, type) {
-        var $this = this;
+    },
+
+    print: function (message, data, type) {
 
         if (typeof message !== 'string') {
             message = JSON.stringify(message);
@@ -610,27 +896,28 @@ spike.core.Assembler.createStaticClass('spike.core', 'Log', 'null', {
 
         console.log('%c' + spike.core.Util.currentDateLog() + ' Spike Framework: ' + message, 'color: ' + color);
 
-    }, getSuper: function () {
-        var $this = this;
-        return 'null';
-    }, getClass: function () {
-        var $this = this;
-        return 'spike.core.Log';
-    },
+    }
+
 });
-spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Selectors', 'null', {
-    cacheUsageCounter: 0, selectorsCache: {}, clearSelectorsCache: function () {
-        var $this = this;
+spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Selectors', null, {
+
+    cacheUsageCounter: 0,
+
+    selectorsCache: {},
+
+    clearSelectorsCache: function () {
         this.selectorsCache = {};
-    }, clearSelectorInCache: function (selectorId) {
-        var $this = this;
+    },
+
+    clearSelectorInCache: function (selectorId) {
 
         if (this.selectorsCache[selectorId]) {
             this.selectorsCache[selectorId] = null;
         }
 
-    }, createNamesSelectors: function (templateHtml, selectors) {
-        var $this = this;
+    },
+
+    createNamesSelectors: function (templateHtml, selectors) {
 
         var nameList = Util.findStringBetween(templateHtml, 'name="', '"');
 
@@ -661,8 +948,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Selectors', 'nu
 
         return templateHtml;
 
-    }, createIdSelectors: function (templateHtml, selectors, eventsSelectors, linksSelectors) {
-        var $this = this;
+    },
+
+    createIdSelectors: function (templateHtml, selectors, eventsSelectors, linksSelectors) {
 
         var idList = Util.findStringBetween(templateHtml, 'id="', '"');
 
@@ -700,8 +988,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Selectors', 'nu
 
         return templateHtml;
 
-    }, createUniqueSelectors: function (templateHtml) {
-        var $this = this;
+    },
+
+    createUniqueSelectors: function (templateHtml) {
 
         var selectors = {
             names: {},
@@ -721,17 +1010,13 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Selectors', 'nu
             linksSelectors: linksSelectors
         };
 
-    }, getSuper: function () {
-        var $this = this;
-        return 'null';
-    }, getClass: function () {
-        var $this = this;
-        return 'spike.core.Selectors';
     },
+
+
 });
-spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
+spike.core.Assembler.createStaticClass('spike.core', 'Util', null, {
+
     toCamelCase: function (str) {
-        var $this = this;
 
         if (Util.isEmpty(str)) {
             return str;
@@ -744,14 +1029,17 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
             return index === 0 ? match.toLowerCase() : match.toUpperCase();
         });
 
-    }, copyArray: function (oldArray) {
-        var $this = this;
+    },
+
+    copyArray: function (oldArray) {
         return JSON.parse(JSON.stringify(oldArray));
-    }, currentDateLog: function () {
-        var $this = this;
+    },
+
+    currentDateLog: function () {
         return new Date().toLocaleTimeString();
-    }, bindStringParams: function (string, objectOrArrayParams, noStringify) {
-        var $this = this;
+    },
+
+    bindStringParams: function (string, objectOrArrayParams, noStringify) {
 
         if (!string) {
             return '';
@@ -782,12 +1070,14 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return string;
 
-    }, isFunction: function (functionToCheck) {
-        var $this = this;
+    },
+
+    isFunction: function (functionToCheck) {
         var getType = {};
         return functionToCheck && getType.toString.call(functionToCheck) === '[object Function]';
-    }, isObject: function (object) {
-        var $this = this;
+    },
+
+    isObject: function (object) {
 
         if (Util.isNull(object)) {
             return false;
@@ -799,8 +1089,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return false;
 
-    }, parseJSON: function (s) {
-        var $this = this;
+    },
+
+    parseJSON: function (s) {
 
         s = s.replace(/\\n/g, "\\n")
             .replace(/\\'/g, "\\'")
@@ -814,8 +1105,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
         var o = JSON.parse(s);
 
         return o;
-    }, isEmpty: function (obj) {
-        var $this = this;
+    },
+
+    isEmpty: function (obj) {
 
         if (obj === undefined || obj === null) {
             return true;
@@ -829,8 +1121,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return false;
 
-    }, tryParseNumber: function (obj) {
-        var $this = this;
+    },
+
+    tryParseNumber: function (obj) {
 
         if (!Util.isEmpty(obj) && $.isNumeric(obj)) {
 
@@ -849,14 +1142,17 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
         return obj;
 
 
-    }, isInt: function (n) {
-        var $this = this;
+    },
+
+    isInt: function (n) {
         return Number(n) === n && n % 1 === 0;
-    }, isFloat: function (n) {
-        var $this = this;
+    },
+
+    isFloat: function (n) {
         return Number(n) === n && n % 1 !== 0;
-    }, isNull: function (obj) {
-        var $this = this;
+    },
+
+    isNull: function (obj) {
 
         if (obj === undefined || obj === null) {
             return true;
@@ -864,8 +1160,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return false;
 
-    }, preparePathDottedParams: function (url, params) {
-        var $this = this;
+    },
+
+    preparePathDottedParams: function (url, params) {
 
         for (var prop in params) {
             url = url.replace(':' + prop, params[prop]);
@@ -873,11 +1170,13 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return url;
 
-    }, removeUndefinedPathParams: function (url) {
-        var $this = this;
+    },
+
+    removeUndefinedPathParams: function (url) {
         return url.split('/undefined').join('').split('/null').join('');
-    }, prepareUrlParams: function (url, params) {
-        var $this = this;
+    },
+
+    prepareUrlParams: function (url, params) {
 
         var i = 0;
         for (var prop in params) {
@@ -894,8 +1193,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return url;
 
-    }, findStringBetween: function (str, first, last) {
-        var $this = this;
+    },
+
+    findStringBetween: function (str, first, last) {
 
         var r = new RegExp(first + '(.*?)' + last, 'gm');
         var arr = str.match(r);
@@ -912,8 +1212,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return arr2;
 
-    }, hash: function () {
-        var $this = this;
+    },
+
+    hash: function () {
         var text = "";
         var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -921,8 +1222,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
             text += possible.charAt(Math.floor(Math.random() * possible.length));
 
         return text;
-    }, escapeQuotes: function (text) {
-        var $this = this;
+    },
+
+    escapeQuotes: function (text) {
 
         try {
             text = text.replace(/"/g, "&quot;").replace(/'/g, "&quot;");
@@ -932,8 +1234,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return text;
 
-    }, bindTranslationParams: function (string, objectOrArrayParams) {
-        var $this = this;
+    },
+
+    bindTranslationParams: function (string, objectOrArrayParams) {
 
         if (!string) {
             return '';
@@ -959,19 +1262,10 @@ spike.core.Assembler.createStaticClass('spike.core', 'Util', 'null', {
 
         return string;
 
-    }, getSuper: function () {
-        var $this = this;
-        return 'null';
-    }, getClass: function () {
-        var $this = this;
-        return 'spike.core.Util';
     },
+
 });
-spike.core.Assembler.defineNamespace('spike.core', ['Request_config_array', 'Request_config', 'Request'], function () {
-    spike.core.Request_config_array = function (config, array) {
-        this.config = config;
-        this.array = array;
-    };
+spike.core.Assembler.defineNamespace('spike.core', ['Request_config', 'Request'], function () {
     spike.core.Request_config = function (config) {
 
         this.config = this.setConfig(config);
@@ -984,23 +1278,20 @@ spike.core.Assembler.defineNamespace('spike.core', ['Request_config_array', 'Req
         this.xhr.send(this.config.data);
 
     };
-    spike.core.Request = function () {
-    };
-    spike.core.Request.prototype.config = null;
-    spike.core.Request.prototype.xhr = null;
-    spike.core.Request.prototype.catchCallbacks = [];
-    spike.core.Request.prototype.thenCallbacks = [];
-    spike.core.Request.prototype.response = null;
-    spike.core.Request.prototype.responseType = 'json';
-    spike.core.Request.prototype.STATUS = {
+    spike.core.Request_config.prototype.config = null;
+    spike.core.Request_config.prototype.xhr = null;
+    spike.core.Request_config.prototype.catchCallbacks = [];
+    spike.core.Request_config.prototype.thenCallbacks = [];
+    spike.core.Request_config.prototype.response = null;
+    spike.core.Request_config.prototype.responseType = 'json';
+    spike.core.Request_config.prototype.STATUS = {
         DONE: 4,
         LOADING: 3,
         HEADERS_RECEIVED: 2,
         OPENED: 1,
         UNSENT: 0
     };
-    spike.core.Request.prototype.setConfig = function (config) {
-        var $this = this;
+    spike.core.Request_config.prototype.setConfig = function (config) {
 
         if (config === undefined || config === null) {
             spike.core.Errors.throwError(spike.core.Errors.messages.REQUEST_WRONG_PARAMS, []);
@@ -1045,8 +1336,7 @@ spike.core.Assembler.defineNamespace('spike.core', ['Request_config_array', 'Req
         return config;
 
     };
-    spike.core.Request.prototype.setEvents = function () {
-        var $this = this;
+    spike.core.Request_config.prototype.setEvents = function () {
 
         this.xhr.open(this.config.type, this.config.url, true);
 
@@ -1079,8 +1369,7 @@ spike.core.Assembler.defineNamespace('spike.core', ['Request_config_array', 'Req
 
 
     };
-    spike.core.Request.prototype.setHeaders = function () {
-        var $this = this;
+    spike.core.Request_config.prototype.setHeaders = function () {
 
         this.xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
@@ -1093,34 +1382,321 @@ spike.core.Assembler.defineNamespace('spike.core', ['Request_config_array', 'Req
         }
 
     };
-    spike.core.Request.prototype.then = function (callback) {
-        var $this = this;
+    spike.core.Request_config.prototype.then = function (callback) {
         this.thenCallbacks.push(callback);
         return this;
     };
-    spike.core.Request.prototype.resolveThen = function (response, xhr, status) {
-        var $this = this;
+    spike.core.Request_config.prototype.resolveThen = function (response, xhr, status) {
 
         for (var i = 0; i < this.thenCallbacks.length; i++) {
             this.thenCallbacks[i](response, xhr, status);
         }
 
     };
-    spike.core.Request.prototype.catch = function (callback) {
-        var $this = this;
+    spike.core.Request_config.prototype.catch = function (callback) {
         this.catchCallbacks.push(callback);
         return this;
     };
-    spike.core.Request.prototype.resolveCatch = function (xhr, status, thrownError) {
-        var $this = this;
+    spike.core.Request_config.prototype.resolveCatch = function (xhr, status, thrownError) {
 
         for (var i = 0; i < this.catchCallbacks.length; i++) {
             this.catchCallbacks[i](xhr, status, thrownError);
         }
 
     };
+    spike.core.Request_config.prototype.createXHR = function () {
+
+        var xhr;
+        if (window.XMLHttpRequest) {
+            xhr = new XMLHttpRequest();
+        } else if (window.ActiveXObject) {
+            try {
+                xhr = new ActiveXObject("Msxml2.XMLHTTP");
+            } catch (e) {
+                xhr = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+        }
+
+        return xhr;
+
+    };
+    spike.core.Request_config.prototype.getSuper = function () {
+        return 'spike.core.Request';
+    };
+    spike.core.Request_config.prototype.getClass = function () {
+        return 'spike.core.Request';
+    };
+    spike.core.Request = function () {
+    };
+    spike.core.Request_config.prototype.config = null;
+    spike.core.Request.prototype.config = null;
+    spike.core.Request_config.prototype.xhr = null;
+    spike.core.Request.prototype.xhr = null;
+    spike.core.Request_config.prototype.catchCallbacks = [];
+    spike.core.Request.prototype.catchCallbacks = [];
+    spike.core.Request_config.prototype.thenCallbacks = [];
+    spike.core.Request.prototype.thenCallbacks = [];
+    spike.core.Request_config.prototype.response = null;
+    spike.core.Request.prototype.response = null;
+    spike.core.Request_config.prototype.responseType = 'json';
+    spike.core.Request.prototype.responseType = 'json';
+    spike.core.Request_config.prototype.STATUS = {
+        DONE: 4,
+        LOADING: 3,
+        HEADERS_RECEIVED: 2,
+        OPENED: 1,
+        UNSENT: 0
+    };
+    spike.core.Request.prototype.STATUS = {
+        DONE: 4,
+        LOADING: 3,
+        HEADERS_RECEIVED: 2,
+        OPENED: 1,
+        UNSENT: 0
+    };
+    spike.core.Request_config.prototype.setConfig = function (config) {
+
+        if (config === undefined || config === null) {
+            spike.core.Errors.throwError(spike.core.Errors.messages.REQUEST_WRONG_PARAMS, []);
+        }
+
+        if (config.url === undefined || config.type === undefined) {
+            spike.core.Errors.throwError(spike.core.Errors.messages.REQUEST_WRONG_PARAMS, []);
+        }
+
+        if (config.headers === undefined) {
+            config.headers = {};
+        }
+
+        if (config.contentType === undefined) {
+            config.headers['Content-Type'] = 'application/json';
+        }
+
+        if (config.data === undefined) {
+            config.data = {};
+        }
+
+        if (typeof config.data === 'string') {
+
+            try {
+                config.data = JSON.parse(config.data);
+            } catch (e) {
+                spike.core.Errors.thrownError(spike.core.Errors.JSON_PARSE_ERROR, [config.url]);
+            }
+
+        }
+
+        if (config.beforeSend === undefined) {
+            config.beforeSend = function () {
+            };
+        }
+
+        if (config.complete === undefined) {
+            config.complete = function () {
+            };
+        }
+
+        return config;
+
+    };
+    spike.core.Request.prototype.setConfig = function (config) {
+
+        if (config === undefined || config === null) {
+            spike.core.Errors.throwError(spike.core.Errors.messages.REQUEST_WRONG_PARAMS, []);
+        }
+
+        if (config.url === undefined || config.type === undefined) {
+            spike.core.Errors.throwError(spike.core.Errors.messages.REQUEST_WRONG_PARAMS, []);
+        }
+
+        if (config.headers === undefined) {
+            config.headers = {};
+        }
+
+        if (config.contentType === undefined) {
+            config.headers['Content-Type'] = 'application/json';
+        }
+
+        if (config.data === undefined) {
+            config.data = {};
+        }
+
+        if (typeof config.data === 'string') {
+
+            try {
+                config.data = JSON.parse(config.data);
+            } catch (e) {
+                spike.core.Errors.thrownError(spike.core.Errors.JSON_PARSE_ERROR, [config.url]);
+            }
+
+        }
+
+        if (config.beforeSend === undefined) {
+            config.beforeSend = function () {
+            };
+        }
+
+        if (config.complete === undefined) {
+            config.complete = function () {
+            };
+        }
+
+        return config;
+
+    };
+    spike.core.Request_config.prototype.setEvents = function () {
+
+        this.xhr.open(this.config.type, this.config.url, true);
+
+        var self = this;
+        this.xhr.onreadystatechange = function () {
+
+            if (self.xhr.readyState === self.STATUS.DONE && self.xhr.status === 200) {
+
+                if (self.responseType === 'json') {
+
+                    try {
+                        self.response = JSON.parse(self.xhr.responseText);
+                        self.resolveThen(self.response, self.xhr, self.xhr.status);
+                    } catch (e) {
+                        self.resolveCatch(self.xhr, 0, e);
+                    }
+
+
+                } else if (self.responseType === 'xml') {
+                    self.resolveThen(self.xhr.responseXML, self.xhr, self.xhr.status);
+                }
+
+            } else if (self.xhr.readyState === self.STATUS.DONE && self.xhr.status === 204) {
+                self.resolveThen(null, self.xhr, self.xhr.status);
+            } else if (self.xhr.readyState === self.STATUS.DONE && self.xhr.status !== 200) {
+                self.resolveCatch(self.xhr, self.xhr.status, new Error('Response error: ' + self.xhr.status));
+            }
+
+        };
+
+
+    };
+    spike.core.Request.prototype.setEvents = function () {
+
+        this.xhr.open(this.config.type, this.config.url, true);
+
+        var self = this;
+        this.xhr.onreadystatechange = function () {
+
+            if (self.xhr.readyState === self.STATUS.DONE && self.xhr.status === 200) {
+
+                if (self.responseType === 'json') {
+
+                    try {
+                        self.response = JSON.parse(self.xhr.responseText);
+                        self.resolveThen(self.response, self.xhr, self.xhr.status);
+                    } catch (e) {
+                        self.resolveCatch(self.xhr, 0, e);
+                    }
+
+
+                } else if (self.responseType === 'xml') {
+                    self.resolveThen(self.xhr.responseXML, self.xhr, self.xhr.status);
+                }
+
+            } else if (self.xhr.readyState === self.STATUS.DONE && self.xhr.status === 204) {
+                self.resolveThen(null, self.xhr, self.xhr.status);
+            } else if (self.xhr.readyState === self.STATUS.DONE && self.xhr.status !== 200) {
+                self.resolveCatch(self.xhr, self.xhr.status, new Error('Response error: ' + self.xhr.status));
+            }
+
+        };
+
+
+    };
+    spike.core.Request_config.prototype.setHeaders = function () {
+
+        this.xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        for (var headerName in this.config.headers) {
+            this.xhr.setRequestHeader(headerName, this.config.headers[headerName]);
+        }
+
+        if (this.config.headers['Content-Type'].indexOf('xml') > -1) {
+            this.responseType = 'xml';
+        }
+
+    };
+    spike.core.Request.prototype.setHeaders = function () {
+
+        this.xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        for (var headerName in this.config.headers) {
+            this.xhr.setRequestHeader(headerName, this.config.headers[headerName]);
+        }
+
+        if (this.config.headers['Content-Type'].indexOf('xml') > -1) {
+            this.responseType = 'xml';
+        }
+
+    };
+    spike.core.Request_config.prototype.then = function (callback) {
+        this.thenCallbacks.push(callback);
+        return this;
+    };
+    spike.core.Request.prototype.then = function (callback) {
+        this.thenCallbacks.push(callback);
+        return this;
+    };
+    spike.core.Request_config.prototype.resolveThen = function (response, xhr, status) {
+
+        for (var i = 0; i < this.thenCallbacks.length; i++) {
+            this.thenCallbacks[i](response, xhr, status);
+        }
+
+    };
+    spike.core.Request.prototype.resolveThen = function (response, xhr, status) {
+
+        for (var i = 0; i < this.thenCallbacks.length; i++) {
+            this.thenCallbacks[i](response, xhr, status);
+        }
+
+    };
+    spike.core.Request_config.prototype.catch = function (callback) {
+        this.catchCallbacks.push(callback);
+        return this;
+    };
+    spike.core.Request.prototype.catch = function (callback) {
+        this.catchCallbacks.push(callback);
+        return this;
+    };
+    spike.core.Request_config.prototype.resolveCatch = function (xhr, status, thrownError) {
+
+        for (var i = 0; i < this.catchCallbacks.length; i++) {
+            this.catchCallbacks[i](xhr, status, thrownError);
+        }
+
+    };
+    spike.core.Request.prototype.resolveCatch = function (xhr, status, thrownError) {
+
+        for (var i = 0; i < this.catchCallbacks.length; i++) {
+            this.catchCallbacks[i](xhr, status, thrownError);
+        }
+
+    };
+    spike.core.Request_config.prototype.createXHR = function () {
+
+        var xhr;
+        if (window.XMLHttpRequest) {
+            xhr = new XMLHttpRequest();
+        } else if (window.ActiveXObject) {
+            try {
+                xhr = new ActiveXObject("Msxml2.XMLHTTP");
+            } catch (e) {
+                xhr = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+        }
+
+        return xhr;
+
+    };
     spike.core.Request.prototype.createXHR = function () {
-        var $this = this;
 
         var xhr;
         if (window.XMLHttpRequest) {
@@ -1137,22 +1713,21 @@ spike.core.Assembler.defineNamespace('spike.core', ['Request_config_array', 'Req
 
     };
     spike.core.Request.prototype.getSuper = function () {
-        var $this = this;
-        return 'null';
-    };
-    spike.core.Request.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.Request';
     };
-    spike.core.Request_config_array.prototype = spike.core.Request.prototype;
-    spike.core.Request_config.prototype = spike.core.Request.prototype;
+    spike.core.Request.prototype.getClass = function () {
+        return 'spike.core.Request';
+    };
 });
-spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', {
+spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', null, {
+
     cacheData: {},
+
     interceptors: {},
+
     globalInterceptors: {},
+
     interceptor: function (interceptorName, interceptorFunction, isGlobal) {
-        var $this = this;
 
         if (isGlobal) {
 
@@ -1173,8 +1748,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
         }
 
     },
+
     invokeInterceptors: function (requestData, response, promise, interceptors) {
-        var $this = this;
 
         if (interceptors) {
 
@@ -1195,8 +1770,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
         }
 
     },
+
     createCachedPromise: function (url, method, interceptors) {
-        var $this = this;
 
         var data = spike.core.Rest.cacheData[url + '_' + method].data;
 
@@ -1228,8 +1803,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
 
 
     },
+
     isCached: function (url, method) {
-        var $this = this;
 
         var data = spike.core.Rest.cacheData[url + '_' + method];
 
@@ -1256,8 +1831,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
         return false;
 
     },
+
     get: function (url, propertiesObject) {
-        var $this = this;
 
         propertiesObject = propertiesObject || {};
 
@@ -1274,8 +1849,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
         }
 
     },
+
     delete: function (url, propertiesObject) {
-        var $this = this;
 
         propertiesObject = propertiesObject || {};
 
@@ -1293,8 +1868,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
 
 
     },
+
     update: function (url, request, propertiesObject) {
-        var $this = this;
 
         propertiesObject = propertiesObject || {};
 
@@ -1311,12 +1886,13 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
         }
 
     },
+
     put: function (url, request, propertiesObject) {
-        var $this = this;
         return spike.core.Rest.update(url, request, propertiesObject);
     },
+
+
     post: function (url, request, propertiesObject) {
-        var $this = this;
 
         propertiesObject = propertiesObject || {};
 
@@ -1333,8 +1909,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
         }
 
     },
+
     getDelete: function (url, method, propertiesObject) {
-        var $this = this;
 
         var pathParams = propertiesObject.pathParams;
         var headers = propertiesObject.headers;
@@ -1436,8 +2012,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
 
 
     },
+
     postPut: function (url, method, request, propertiesObject) {
-        var $this = this;
 
         var pathParams = propertiesObject.pathParams;
         var headers = propertiesObject.headers;
@@ -1546,16 +2122,16 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
         return promise;
 
     },
+
     fillCache: function (url, method, data) {
-        var $this = this;
 
         spike.core.Rest.cacheData[url + '_' + method].filled = true;
         spike.core.Rest.cacheData[url + '_' + method].data = data;
         spike.core.Rest.cacheData[url + '_' + method].cacheTime = new Date().getTime();
 
     },
+
     createCacheObject: function (url, method, cache) {
-        var $this = this;
 
         spike.core.Rest.cacheData[url + '_' + method] = {
             filled: false,
@@ -1566,29 +2142,25 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Rest', 'null', 
         };
 
     },
-    getSuper: function () {
-        var $this = this;
-        return 'null';
-    },
-    getClass: function () {
-        var $this = this;
-        return 'spike.core.Rest';
-    },
+
+
 });
-spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Message', 'null', {
-    waitingForTranslations: {}, messages: {}, add: function (languageName, languageFilePath) {
-        var $this = this;
+spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Message', null, {
+
+    waitingForTranslations: {},
+
+    messages: {},
+
+    add: function (languageName, languageFilePath) {
 
         spike.core.Log.log('register translation {0}', [languageName]);
 
         this.waitingForTranslations[languageName] = false;
 
-        var promise = new spike.core.Request_config_array({
+        var promise = new spike.core.Request_config({
             url: languageFilePath,
             type: 'GET'
-        }, [
-            'test'
-        ]);
+        });
 
         promise.then(function (data) {
 
@@ -1612,8 +2184,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Message', 'null
 
         return promise;
 
-    }, setTranslation: function (languageName, translationData) {
-        var $this = this;
+    },
+
+    setTranslation: function (languageName, translationData) {
 
         if (typeof translationData === 'string') {
 
@@ -1627,8 +2200,10 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Message', 'null
 
         spike.core.Message.messages[languageName] = translationData;
         spike.core.Message.waitingForTranslations[languageName] = true;
-    }, get: function (messageName, arrayOrMapParams) {
-        var $this = this;
+    },
+
+
+    get: function (messageName, arrayOrMapParams) {
 
         var message = this.messages[Config.lang][messageName];
         if (!message) {
@@ -1640,57 +2215,50 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Message', 'null
         }
 
         return message || messageName;
-    }, getSuper: function () {
-        var $this = this;
-        return 'null';
-    }, getClass: function () {
-        var $this = this;
-        return 'spike.core.Message';
-    },
+    }
+
 });
-spike.core.Assembler.createStaticClass('spike.core', 'Templates', 'null', {
-    templates: {}, compileTemplate: function (element, name, model) {
-        var $this = this;
+spike.core.Assembler.createStaticClass('spike.core', 'Templates', null, {
+
+    templates: {},
+
+    compileTemplate: function (element, name, model) {
         return this.templates[name](element, model);
-    }, getSuper: function () {
-        var $this = this;
-        return 'null';
-    }, getClass: function () {
-        var $this = this;
-        return 'spike.core.Templates';
     },
+
 });
-spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null', {
+spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', null, {
+
     preventReloadPage: null,
+
     events: {},
+
     otherwiseReplacement: '!',
+
     pathParamReplacement: 'var',
+
     endpoints: {},
+
     routerHTML5Mode: false,
-    pathFunctionHandler: null,
-    getCurrentViewCache: null,
-    getCurrentViewRouteCache: null,
-    getCurrentViewDataCache: null,
-    getCurrentViewDataRouteCache: null,
-    redirectToViewHandler: null,
-    createLinkHandler: null,
+
     getRouterFactory: function () {
-        var $this = this;
         return {
             path: spike.core.Router.pathFunction,
             other: spike.core.Router.otherFunction
         }
     },
+
     create: function () {
-        var $this = this;
         return spike.core.Router.getRouterFactory();
     },
+
     otherFunction: function (pathObject) {
-        var $this = this;
         return spike.core.Router.pathFunction(spike.core.Router.otherwiseReplacement, pathObject);
     },
+
+    pathFunctionHandler: null,
+
     pathFunction: function (pathValue, pathObject) {
-        var $this = this;
 
         if (spike.core.Util.isEmpty(pathValue) || spike.core.Util.isNull(pathObject)) {
             spike.core.Errors.throwError(spike.core.Errors.messages.PATH_DEFINITION);
@@ -1705,8 +2273,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return spike.core.Router.getRouterFactory();
 
     },
+
     registerPath: function (pathValue, pathController, routingParams, onRouteEvent, routeName, pathModal, pathModalDefaultController) {
-        var $this = this;
 
         if (spike.core.Router.endpoints[pathValue]) {
             spike.core.Errors.throwError(spike.core.Errors.messages.PATH_ALREADY_EXIST, [pathValue]);
@@ -1735,8 +2303,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         };
 
     },
+
     byName: function (routeName) {
-        var $this = this;
 
         for (var pathValue in spike.core.Router.endpoints) {
 
@@ -1749,8 +2317,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         spike.core.Errors.throwError(spike.core.Errors.messages.ROUTE_NAME_NOT_EXIST, [routeName]);
 
     },
+
     routeNameExist: function (routeName) {
-        var $this = this;
 
         for (var pathValue in spike.core.Router.endpoints) {
 
@@ -1763,8 +2331,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return false;
 
     },
+
     pathPatternExist: function (pathPattern) {
-        var $this = this;
 
         for (var pathValue in spike.core.Router.endpoints) {
 
@@ -1777,8 +2345,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return false;
 
     },
+
     createPathPattern: function (pathValue) {
-        var $this = this;
 
         var pathPattern = {
             pattern: [],
@@ -1801,16 +2369,16 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return pathPattern;
 
     },
+
     detectHTML5Mode: function () {
-        var $this = this;
 
         if (window.history && window.history.pushState && spike.core.System.config.html5Mode === true) {
             spike.core.Router.routerHTML5Mode = true;
         }
 
     },
+
     registerRouter: function () {
-        var $this = this;
 
         spike.core.Log.ok('HTML5 router mode status: {0}', [spike.core.Router.routerHTML5Mode]);
 
@@ -1829,8 +2397,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         }
 
     },
+
     onHashChanges: function (e) {
-        var $this = this;
 
         spike.core.Log.debug('Executes spike.core.Router.onHashChanges');
 
@@ -1846,8 +2414,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         spike.core.Router.renderCurrentView();
 
     },
+
     onHistoryChanges: function () {
-        var $this = this;
 
         if (spike.core.Router.routerHTML5Mode === true) {
 
@@ -1867,8 +2435,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         }
 
     },
+
     fireRouteEvents: function (e) {
-        var $this = this;
 
         var currentRoute = spike.core.Router.getCurrentRoute();
 
@@ -1881,8 +2449,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         });
 
     },
+
+
     onRouteChange: function (eventName, eventFunction) {
-        var $this = this;
 
         if (spike.core.Router.events[eventName]) {
             spike.core.Errors.throwWarn(spike.core.Errors.messages.ROUTE_EVENT_ALREADY_REGISTRED, [eventName]);
@@ -1891,16 +2460,16 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         spike.core.Router.events[eventName] = eventFunction;
 
     },
+
     offRouteChange: function (eventName) {
-        var $this = this;
 
         if (spike.core.Router.events[eventName]) {
             spike.core.Router.events[eventName] = null;
         }
 
     },
+
     checkPathIntegrity: function (hashPattern, endpointPattern) {
-        var $this = this;
 
         for (var i = 0; i < endpointPattern.pattern.length; i++) {
 
@@ -1914,12 +2483,12 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return true;
 
     },
+
     getURLParams: function () {
-        var $this = this;
         return spike.core.Router.getURLParams();
     },
+
     getURLParams: function () {
-        var $this = this;
 
         var params = {};
 
@@ -1939,12 +2508,12 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return params;
 
     },
+
     getPathParams: function () {
-        var $this = this;
         return spike.core.Router.getCurrentViewData().data.pathParams;
     },
+
     getPathData: function (hashPattern, endpointPattern) {
-        var $this = this;
 
         var urlParams = spike.core.Router.getURLParams();
         var pathParams = {};
@@ -1964,15 +2533,15 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         };
 
     },
+
     clearCacheViewData: function () {
-        var $this = this;
 
         spike.core.Router.getCurrentViewCache = null;
         spike.core.Router.getCurrentViewDataCache = null;
 
     },
+
     setCacheViewData: function (type, data) {
-        var $this = this;
 
         if (type === 'DATA') {
             spike.core.Router.getCurrentViewDataCache = data;
@@ -1983,8 +2552,12 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         }
 
     },
+
+    getCurrentViewCache: null,
+
+    getCurrentViewRouteCache: null,
+
     getCurrentView: function () {
-        var $this = this;
 
         if (spike.core.Router.getCurrentViewCache !== null && spike.core.Router.getCurrentRoute() != spike.core.Router.getCurrentViewRouteCache) {
             spike.core.Log.debug('Using @getCurrentViewCache cache');
@@ -2032,8 +2605,12 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return currentEndpointData;
 
     },
+
+    getCurrentViewDataCache: null,
+
+    getCurrentViewDataRouteCache: null,
+
     getCurrentViewData: function () {
-        var $this = this;
 
         if (spike.core.Router.getCurrentViewDataCache !== null && spike.core.Router.getCurrentRoute() != spike.core.Router.getCurrentViewDataRouteCache) {
             spike.core.Log.debug('Using @getCurrentViewDataCache cache');
@@ -2090,8 +2667,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return viewData;
 
     },
+
     setPathParams: function (pathParams) {
-        var $this = this;
 
         var currentViewData = spike.core.Router.getCurrentViewData();
 
@@ -2108,8 +2685,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
 
 
     },
+
     setURLParams: function (urlParams) {
-        var $this = this;
 
         var currentViewData = spike.core.Router.getCurrentViewData();
 
@@ -2128,8 +2705,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         spike.core.Router.redirectToView(currentViewData.endpoint.pathValue, currentViewData.data.pathParams, currentViewData.data.urlParams, true);
 
     },
+
     getCurrentRoute: function () {
-        var $this = this;
 
         if (spike.core.Router.routerHTML5Mode === true) {
             return spike.core.Router.getPathName().substring(1, spike.core.Router.getPathName().length);
@@ -2138,8 +2715,10 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return window.location.hash.replace('#/', '');
 
     },
+
+    redirectToViewHandler: null,
+
     redirectToView: function (path, pathParams, urlParams, preventReloadPage) {
-        var $this = this;
 
         spike.core.Router.clearCacheViewData();
 
@@ -2170,21 +2749,21 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         }
 
     },
+
     pushState: function (path) {
-        var $this = this;
         history.pushState({state: path}, null, path);
     },
+
     getViewData: function () {
-        var $this = this;
         var currentViewData = spike.core.Router.getCurrentViewData();
         return $.extend({}, currentViewData.endpoint, currentViewData.data);
     },
+
     reloadView: function () {
-        var $this = this;
         spike.core.Router.renderCurrentView();
     },
+
     renderCurrentView: function () {
-        var $this = this;
 
         var currentEndpointData = spike.core.Router.getCurrentView();
         spike.core.Log.debug('current view to render {0}', [currentEndpointData]);
@@ -2210,8 +2789,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         app.previousController = currentEndpointData.controller;
 
     },
+
     refreshCurrentHyperlinkCache: function () {
-        var $this = this;
 
         var currentEndpoint = spike.core.Router.getCurrentViewData();
 
@@ -2232,8 +2811,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         });
 
     },
+
     getPathValueWithoutParams: function (pathValue) {
-        var $this = this;
 
         if (pathValue.indexOf(':') > -1) {
             return pathValue.substring(0, pathValue.indexOf(':'));
@@ -2242,16 +2821,16 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return pathValue;
 
     },
+
     redirect: function (path, pathParams, urlParams, preventReloadPage) {
-        var $this = this;
         spike.core.Router.redirectToView(path, pathParams, urlParams, preventReloadPage);
     },
+
     redirectByName: function (routeName, pathParams, urlParams, preventReloadPage) {
-        var $this = this;
         spike.core.Router.redirectToView(spike.core.Router.byName(routeName), pathParams, urlParams, preventReloadPage);
     },
+
     location: function (url, redirectType) {
-        var $this = this;
 
         spike.core.Router.clearCacheViewData();
 
@@ -2276,8 +2855,10 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         }
 
     },
+
+    createLinkHandler: null,
+
     createLink: function (path, pathParams, urlParams) {
-        var $this = this;
 
         if (spike.core.Router.routerHTML5Mode === false) {
 
@@ -2299,16 +2880,16 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         return path;
 
     },
+
     back: function () {
-        var $this = this;
         window.history.go(-1);
     },
+
     getPathName: function () {
-        var $this = this;
         return window.location.pathname;
     },
+
     bindLinks: function (element) {
-        var $this = this;
 
         for (var i = 0; i < element.childElements.length; i++) {
 
@@ -2321,8 +2902,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
         }
 
     },
+
     bindLinksForElement: function (element) {
-        var $this = this;
 
         for (var i = 0; i < element.linksSelectors.length; i++) {
 
@@ -2358,15 +2939,8 @@ spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Router', 'null'
 
         }
 
-    },
-    getSuper: function () {
-        var $this = this;
-        return 'null';
-    },
-    getClass: function () {
-        var $this = this;
-        return 'spike.core.Router';
-    },
+    }
+
 });
 spike.core.Assembler.defineNamespace('spike.core', ['Element_parentElement_model', 'Element'], function () {
     spike.core.Element_parentElement_model = function (parentElement, model) {
@@ -2379,20 +2953,17 @@ spike.core.Assembler.defineNamespace('spike.core', ['Element_parentElement_model
 
 
     };
-    spike.core.Element = function () {
-    };
-    spike.core.Element.prototype.rendered = false;
-    spike.core.Element.prototype.model = null;
-    spike.core.Element.prototype.elementId = null;
-    spike.core.Element.prototype.elementSelector = null;
-    spike.core.Element.prototype.compiledHtml = null;
-    spike.core.Element.prototype.parentElement = null;
-    spike.core.Element.prototype.childElements = [];
-    spike.core.Element.prototype.selector = {};
-    spike.core.Element.prototype.eventsSelectors = [];
-    spike.core.Element.prototype.linksSelectors = [];
-    spike.core.Element.prototype.rootSelector = function () {
-        var $this = this;
+    spike.core.Element_parentElement_model.prototype.rendered = false;
+    spike.core.Element_parentElement_model.prototype.model = null;
+    spike.core.Element_parentElement_model.prototype.elementId = null;
+    spike.core.Element_parentElement_model.prototype.elementSelector = null;
+    spike.core.Element_parentElement_model.prototype.compiledHtml = null;
+    spike.core.Element_parentElement_model.prototype.parentElement = null;
+    spike.core.Element_parentElement_model.prototype.childElements = [];
+    spike.core.Element_parentElement_model.prototype.selector = {};
+    spike.core.Element_parentElement_model.prototype.eventsSelectors = [];
+    spike.core.Element_parentElement_model.prototype.linksSelectors = [];
+    spike.core.Element_parentElement_model.prototype.rootSelector = function () {
 
         if (this.elementSelector === null) {
             this.elementSelector = document.getElementById(this.elementId);
@@ -2400,8 +2971,7 @@ spike.core.Assembler.defineNamespace('spike.core', ['Element_parentElement_model
 
         return document.getElementById(elementId);
     };
-    spike.core.Element.prototype.include = function (childElement) {
-        var $this = this;
+    spike.core.Element_parentElement_model.prototype.include = function (childElement) {
 
         this.childElements.push(childElement);
         this.createTemplatePath();
@@ -2410,8 +2980,7 @@ spike.core.Assembler.defineNamespace('spike.core', ['Element_parentElement_model
         return this.compiledHtml;
 
     };
-    spike.core.Element.prototype.createTemplatePath = function () {
-        var $this = this;
+    spike.core.Element_parentElement_model.prototype.createTemplatePath = function () {
 
         this.templatePath = '';
 
@@ -2426,8 +2995,7 @@ spike.core.Assembler.defineNamespace('spike.core', ['Element_parentElement_model
         return this.templatePath;
 
     };
-    spike.core.Element.prototype.createTemplate = function () {
-        var $this = this;
+    spike.core.Element_parentElement_model.prototype.createTemplate = function () {
 
         try {
             this.compiledHtml = spike.core.Templates.compileTemplate(this, this.templatePath);
@@ -2444,14 +3012,167 @@ spike.core.Assembler.defineNamespace('spike.core', ['Element_parentElement_model
 
 
     };
+    spike.core.Element_parentElement_model.prototype.render = function () {
+    };
+    spike.core.Element_parentElement_model.prototype.reloadComponent = function (component, componentData) {
+    };
+    spike.core.Element_parentElement_model.prototype.replaceWith = function () {
+
+        var elementDiv = document.createElement("div");
+        elementDiv.innerHTML = this.compiledHtml;
+        elementDiv.setAttribute('element-name', this.getClass());
+        elementDiv.setAttribute('id', this.elementId);
+        this.rootSelector().parentNode.replaceChild(elementDiv, this.rootSelector());
+
+        this.elementSelector = null;
+
+    };
+    spike.core.Element_parentElement_model.prototype.getSuper = function () {
+        return 'spike.core.Element';
+    };
+    spike.core.Element_parentElement_model.prototype.getClass = function () {
+        return 'spike.core.Element';
+    };
+    spike.core.Element = function () {
+    };
+    spike.core.Element_parentElement_model.prototype.rendered = false;
+    spike.core.Element.prototype.rendered = false;
+    spike.core.Element_parentElement_model.prototype.model = null;
+    spike.core.Element.prototype.model = null;
+    spike.core.Element_parentElement_model.prototype.elementId = null;
+    spike.core.Element.prototype.elementId = null;
+    spike.core.Element_parentElement_model.prototype.elementSelector = null;
+    spike.core.Element.prototype.elementSelector = null;
+    spike.core.Element_parentElement_model.prototype.compiledHtml = null;
+    spike.core.Element.prototype.compiledHtml = null;
+    spike.core.Element_parentElement_model.prototype.parentElement = null;
+    spike.core.Element.prototype.parentElement = null;
+    spike.core.Element_parentElement_model.prototype.childElements = [];
+    spike.core.Element.prototype.childElements = [];
+    spike.core.Element_parentElement_model.prototype.selector = {};
+    spike.core.Element.prototype.selector = {};
+    spike.core.Element_parentElement_model.prototype.eventsSelectors = [];
+    spike.core.Element.prototype.eventsSelectors = [];
+    spike.core.Element_parentElement_model.prototype.linksSelectors = [];
+    spike.core.Element.prototype.linksSelectors = [];
+    spike.core.Element_parentElement_model.prototype.rootSelector = function () {
+
+        if (this.elementSelector === null) {
+            this.elementSelector = document.getElementById(this.elementId);
+        }
+
+        return document.getElementById(elementId);
+    };
+    spike.core.Element.prototype.rootSelector = function () {
+
+        if (this.elementSelector === null) {
+            this.elementSelector = document.getElementById(this.elementId);
+        }
+
+        return document.getElementById(elementId);
+    };
+    spike.core.Element_parentElement_model.prototype.include = function (childElement) {
+
+        this.childElements.push(childElement);
+        this.createTemplatePath();
+        this.createTemplate();
+
+        return this.compiledHtml;
+
+    };
+    spike.core.Element.prototype.include = function (childElement) {
+
+        this.childElements.push(childElement);
+        this.createTemplatePath();
+        this.createTemplate();
+
+        return this.compiledHtml;
+
+    };
+    spike.core.Element_parentElement_model.prototype.createTemplatePath = function () {
+
+        this.templatePath = '';
+
+        var elementPath = this.getClass().split('.');
+
+        for (var i = 0; i < elementPath.length; i++) {
+            this.templatePath += elementPath[i].toLowerCase() + '/';
+        }
+
+        this.templatePath = this.templatePath.substring(0, this.templatePath.lastIndexOf('/') - 1) + '.html';
+
+        return this.templatePath;
+
+    };
+    spike.core.Element.prototype.createTemplatePath = function () {
+
+        this.templatePath = '';
+
+        var elementPath = this.getClass().split('.');
+
+        for (var i = 0; i < elementPath.length; i++) {
+            this.templatePath += elementPath[i].toLowerCase() + '/';
+        }
+
+        this.templatePath = this.templatePath.substring(0, this.templatePath.lastIndexOf('/') - 1) + '.html';
+
+        return this.templatePath;
+
+    };
+    spike.core.Element_parentElement_model.prototype.createTemplate = function () {
+
+        try {
+            this.compiledHtml = spike.core.Templates.compileTemplate(this, this.templatePath);
+        } catch (err) {
+            Errors.throwError('Error occur when executing component {0} template {1}', [this.getClass(), this.templatePath]);
+        }
+
+        var selectorsObj = spike.core.System.createUniqueSelectors(this.compiledHtml);
+
+        this.compiledHtml = selectorsObj.html;
+        this.selector = selectorsObj.selectors;
+        this.eventsSelectors = selectorsObj.eventsSelectors;
+        this.linksSelectors = selectorsObj.linksSelectors;
+
+
+    };
+    spike.core.Element.prototype.createTemplate = function () {
+
+        try {
+            this.compiledHtml = spike.core.Templates.compileTemplate(this, this.templatePath);
+        } catch (err) {
+            Errors.throwError('Error occur when executing component {0} template {1}', [this.getClass(), this.templatePath]);
+        }
+
+        var selectorsObj = spike.core.System.createUniqueSelectors(this.compiledHtml);
+
+        this.compiledHtml = selectorsObj.html;
+        this.selector = selectorsObj.selectors;
+        this.eventsSelectors = selectorsObj.eventsSelectors;
+        this.linksSelectors = selectorsObj.linksSelectors;
+
+
+    };
+    spike.core.Element_parentElement_model.prototype.render = function () {
+    };
     spike.core.Element.prototype.render = function () {
-        var $this = this;
+    };
+    spike.core.Element_parentElement_model.prototype.reloadComponent = function (component, componentData) {
     };
     spike.core.Element.prototype.reloadComponent = function (component, componentData) {
-        var $this = this;
+    };
+    spike.core.Element_parentElement_model.prototype.replaceWith = function () {
+
+        var elementDiv = document.createElement("div");
+        elementDiv.innerHTML = this.compiledHtml;
+        elementDiv.setAttribute('element-name', this.getClass());
+        elementDiv.setAttribute('id', this.elementId);
+        this.rootSelector().parentNode.replaceChild(elementDiv, this.rootSelector());
+
+        this.elementSelector = null;
+
     };
     spike.core.Element.prototype.replaceWith = function () {
-        var $this = this;
 
         var elementDiv = document.createElement("div");
         elementDiv.innerHTML = this.compiledHtml;
@@ -2463,14 +3184,11 @@ spike.core.Assembler.defineNamespace('spike.core', ['Element_parentElement_model
 
     };
     spike.core.Element.prototype.getSuper = function () {
-        var $this = this;
-        return 'null';
-    };
-    spike.core.Element.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.Element';
     };
-    spike.core.Element_parentElement_model.prototype = spike.core.Element.prototype;
+    spike.core.Element.prototype.getClass = function () {
+        return 'spike.core.Element';
+    };
 });
 spike.core.Assembler.defineNamespace('spike.core', ['GlobalElement'], function () {
     spike.core.GlobalElement = function () {
@@ -2481,7 +3199,6 @@ spike.core.Assembler.defineNamespace('spike.core', ['GlobalElement'], function (
 
     };
     spike.core.GlobalElement.prototype.render = function () {
-        var $this = this;
 
         this.replaceWith();
 
@@ -2496,21 +3213,14 @@ spike.core.Assembler.defineNamespace('spike.core', ['GlobalElement'], function (
 
     };
     spike.core.GlobalElement.prototype.getSuper = function () {
-        var $this = this;
         return 'spike.core.Element';
     };
     spike.core.GlobalElement.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.GlobalElement';
     };
 });
-spike.core.Assembler.defineNamespace('spike.core', ['Controller222'], function () {
-    spike.core.Controller222 = function () {
-    };
-    spike.core.Controller222.prototype.scrollTop = true;
-    spike.core.Controller222.prototype.checkNetwork = true;
-    spike.core.Controller222.prototype.spike.core.Controller = function (model) {
-        var $this = this;
+spike.core.Assembler.defineNamespace('spike.core', ['Controller_model', 'Controller'], function () {
+    spike.core.Controller_model = function (model) {
 
         this.model = model;
         this.elementSelector = spike.core.System.getView();
@@ -2518,8 +3228,9 @@ spike.core.Assembler.defineNamespace('spike.core', ['Controller222'], function (
         this.createTemplate();
 
     };
-    spike.core.Controller222.prototype.render = function () {
-        var $this = this;
+    spike.core.Controller_model.prototype.scrollTop = true;
+    spike.core.Controller_model.prototype.checkNetwork = true;
+    spike.core.Controller_model.prototype.render = function () {
 
         this.replaceWith();
 
@@ -2533,30 +3244,33 @@ spike.core.Assembler.defineNamespace('spike.core', ['Controller222'], function (
         }
 
     };
-    spike.core.Controller222.prototype.getSuper = function () {
-        var $this = this;
+    spike.core.Controller_model.prototype.getSuper = function () {
+        return 'spike.core.Element';
+    };
+    spike.core.Controller_model.prototype.getClass = function () {
         return 'spike.core.Controller';
-    };
-    spike.core.Controller222.prototype.getClass = function () {
-        var $this = this;
-        return 'spike.core.Controller222';
-    };
-});
-spike.core.Assembler.defineNamespace('spike.core', ['Controller_model', 'Controller'], function () {
-    spike.core.Controller_model = function (model) {
-
-        this.model = model;
-        this.elementSelector = spike.core.System.getView();
-        this.createTemplatePath();
-        this.createTemplate();
-
     };
     spike.core.Controller = function () {
     };
+    spike.core.Controller_model.prototype.scrollTop = true;
     spike.core.Controller.prototype.scrollTop = true;
+    spike.core.Controller_model.prototype.checkNetwork = true;
     spike.core.Controller.prototype.checkNetwork = true;
+    spike.core.Controller_model.prototype.render = function () {
+
+        this.replaceWith();
+
+        spike.core.Events.bindEvents(this);
+        spike.core.Router.bindLinks(this);
+
+        this.rendered = true;
+
+        if (this.init !== undefined) {
+            this.init();
+        }
+
+    };
     spike.core.Controller.prototype.render = function () {
-        var $this = this;
 
         this.replaceWith();
 
@@ -2571,14 +3285,11 @@ spike.core.Assembler.defineNamespace('spike.core', ['Controller_model', 'Control
 
     };
     spike.core.Controller.prototype.getSuper = function () {
-        var $this = this;
         return 'spike.core.Element';
     };
     spike.core.Controller.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.Controller';
     };
-    spike.core.Controller_model.prototype = spike.core.Controller.prototype;
 });
 spike.core.Assembler.defineNamespace('spike.core', ['Modal_model', 'Modal'], function () {
     spike.core.Modal_model = function (model) {
@@ -2589,44 +3300,58 @@ spike.core.Assembler.defineNamespace('spike.core', ['Modal_model', 'Modal'], fun
         this.createTemplatePath();
         this.createTemplate();
 
-        var x = spike.core.Status1000.OK;
 
-
+    };
+    spike.core.Modal_model.prototype.destroyed = false;
+    spike.core.Modal_model.prototype.show = function () {
+        spike.core.System.modalInterface.onShow();
+    };
+    spike.core.Modal_model.prototype.hide = function () {
+        spike.core.System.modalInterface.onHide();
+    };
+    spike.core.Modal_model.prototype.destroy = function () {
+        this.destroyed = true;
+    };
+    spike.core.Modal_model.prototype.getSuper = function () {
+        return 'spike.core.Element';
+    };
+    spike.core.Modal_model.prototype.getClass = function () {
+        return 'spike.core.Modal';
     };
     spike.core.Modal = function () {
     };
+    spike.core.Modal_model.prototype.destroyed = false;
     spike.core.Modal.prototype.destroyed = false;
-    spike.core.Modal.prototype.show = function () {
-        var $this = this;
+    spike.core.Modal_model.prototype.show = function () {
         spike.core.System.modalInterface.onShow();
     };
-    spike.core.Modal.prototype.hide = function () {
-        var $this = this;
+    spike.core.Modal.prototype.show = function () {
+        spike.core.System.modalInterface.onShow();
+    };
+    spike.core.Modal_model.prototype.hide = function () {
         spike.core.System.modalInterface.onHide();
     };
+    spike.core.Modal.prototype.hide = function () {
+        spike.core.System.modalInterface.onHide();
+    };
+    spike.core.Modal_model.prototype.destroy = function () {
+        this.destroyed = true;
+    };
     spike.core.Modal.prototype.destroy = function () {
-        var $this = this;
         this.destroyed = true;
     };
     spike.core.Modal.prototype.getSuper = function () {
-        var $this = this;
         return 'spike.core.Element';
     };
     spike.core.Modal.prototype.getClass = function () {
-        var $this = this;
         return 'spike.core.Modal';
     };
-    spike.core.Modal_model.prototype = spike.core.Modal.prototype;
 });
-spike.core.Assembler.createStaticClass('spike.core', 'spike.core.Status1000', null, {
+spike.core.Assembler.createStaticClass('spike.core', 'Broadcaster', null, {
 
-    OK: 200,
-    ERROR: 500
+    applicationEvents: {},
 
-});
-spike.core.Assembler.createStaticClass('spike.core', 'Broadcaster', 'null', {
-    applicationEvents: {}, register: function (eventName) {
-        var $this = this;
+    register: function (eventName) {
 
         if (!spike.core.Util.isNull(this.applicationEvents[eventName])) {
             spike.core.Errors.throwError(spike.core.Errors.messages.APPLICATION_EVENT_ALREADY_EXIST, [eventName]);
@@ -2634,8 +3359,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Broadcaster', 'null', {
 
         this.applicationEvents[eventName] = [];
 
-    }, broadcast: function (eventName, eventData) {
-        var $this = this;
+    },
+
+    broadcast: function (eventName, eventData) {
 
         if (spike.core.Util.isNull(this.applicationEvents[eventName])) {
             spike.core.Errors.throwError(spike.core.Errors.messages.APPLICATION_EVENT_NOT_EXIST, [eventName]);
@@ -2645,8 +3371,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Broadcaster', 'null', {
             this.applicationEvents[eventName][i](eventData);
         }
 
-    }, listen: function (eventName, eventCallback) {
-        var $this = this;
+    },
+
+    listen: function (eventName, eventCallback) {
 
         if (spike.core.Util.isNull(this.applicationEvents[eventName])) {
             spike.core.Errors.throwError(spike.core.Errors.messages.APPLICATION_EVENT_NOT_EXIST, [eventName]);
@@ -2670,8 +3397,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Broadcaster', 'null', {
             this.applicationEvents[eventName].push(eventCallback);
         }
 
-    }, destroy: function (eventName) {
-        var $this = this;
+    },
+
+    destroy: function (eventName) {
 
         if (spike.core.Util.isNull(this.applicationEvents[eventName])) {
             spike.core.Errors.throwError(spike.core.Errors.messages.APPLICATION_EVENT_NOT_EXIST, [eventName]);
@@ -2679,17 +3407,9 @@ spike.core.Assembler.createStaticClass('spike.core', 'Broadcaster', 'null', {
 
         this.applicationEvents[eventName] = [];
 
-    }, getSuper: function () {
-        var $this = this;
-        return 'null';
-    }, getClass: function () {
-        var $this = this;
-        return 'spike.core.Broadcaster';
-    },
+    }
+
 });
-spike.core.Assembler.dependencies(function () {
-    spike.core.Assembler.extend(spike.core.Element, spike.core.GlobalElement);
-    spike.core.Assembler.extend(spike.core.Element, spike.core.Controller);
-    spike.core.Assembler.extend(spike.core.Element, spike.core.Modal);
-    spike.core.Assembler.extend(spike.core.Controller, spike.core.Controller222);
-});
+spike.core.Assembler.extend(Element, GlobalElement);
+spike.core.Assembler.extend(Element, Controller);
+spike.core.Assembler.extend(Element, Modal);

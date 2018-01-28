@@ -1,390 +1,394 @@
 package com.spike.transpiler.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class SpikeClass {
 
-    public SpikePackage classPackage;
+    public static int PRIVATE_COUNTER = 100;
 
-    public String className;
-    public String classFullName;
+    public SpikePackage classPackage = null;
 
-    public String extendsName;
-    public String extendsPackage;
-    public String extendsFullName;
+    public final String type = "CLASS";
+    public String className = null;
+    public String classFullName = null;
 
-    public String modificator;
+    public String privateClassName = null;
 
-    public String body;
-    public String compiled;
+    public String extendsName = null;
+    public String extendsFullName = null;
+
+    public List<String> modificators = null;
+
+    public String body = null;
+    public String compiled = null;
 
     public HashMap<String, String> imports = new HashMap<>();
     public List<SpikeClassConstructor> constructors = new ArrayList<>();
     public List<SpikeClassField> fields = new ArrayList<>();
     public List<SpikeClassFunction> functions = new ArrayList<>();
 
-    private void collectImport(String importLine){
+    public SpikeClass(SpikePackage classPackage, String body, List<String> imports) {
+        this.classPackage = classPackage;
+        this.body = body.trim();
+        this.collectImports(imports);
+        this.collectModificator();
+        this.collectClassName();
+        this.collectExtendsName();
+        this.collectClassFullName();
+        this.collectFunctionNodes();
+        this.collectExtendsFullName();
+        this.createDefaultConstructor();
+        this.createClassFunctions();
 
-        String importName = importLine.substring(0, importLine.indexOf("from"));
-        String importPackage = importLine.substring(importLine.indexOf("from"), importLine.length());
+        this.classPackage.spikeFile.extendingMap.add(new ExtendingModel(this.extendsFullName, this.classFullName));
 
-        this.imports.put(importName, importLine);
+        //System.out.println(this.toString());
+    }
+
+    private void collectClassFullName(){
+        this.classFullName = this.classPackage.packageName + "." + this.className;
+    }
+
+    private void collectExtendsFullName() {
+        this.extendsFullName = this.imports.get(this.extendsName);
+    }
+
+    private void collectImports(List<String> imports) {
+
+        for (String importLine : imports) {
+
+            String importName = importLine.substring(0, importLine.indexOf("from")).replace("import", "").trim();
+            String importFrom = importLine.substring(importLine.indexOf("from") + 4, importLine.length()).replace(";", "").trim();
+            this.imports.put(importName, importFrom);
+
+        }
+
+    }
+
+    private void collectModificator() {
+        this.modificators = new ArrayList<>(Arrays.asList(this.body.substring(0, this.body.indexOf("class")).trim().split(" ")));
+        if (!this.modificators.contains("private")) {
+            this.modificators.add("public");
+        }
+    }
+
+    private void collectClassName() {
+        this.className = this.body.substring(this.body.indexOf("class") + 5, this.body.indexOf("{")).trim();
+
+        if (this.className.contains("extends")) {
+            this.className = this.className.substring(0, this.className.indexOf("extends")).trim();
+        }
+    }
+
+    private void collectExtendsName() {
+
+        this.extendsName = this.body.substring(this.body.indexOf("class"), this.body.indexOf("{")).trim();
+
+        if (this.extendsName.contains("extends")) {
+            this.extendsName = this.extendsName.substring(this.extendsName.indexOf("extends") + 7, this.extendsName.length()).trim();
+        } else {
+            this.extendsName = "";
+        }
+
+    }
+
+    private void collectFunctionNodes() {
+
+        boolean nodeCollecting = false;
+        StringBuilder nodeBody = null;
+        String[] lines = this.body.split("\n");
+
+        int bracketsLeft = 0;
+        int bracketsRight = 0;
+        int squareBracketsLeft = 0;
+        int squareBracketsRight = 0;
+
+        boolean isSquareBrackets = false;
+        boolean functionCollecting = false;
+
+        boolean propCollecting = false;
+
+        for (int i = 0, l = lines.length; i < l; i++) {
+
+            if (i != l - 1 && i != 0) {
+
+                String line = lines[i];
+
+                if (!nodeCollecting) {
+
+                    isSquareBrackets = false;
+                    bracketsLeft = 0;
+                    bracketsRight = 0;
+                    squareBracketsLeft = 0;
+                    squareBracketsRight = 0;
+
+                    if (line.contains(":") && (line.contains("[") || line.contains("{")) && !line.contains("function")) {
+                        nodeCollecting = true;
+                        nodeBody = new StringBuilder();
+                        propCollecting = true;
+
+                        if (line.contains("[")) {
+                            isSquareBrackets = true;
+                        }
+
+                    } else if (line.contains(":") && line.contains("function")) {
+                        nodeCollecting = true;
+                        nodeBody = new StringBuilder();
+                        functionCollecting = true;
+                    } else if (line.contains(":") && line.endsWith(",")) {
+                        this.fields.add(new SpikeClassField(this, line));
+                    }
+
+                }
+
+                if (nodeCollecting) {
+
+                    if (functionCollecting) {
+
+                        if (line.contains("{")) {
+                            bracketsLeft++;
+                        }
+
+                        if (line.contains("}")) {
+                            bracketsRight++;
+                        }
+
+                        if (bracketsLeft == bracketsRight) {
+                            functionCollecting = false;
+                            nodeCollecting = false;
+                            nodeBody.append(line).append("\n");
+
+                            String nodeBodyStr = nodeBody.toString();
+                            if (nodeBodyStr.trim().startsWith(this.className)) {
+                                this.constructors.add(new SpikeClassConstructor(this, nodeBodyStr));
+                            } else {
+                                this.functions.add(new SpikeClassFunction(this, nodeBodyStr));
+                            }
+
+                        }
+
+                    } else if (propCollecting) {
+
+                        boolean isEqualBrackets = false;
+                        if (isSquareBrackets) {
+
+                            if (line.contains("[")) {
+                                squareBracketsLeft++;
+                            }
+
+                            if (line.contains("]")) {
+                                squareBracketsRight++;
+                            }
+
+                            if (squareBracketsLeft == squareBracketsRight && squareBracketsLeft > 0) {
+                                isEqualBrackets = true;
+                            }
+
+                        } else {
+
+                            if (line.contains("{")) {
+                                bracketsLeft++;
+                            }
+
+                            if (line.contains("}")) {
+                                bracketsRight++;
+                            }
+
+                            if (bracketsLeft == bracketsRight && bracketsLeft > 0) {
+                                isEqualBrackets = true;
+                            }
+
+                        }
+
+
+                        if (isEqualBrackets) {
+                            propCollecting = false;
+                            nodeCollecting = false;
+                            nodeBody.append(line).append("\n");
+                            this.fields.add(new SpikeClassField(this, nodeBody.toString()));
+                        }
+
+                    }
+
+
+                }
+
+                if (nodeCollecting) {
+                    nodeBody.append(line).append("\n");
+                }
+
+
+            }
+
+
+        }
+
 
     }
 
 
-//    public void createFunctionNodes() {
-//
-//        boolean nodeCollecting = false;
-//        StringBuilder nodeBody = null;
-//        String[] lines = this.body.split("\n");
-//
-//        int bracketsLeft = 0;
-//        int bracketsRight = 0;
-//        boolean functionCollecting = false;
-//
-//        boolean propCollecting = false;
-//        for (int i = 0, l = lines.length; i < l; i++) {
-//
-//            if (i != l - 1 && i != 0) {
-//
-//                String line = lines[i];
-//
-//                if (!nodeCollecting) {
-//
-//                    if (line.indexOf(":") > -1 && line.endsWith(",")) {
-//                        this.nodes.add(new JsNode(line, NestedLevel.FUNCTIONS, ""));
-//                    } else if (line.indexOf(":") > -1 && line.indexOf("function") > -1) {
-//                        nodeCollecting = true;
-//                        nodeBody = new StringBuilder();
-//                        functionCollecting = true;
-//                    } else if (line.indexOf(":") > -1) {
-//                        nodeCollecting = true;
-//                        nodeBody = new StringBuilder();
-//                        propCollecting = true;
-//                    }
-//
-//                }
-//
-//                if (nodeCollecting) {
-//
-//                    if (functionCollecting) {
-//
-//                        if (line.indexOf("{") > -1) {
-//                            bracketsLeft++;
-//                        }
-//
-//                        if (line.indexOf("}") > -1) {
-//                            bracketsRight++;
-//                        }
-//
-//                        if (bracketsLeft == bracketsRight) {
-//                            bracketsLeft = 0;
-//                            bracketsRight = 0;
-//                            functionCollecting = false;
-//                            nodeCollecting = false;
-//                            nodeBody.append(line + "\n");
-//                            this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS, ""));
-//                        }
-//
-//                    } else if (propCollecting) {
-//
-//                        if (i < l - 1) {
-//
-//                            if (lines[i + 1].indexOf("function") > -1) {
-//                                propCollecting = false;
-//                                nodeCollecting = false;
-//                                nodeBody.append(line + "\n");
-//                                this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS, ""));
-//                            }
-//
-//                            int spaces = line.length() - line.replaceAll(" ", "").length();
-//                            int beforeSpaces = lines[i - 1].length() - lines[i - 1].replaceAll(" ", "").length();
-//
-//                            if (spaces < beforeSpaces && line.endsWith(",")) {
-//                                nodeCollecting = false;
-//                                propCollecting = false;
-//                                nodeBody.append(line + "\n");
-//                                this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS, ""));
-//                            }
-//
-//                        } else {
-//                            nodeCollecting = false;
-//                            propCollecting = false;
-//                            nodeBody.append(line + "\n");
-//                            this.nodes.add(new JsNode(nodeBody.toString(), NestedLevel.FUNCTIONS, ""));
-//                        }
-//
-//
-//                    }
-//
-//
-//                }
-//
-//                if (nodeCollecting) {
-//                    nodeBody.append(line + "\n");
-//                }
-//
-//
-//            }
-//
-//
-//        }
-//
-//    }
-//
-//    public void compileClass(JsNode rootNode, JsNode packageNode, String packageName) {
-//
-//        String className = null;
-//        String extendsName = null;
-//
-//        System.out.println("Compiling class full name: " + this.name);
-//
-//        if (this.name.indexOf("extends") > -1) {
-//            className = this.name.substring(this.name.indexOf("class"), this.name.indexOf("extends")).replace("class", "").replace("extends", "").trim();
-//            extendsName = this.name.substring(this.name.indexOf("extends"), this.name.length()).replace("extends", "").trim();
-//        } else {
-//            className = this.name.substring(this.name.indexOf("class"), this.name.length()).replace("class", "").trim();
-//        }
-//
-//        rootNode.classNames.add(className);
-//
-//        System.out.println("Compiling class is private: " + this.isPrivate);
-//        System.out.println("Compiling class is static: " + !this.isNotStatic);
-//
-//        if (this.isPrivate()) {
-//            String oldClassName = className;
-//            className += "__" + PRIVATE_COUNTER;
-//            PRIVATE_COUNTER++;
-//
-//            rootNode.privateClassNames.put(oldClassName, className);
-//        }
-//
-//        System.out.println("Compiling class strict name: " + className);
-//
-//        this.className = className;
-//        this.extendsName = extendsName;
-//
-//        if (this.isNotStatic()) {
-//
-//
-//
-//            List<JsNode> constructors = new ArrayList<>();
-//            List<JsNode> functionsAndFields = new ArrayList<>();
-//
-//            boolean hasDefaultConstrutor = false;
-//
-//            for (JsNode functionNode : this.nodes) {
-//
-//                if (functionNode.isConstructor(className)) {
-//                    constructors.add(functionNode);
-//
-//                    if (functionNode.isDefaultConstructor(className)) {
-//                        hasDefaultConstrutor = true;
-//                    }
-//
-//                } else {
-//                    functionsAndFields.add(functionNode);
-//                }
-//
-//            }
-//
-//            System.out.println("Class has default constructor: " + hasDefaultConstrutor);
-//
-//            if (!hasDefaultConstrutor) {
-//                constructors.add(this.createDefaultConstructor(packageName, this, className, extendsName));
-//            }
-//
-//
-//            List<String> constructorsNamespaces = new ArrayList<>();
-//
-//            for (JsNode constructorNode : constructors) {
-//
-//                String constructorClassName = constructorNode.compileConstructor(packageName, this, className, extendsName, rootNode);
-//                constructorsNamespaces.add(constructorClassName);
-//                this.compiled += constructorNode.compiled;
-//
-//                System.out.println("Compiling functions for constructor " + constructorClassName);
-//
-//                for (JsNode functionFieldNode : functionsAndFields) {
-//                    functionFieldNode.compileFunction(packageName, this, className, extendsName, constructorClassName);
-//                    this.compiled += functionFieldNode.compiled;
-//                }
-//
-//                this.compiled += this.createClassFunctions(packageName, className, extendsName, constructorClassName);
-//
-//
-//                addClassNode(constructorClassName, this.getExtendsFullNameFromImports(extendsName));
-//
-//            }
-//
-//
-//
-//            String constructorNamesArgs = "";
-//            for (String constructorNameSpace : constructorsNamespaces) {
-//                constructorNamesArgs += ",'" + constructorNameSpace.replace(packageName + ".", "") + "'";
-//            }
-//
-//            this.compiled = "spike.core.Assembler.defineNamespace('" + packageName + "',[" + constructorNamesArgs.substring(1, constructorNamesArgs.length()) + "], function(){" + this.compiled + " });";
-//            totalNamespaces++;
-//
-//        } else {
-//
-//            String classBody = this.body.substring(this.body.indexOf("{"), this.body.length());
-//            this.compiled += "spike.core.Assembler.createStaticClass('" + packageName + "','" + className + "', " + (extendsName != null ? "'" + (extendsName.indexOf(".") == -1 ? packageName + "." + extendsName : extendsName) + "'" : "null") + "," + classBody + ");";
-//            totalNamespaces++;
-//        }
-//
-//    }
-//
-//
-//    public String createClassFunctions(String packageName, String className, String extendsName, String constructorClassName) {
-//
-//        String compiled = "";
-//
-//        compiled += constructorClassName + ".prototype.getSuper = function(){ return '" + (extendsName != null ? extendsName : packageName + "." + className) + "'; };";
-//        compiled += constructorClassName + ".prototype.getClass = function(){ return '" + packageName + "." + className + "'; };";
-//
-//        return compiled;
-//
-//    }
-//
-//    public boolean isConstructor(String className) {
-//        return this.body.trim().startsWith(className);
-//    }
-//
-//    public boolean isDefaultConstructor(String className) {
-//        return this.body.substring(this.body.indexOf("(") + 1, this.body.indexOf(")")).trim().length() == 0;
-//    }
-//
-//
-//    public int getFunctionArgumentsLenght(String functionArguments) {
-//
-//        int functionArgumentsLength = 0;
-//
-//        if (!functionArguments.isEmpty()) {
-//
-//            if (functionArguments.contains(",")) {
-//                functionArgumentsLength = functionArguments.split(",").length - 1;
-//            } else {
-//                functionArgumentsLength = 1;
-//            }
-//
-//        }
-//
-//        return functionArgumentsLength;
-//
-//    }
-//
-//
-//
-//    public JsNode createDefaultConstructor(String packageName, JsNode classNode, String className, String extendsName) {
-//
-//        String compiled = "";
-//
-//        System.out.println("Creating default constructor name: " + className);
-//
-//        System.out.println("Creating for class full name: " + classNode.name);
-//        System.out.println("Creating for class extends name: " + extendsName);
-//
-//        compiled = className + " : function(){    }";
-//
-//        System.out.println("Created default constructor: " + compiled);
-//
-//
-//        return new JsNode(compiled, NestedLevel.FUNCTIONS, true);
-//
-//    }
-//
-//
-//    public void compileConstructorUsages() throws Exception {
-//
-////            Pattern p = Pattern.compile("s\\([^\\)]*\\s+[^\\)]*\\)");
-////            Matcher m = p.matcher(this.compiled);
-////            while (m.find()) {
-////                String temp = m.group();
-////                this.compiled = this.compiled.replace(temp, temp.replaceAll("\\s", ""));
-////            }
-//
-//
-//        System.out.println(this.classNames);
-//        System.out.println(this.privateClassNames);
-//        System.out.println(this.constructorsMap);
-//
-//        for (Map.Entry<String, HashMap<Integer, String>> entry : this.constructorsMap.entrySet()) {
-//
-//            Map<Integer, String> constructors = entry.getValue();
-//
-//            String baseClassName = entry.getKey();
-//
-//            Pattern p = Pattern.compile("(new*\\s+[^\\)]*)");
-//            Matcher m = p.matcher(this.compiled);
-//            while (m.find()) {
-//
-//
-//                String matchedConstructor = m.group();
-//
-//                if (matchedConstructor.contains(baseClassName)) {
-//
-//
-//                    System.out.println("matchedConstructor: " + matchedConstructor);
-//
-//                    String className = matchedConstructor.substring(0, matchedConstructor.lastIndexOf("("));
-//                    String argumentsList = matchedConstructor.substring(matchedConstructor.indexOf("("), matchedConstructor.length()).replace("(", "").trim();
-//
-//                    System.out.println("matchedConstructor className: " + className);
-//                    System.out.println("matchedConstructor argumentsList: " + argumentsList);
-//
-//
-//                    System.out.println("constructors : " + constructors);
-//
-//
-//                    int functionArgumentsLenght = this.getFunctionArgumentsLenght(argumentsList);
-//
-//                    String constructorDetails = constructors.get(functionArgumentsLenght);
-//
-//                    if (constructorDetails == null) {
-//
-//                        System.out.println("total contructor : " + this.constructorsMap);
-//                        throw new Exception("No matching constructor found for: " + matchedConstructor);
-//                    }
-//
-//
-//                    System.out.println("constructorDetails : " + constructorDetails);
-//
-//                    String[] constructorDetails2 = constructorDetails.split(";");
-//
-//                    System.out.println("replacing from " + matchedConstructor);
-//                    System.out.println("to: " + matchedConstructor.replace(className, constructorDetails2[0]));
-//
-//                    if (constructorDetails2[0].contains("_")) {
-//                        this.compiled = this.compiled.replace(matchedConstructor, "new " + matchedConstructor.replace(className, constructorDetails2[0]));
-//                    }
-//
-//                }
-//
-//            }
-//
-////                for(Map.Entry<String, String> constructorEntry : constructors.entrySet()){
-////
-////                    String fullPathName = constructorEntry.getKey();
-////                    String arguments = constructorEntry.getValue();
-////
-////                    System.out.println("Compiling full path name " +fullPathName);
-////
-////                }
-//
-//        }
-//
-//    }
-//
-//
-//}
+    private boolean hasDefaultConstructor() {
+
+        for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
+            if (spikeClassConstructor.isDefaultConstructor) {
+                return true;
+            }
+        }
+
+        return false;
+
+    }
+
+    private void createDefaultConstructor() {
+
+        if (!this.hasDefaultConstructor()) {
+            this.constructors.add(new SpikeClassConstructor(this, this.className + ":function(){}"));
+        }
+
+    }
+
+    public boolean isPrivate() {
+        return this.modificators.contains("private");
+    }
+
+    public boolean isStatic() {
+        return this.modificators.contains("static");
+    }
+
+    public void compile() {
+
+        if (this.isPrivate()) {
+            this.privateClassName = this.className + PRIVATE_COUNTER;
+            PRIVATE_COUNTER++;
+        }
+
+        StringBuilder compiledBuilder = new StringBuilder();
+
+        for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
+            spikeClassConstructor.compile();
+            compiledBuilder.append(spikeClassConstructor.compiled);
+        }
+
+        for (SpikeClassField spikeClassField : this.fields) {
+            spikeClassField.compile();
+            compiledBuilder.append(spikeClassField.compiled);
+        }
+
+        for (SpikeClassFunction spikeClassFunction : this.functions) {
+            spikeClassFunction.compile();
+            compiledBuilder.append(spikeClassFunction.compiled);
+        }
 
 
+            for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
+
+                if(!spikeClassConstructor.isDefaultConstructor){
+
+                    compiledBuilder
+                            .append(this.classPackage.packageName)
+                            .append(".")
+                            .append(spikeClassConstructor.constructorArgumentsUniqueName)
+                            .append(".prototype=")
+                            .append(this.classFullName)
+                            .append(".prototype")
+                            .append(";");
+
+                }
+
+            }
+
+        this.compiled = compiledBuilder.toString();
+        this.createAssemblerDeclaration();
+
+    }
+
+    private String collectConstructorsNames() {
+
+        String constructorsNames = "";
+        StringBuilder constructorNamesList = new StringBuilder();
+        for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
+            constructorNamesList
+                    .append(",'")
+                    .append(spikeClassConstructor.constructorArgumentsUniqueName)
+                    .append("'");
+        }
+
+        constructorsNames = constructorNamesList.toString();
+        constructorsNames = constructorsNames.substring(1, constructorsNames.length());
+
+        return constructorsNames;
+    }
+
+    private void createAssemblerDeclaration() {
+
+        StringBuilder declaration = new StringBuilder();
+        declaration.append("spike.core.Assembler.");
+
+        if (this.isStatic()) {
+
+            declaration
+                    .append("createStaticClass('")
+                    .append(this.classPackage.packageName)
+                    .append("','")
+                    .append(this.className).append("', ");
+
+            if (this.extendsName != null) {
+                declaration
+                        .append("'")
+                        .append(this.extendsFullName)
+                        .append("'");
+            } else {
+                declaration.append("null");
+            }
+
+            declaration
+                    .append(",")
+                    .append("{" + this.compiled + "}")
+                    .append(");");
+
+        } else {
+
+            declaration
+                    .append("defineNamespace('")
+                    .append(this.classPackage.packageName)
+                    .append("',")
+                    .append("[")
+                    .append(this.collectConstructorsNames())
+                    .append("],")
+                    .append("function(){")
+                    .append(this.compiled)
+                    .append("});");
+        }
+
+        SpikeFile.TOTAL_NAMESPACES++;
+        this.compiled = declaration.toString();
+
+    }
+
+    private void createClassFunctions() {
+
+        this.functions.add(new SpikeClassFunction(this, "getSuper:function(){ return '" + (this.extendsName != null ? this.extendsFullName : this.classFullName) + "'; };"));
+        this.functions.add(new SpikeClassFunction(this, "getClass:function(){ return '" + this.classFullName + "'; };"));
+
+    }
+
+    @Override
+    public String toString() {
+        return "SpikeClass{" +
+                "classPackage=" + classPackage.packageName +
+                ", type='" + type + '\'' +
+                ", className='" + className + '\'' +
+                ", classFullName='" + classFullName + '\'' +
+                ", extendsName='" + extendsName + '\'' +
+                ", extendsFullName='" + extendsFullName + '\'' +
+                ", modificators=" + modificators +
+                ", imports=" + imports +
+                ", constructors=" + constructors +
+                ", fields=" + fields.size() +
+                ", functions=" + functions.size() +
+                '}';
+    }
 }
