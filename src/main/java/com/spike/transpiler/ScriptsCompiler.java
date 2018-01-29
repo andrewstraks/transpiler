@@ -1,5 +1,6 @@
 package com.spike.transpiler;
 import com.spike.transpiler.model.SpikeFile;
+import com.spike.transpiler.serialization.Serializer;
 
 /**
  * Created by Dawid on 2017-01-29.
@@ -10,6 +11,7 @@ public class ScriptsCompiler {
 
         long start = System.currentTimeMillis();
 
+        Serializer.initSerializer();
         fileBody = removeComments(fileBody);
 
         if (hasClass(fileBody)) {
@@ -21,11 +23,15 @@ public class ScriptsCompiler {
             SpikeFile spikeFile = new SpikeFile(fileBody);
             spikeFile.compile();
 
+            Serializer.serializeConstructors(spikeFile.constructorsMap);
+
             System.out.println("Transpilation takes: " + (System.currentTimeMillis() - start) + "ms");
 
             return spikeFile.compiled;
 
         }
+
+
 
         return null;
 

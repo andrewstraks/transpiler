@@ -1,6 +1,7 @@
 package com.spike.transpiler.model;
 
 import com.spike.transpiler.dependencies.DependencyConstructor;
+import com.spike.transpiler.serialization.Serializer;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -11,7 +12,7 @@ public class SpikeFile {
     public static int TOTAL_NAMESPACES = 0;
 
     public List<ExtendingModel> extendingMap = new ArrayList<>();
-    public HashMap<String, HashMap<Integer, String>> constructorsMap = new HashMap<>();
+    public HashMap<String, HashMap<Integer, String>> constructorsMap;
     public List<SpikePackage> packages = new ArrayList<>();
 
     public String body = null;
@@ -19,6 +20,7 @@ public class SpikeFile {
 
     public SpikeFile(String body) {
         this.body = body.trim();
+        this.constructorsMap = Serializer.deserializeConstructors();
         this.createPackages();
     }
 
@@ -31,8 +33,9 @@ public class SpikeFile {
         }
 
         this.compiled = compiledBuilder.toString();
+        this.collectDependencies();
         this.compileConstructorUsages();
-        this.collectExtends();
+        this.compileConstructorsMap();
         this.collectTotalNamespaces();
     }
 
@@ -89,6 +92,40 @@ public class SpikeFile {
 
     }
 
+    private void compileConstructorsMap(){
+
+        StringBuilder constructorsMapBuilder = new StringBuilder();
+
+        constructorsMapBuilder.append("spike.core.Assembler.setConstructorsMap({");
+        for (Map.Entry<String, HashMap<Integer, String>> baseClass : this.constructorsMap.entrySet()) {
+
+            constructorsMapBuilder
+                    .append("'")
+                    .append(baseClass.getKey())
+                    .append("':{");
+
+            for (Map.Entry<Integer, String> constructor : baseClass.getValue().entrySet()) {
+
+                constructorsMapBuilder
+                        .append("'")
+                        .append(constructor.getKey())
+                        .append("':'")
+                        .append(constructor.getValue())
+                        .append("',");
+
+            }
+
+            constructorsMapBuilder.append("},");
+
+
+        }
+
+        constructorsMapBuilder.append("});");
+
+        this.compiled = this.compiled + constructorsMapBuilder.toString();
+
+    }
+
     private String getConstructorUsageArguments(String arguments){
 
         arguments = this.removeFromParenthesis(arguments, "{}");
@@ -108,7 +145,7 @@ public class SpikeFile {
         }
     }
 
-    private void collectExtends() {
+    private void collectDependencies() {
 
         HashMap<String, List<String>> extendsClassesMap = new HashMap<>();
 
@@ -123,8 +160,7 @@ public class SpikeFile {
         }
 
         DependencyConstructor dependencyConstructor = new DependencyConstructor();
-        dependencyConstructor.generateDependencies(this.extendingMap, extendsClassesMap);
-
+        dependencyConstructor.generateDependencies(this.extendingMap, extendsClassesMap, this);
         this.compiled = this.compiled + dependencyConstructor.compiled;
 
     }
