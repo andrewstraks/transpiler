@@ -1,11 +1,7 @@
 package com.spike.templates.processors;
 
-import com.spike.templates.NewTemplateCompiler;
+import com.spike.templates.TemplateCompiler;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.TextNode;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by Dawid on 2017-09-06.
@@ -24,7 +20,7 @@ public class EventProcessor implements Processor {
             String eventBody = element.attr(event);
             element.removeAttr(event);
 
-            event = event.replace(NewTemplateCompiler.PREFIX,"").replace(NewTemplateCompiler.SUFFIX,"");
+            event = event.replace(TemplateCompiler.PREFIX,"").replace(TemplateCompiler.SUFFIX,"");
 
             element.attr("spike-unbinded", "");
             element.attr("spike-event-"+event, eventBody);

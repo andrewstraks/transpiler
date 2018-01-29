@@ -1,9 +1,7 @@
 package com.spike.templates.processors;
 
-import com.spike.templates.NewTemplateCompiler;
 import com.spike.templates.U;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.TextNode;
 
 /**
  * Created by Dawid on 2017-09-06.

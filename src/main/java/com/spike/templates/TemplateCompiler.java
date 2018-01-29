@@ -7,18 +7,14 @@ import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Created by Dawid on 2017-09-03.
  */
-public class NewTemplateCompiler {
+public class TemplateCompiler {
 
     public static final String TEMPLATE_SPIKE = "@template";
     public static final String INCLUDE_SPIKE = "app.partial.include";
@@ -32,7 +28,6 @@ public class NewTemplateCompiler {
     public static final  String PARAMS = U.s("params");
 
     String getFileName(File templateFile) {return templateFile.getPath().replaceAll("\\\\", "/");}
-
 
     public static HashMap<String, Processor> commands = new HashMap<>();
 
@@ -116,13 +111,11 @@ public class NewTemplateCompiler {
         stringBuilder = new StringBuilder(output.length());
         for(String line : output.split("\n")){
 
-            System.out.println(line);
-
             line = line.trim();
             if(line.length() > 0){
 
-                if(line.indexOf(NewTemplateCompiler.JS_HINT_LINE) > -1){
-                    stringBuilder.append(line.replace(NewTemplateCompiler.JS_HINT_LINE, ""));
+                if(line.indexOf(TemplateCompiler.JS_HINT_LINE) > -1){
+                    stringBuilder.append(line.replace(TemplateCompiler.JS_HINT_LINE, ""));
                 }else{
 
                     if(line.endsWith("+'")){
@@ -139,20 +132,28 @@ public class NewTemplateCompiler {
 
         }
 
-        //TODO replace all $local with some short
-       // output = output.replaceAll([\\$local\], "_l");
-        output = "Templates.templates['"+templateFile.getPath()+"']=function(model){var t='';" + stringBuilder.toString() +" return t;}";
+        output = "Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
 
-        for(String line : output.split("\n")){
-            System.out.println(line);
-        }
+//        for(String line : output.split("\n")){
+//            System.out.println(line);
+//        }
 
-        System.out.println("takes : " + (System.currentTimeMillis()-start));
+        System.out.println("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
 
-        return null;
+        return output;
     }
 
-    public static void removeComments(Node node) {
+    public String replaceEscapes(String template){
+
+        template = template.replaceAll("&lt;", "<");
+        template = template.replaceAll("&gt;", ">");
+        template = template.replaceAll("&le;", "<=");
+        template = template.replaceAll("&ge;", ">=");
+
+        return template;
+    }
+
+    public void removeComments(Node node) {
         for (int i = 0; i < node.childNodes().size();) {
             Node child = node.childNode(i);
             if (child.nodeName().equals("#comment")) child.remove();

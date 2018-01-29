@@ -53,8 +53,10 @@ public class DependencyConstructor {
                         compiledBuilder
                                 .append("spike.core.Assembler.extend(")
                                 .append(extendsClassFullName)
+                                .append(".prototype")
                                 .append(",")
                                 .append(dependency)
+                                .append(".prototype")
                                 .append(");");
 
                         if (spikeFile.constructorsMap.get(extendsClassFullName) != null) {
@@ -71,6 +73,7 @@ public class DependencyConstructor {
                                     System.out.println("constructorsArguments : "+constructorsArguments);
                                     System.out.println("constructorArgsCount : "+constructorArgsCount);
                                     boolean constructorExist = false;
+
                                     //check if constructor with this arguments lenght exists = if yes, reject (because shouldn't override
                                     if (spikeFile.constructorsMap.get(dependency) != null) {
 
@@ -90,8 +93,11 @@ public class DependencyConstructor {
                                                 .append(constructorFullName)
                                                 .append(";");
 
+
                                         if (spikeFile.constructorsMap.get(dependency) != null) {
+                                            System.out.println("spikeFile.constructorsMap.get(dependency) : "+spikeFile.constructorsMap.get(dependency));
                                             spikeFile.constructorsMap.get(dependency).put(constructorArgsCount, dependency + constructorsArguments);
+                                            System.out.println("spikeFile.constructorsMap.get(dependency)2 : "+spikeFile.constructorsMap.get(dependency));
                                         }
 
                                         //inny problem - konstruktory nie przechodzą ze spike do aplikacji - stąd nie mogą być dziedziczone
@@ -119,10 +125,6 @@ public class DependencyConstructor {
         System.out.println("spikeFile.constructorsMap : "+spikeFile.constructorsMap);
 
         this.compiled = compiledBuilder.toString();
-
-    }
-
-    private void updateConstructorsMap() {
 
     }
 

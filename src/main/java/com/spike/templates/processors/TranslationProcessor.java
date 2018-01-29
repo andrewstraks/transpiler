@@ -1,6 +1,6 @@
 package com.spike.templates.processors;
 
-import com.spike.templates.NewTemplateCompiler;
+import com.spike.templates.TemplateCompiler;
 import org.jsoup.nodes.Element;
 
 /**
@@ -12,7 +12,7 @@ public class TranslationProcessor implements Processor {
     public void process(Element element, String spikeAttribute) {
 
         String translation = element.attr(spikeAttribute);
-        String params = element.attr(NewTemplateCompiler.PARAMS);
+        String params = element.attr(TemplateCompiler.PARAMS);
 
         if (params.length() == 0) {
             translation = "[[app.message.get('" + translation + "')]]";
@@ -21,7 +21,7 @@ public class TranslationProcessor implements Processor {
         }
 
         element.removeAttr(spikeAttribute);
-        element.removeAttr(NewTemplateCompiler.PARAMS);
+        element.removeAttr(TemplateCompiler.PARAMS);
         element.html(translation);
 
 

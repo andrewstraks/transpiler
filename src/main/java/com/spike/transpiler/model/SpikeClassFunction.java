@@ -60,27 +60,6 @@ public class SpikeClassFunction {
                 compiledBuilder.append(";");
             }
 
-
-//            for (SpikeClassConstructor spikeClassConstructor : this.spikeClass.constructors) {
-//
-//                if(!spikeClassConstructor.isDefaultConstructor){
-//
-//                    compiledBuilder
-//                            .append(this.spikeClass.classPackage.packageName)
-//                            .append(".")
-//                            .append(spikeClassConstructor.constructorArgumentsUniqueName)
-//                            .append(".prototype.")
-//                            .append(this.functionName)
-//                            .append("=")
-//                            .append(this.spikeClass.classFullName)
-//                            .append(".")
-//                            .append(this.functionName)
-//                            .append(";");
-//
-//                }
-//
-//            }
-
             this.compiled = compiledBuilder.toString();
 
         }

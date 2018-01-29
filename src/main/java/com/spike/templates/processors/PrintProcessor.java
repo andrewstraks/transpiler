@@ -1,6 +1,5 @@
 package com.spike.templates.processors;
 
-import com.spike.templates.NewTemplateCompiler;
 import com.spike.templates.U;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.TextNode;

@@ -4,7 +4,7 @@ import com.spike.cli.CliCreator;
 import com.spike.imports.NewImportCompiler;
 import com.spike.transpiler.ScriptsCompiler;
 import com.spike.transpiler.ScriptsIO;
-import com.spike.templates.NewTemplateCompiler;
+import com.spike.templates.TemplateCompiler;
 import com.spike.templates.TemplatesIO;
 
 import java.io.File;
@@ -33,7 +33,7 @@ public class Executor {
     static TemplatesIO templatesIO = new TemplatesIO();
 
     static ScriptsCompiler scriptsCompiler = new ScriptsCompiler();
-    static NewTemplateCompiler templatesCompiler = new NewTemplateCompiler();
+    static TemplateCompiler templatesCompiler = new TemplateCompiler();
     static NewImportCompiler importsCompiler = new NewImportCompiler();
 
     public static void main(String[] args) throws Exception {

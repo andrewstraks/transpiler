@@ -51,26 +51,6 @@ public class SpikeClassField {
                 compiledBuilder.append(";");
             }
 
-//            for (SpikeClassConstructor spikeClassConstructor : this.spikeClass.constructors) {
-//
-//                if(!spikeClassConstructor.isDefaultConstructor){
-//
-//                    compiledBuilder
-//                            .append(this.spikeClass.classPackage.packageName)
-//                            .append(".")
-//                            .append(spikeClassConstructor.constructorArgumentsUniqueName)
-//                            .append(".prototype.")
-//                            .append(this.fieldName)
-//                            .append("=")
-//                            .append(this.spikeClass.classFullName)
-//                            .append(".")
-//                            .append(this.fieldName)
-//                            .append(";");
-//
-//                }
-//
-//            }
-
             this.compiled = compiledBuilder.toString();
 
         }

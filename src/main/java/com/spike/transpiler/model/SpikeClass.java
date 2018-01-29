@@ -44,8 +44,6 @@ public class SpikeClass {
         this.createClassFunctions();
 
         this.classPackage.spikeFile.extendingMap.add(new ExtendingModel(this.extendsFullName, this.classFullName));
-
-        //System.out.println(this.toString());
     }
 
     private void collectClassFullName(){

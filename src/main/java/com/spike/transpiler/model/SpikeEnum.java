@@ -32,8 +32,6 @@ public class SpikeEnum {
         this.collectModificator();
         this.collectEnumName();
         this.collectPackagesAndFullNames();
-
-        //System.out.println(this.toString());
     }
 
     public void compile() {

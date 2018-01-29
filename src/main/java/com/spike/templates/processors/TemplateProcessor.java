@@ -1,6 +1,6 @@
 package com.spike.templates.processors;
 
-import com.spike.templates.NewTemplateCompiler;
+import com.spike.templates.TemplateCompiler;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.TextNode;
 
@@ -14,7 +14,7 @@ public class TemplateProcessor implements Processor {
 
         if(element.tagName().equals("spike")){
             String templateName = element.attr(spikeAttribute);
-            element.replaceWith(new TextNode(NewTemplateCompiler.TEMPLATE_SPIKE+"("+templateName+")", ""));
+            element.replaceWith(new TextNode(TemplateCompiler.TEMPLATE_SPIKE+"("+templateName+")", ""));
         }else{
             throw new Exception("Spike Compiler: 'template' statement allowed only on @spike tags");
         }
