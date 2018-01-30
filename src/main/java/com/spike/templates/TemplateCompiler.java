@@ -21,15 +21,18 @@ public class TemplateCompiler {
     public static final String JS_HINT_LINE = "#js__line#";
     public static final String JS_HINT_BEGIN = "#js__begin#";
     public static final String JS_HINT_END = "#js__end#";
-    public static final String PREFIX = "[";
-    public static final String SUFFIX = "]";
-    public static final String BRACKET_LEFT = "[[";
-    public static final String BRACKET_RIGHT = "]]";
+    public static final String PREFIX = "sp-";
+    public static final String SUFFIX = "";
+    public static final String BRACKET_QUOTE_LEFT = "{{{";
+    public static final String BRACKET_QUOTE_RIGHT = "}}}";
+    public static final String BRACKET_LEFT = "{{";
+    public static final String BRACKET_RIGHT = "}}";
     public static final  String PARAMS = U.s("params");
 
     String getFileName(File templateFile) {return templateFile.getPath().replaceAll("\\\\", "/");}
 
     public static HashMap<String, Processor> commands = new HashMap<>();
+    public static HashMap<String, Processor> watchCommands = new HashMap<>();
 
     static {
 
@@ -39,7 +42,7 @@ public class TemplateCompiler {
         commands.put(U.s("translation"), new TranslationProcessor());
         commands.put(U.s("placeholder"), new TranslationProcessor());
         commands.put(U.s("if"), new IfProcessor());
-        commands.put(U.s("elseif"), new ElseIfProcessor());
+        commands.put(U.s("else-if"), new ElseIfProcessor());
         commands.put(U.s("else"), new ElseProcessor());
         commands.put(U.s("switch"), new SwitchProcessor());
         commands.put(U.s("case"), new CaseProcessor());
@@ -72,34 +75,37 @@ public class TemplateCompiler {
         commands.put(U.s("template"), new TemplateProcessor());
         commands.put(U.s("include"), new IncludeProcessor());
         commands.put(U.s("js"), new JsProcessor());
-        commands.put(U.s("spike-href"), new HrefProcessor());
+        commands.put(U.s("href"), new HrefProcessor());
+
+        watchCommands.put(U.s("watch"), new WatchProcessor());
+        watchCommands.put(U.s("bind"), new BindProcessor());
     }
 
-    public String parseSpikeTemplate(File templateFile, String rootDir, String template) throws Exception {
+    public String[] parseSpikeTemplate(File templateFile, String rootDir, String template) throws Exception {
 
         long start = System.currentTimeMillis();
 
         Document doc = Jsoup.parseBodyFragment(template);
         removeComments(doc);
 
-        for (Map.Entry<String, Processor> entry : commands.entrySet()) {
-            String spikeAttribute = entry.getKey();
-            Processor processor = entry.getValue();
+        this.compileProcessors(doc, commands);
 
-            Elements spikeElements = doc.getElementsByAttribute(spikeAttribute);
+        String plainTemplate = this.processPlainTemplate(doc, templateFile);
+        String watchTemplate = this.processWatchTemplate(doc, templateFile);
 
-            for (Element element : spikeElements) {
-                processor.process(element, spikeAttribute);
-            }
+        System.out.println("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
 
-        }
+        return new String[] { plainTemplate, watchTemplate };
+    }
 
+    private String processWatchTemplate(Document doc, File templateFile) throws Exception {
+
+        this.compileProcessors(doc, watchCommands);
 
         String output = doc.outerHtml();
         output = output.replace("<html>","").replace("</html>","").replace("<head></head>","").replace("<body>","").replace("</body>","");
         output = output.replaceAll("<spike>", "").replaceAll("</spike>","");
         output = ProcessorUtils.replaceBrackets(output);
-
 
         StringBuilder stringBuilder = new StringBuilder(output.length());
         for(String line : output.split("\n")){
@@ -114,7 +120,67 @@ public class TemplateCompiler {
             line = line.trim();
             if(line.length() > 0){
 
-                if(line.indexOf(TemplateCompiler.JS_HINT_LINE) > -1){
+                if(line.contains(TemplateCompiler.JS_HINT_LINE)){
+                    stringBuilder.append(line.replace(TemplateCompiler.JS_HINT_LINE, ""));
+                }else{
+
+                    if(line.endsWith("+'")){
+                        line = line.substring(0, line.length()-2);
+                    }else{
+                        line = line+"'";
+                    }
+
+                    stringBuilder.append(("t+='"+line+";").replace("+=''+","+="));
+
+                }
+
+            }
+
+        }
+
+        output = "Watchers.watchers['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope, watcher){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
+
+        return output;
+
+    }
+
+    private void compileProcessors(Document doc, HashMap<String, Processor> processorHashMap) throws Exception {
+
+        for (Map.Entry<String, Processor> entry : processorHashMap.entrySet()) {
+            String spikeAttribute = entry.getKey();
+            Processor processor = entry.getValue();
+
+            Elements spikeElements = doc.getElementsByAttribute(spikeAttribute);
+
+            for (Element element : spikeElements) {
+                processor.process(element, spikeAttribute);
+            }
+
+        }
+
+    }
+
+    private String processPlainTemplate(Document doc, File templateFile){
+
+        String output = doc.outerHtml();
+        output = output.replace("<html>","").replace("</html>","").replace("<head></head>","").replace("<body>","").replace("</body>","");
+        output = output.replaceAll("<spike>", "").replaceAll("</spike>","");
+        output = ProcessorUtils.replaceBrackets(output);
+
+        StringBuilder stringBuilder = new StringBuilder(output.length());
+        for(String line : output.split("\n")){
+            line = ProcessorUtils.replaceJS(line);
+            stringBuilder.append(line+"\n");
+        }
+
+        output = stringBuilder.toString();
+        stringBuilder = new StringBuilder(output.length());
+        for(String line : output.split("\n")){
+
+            line = line.trim();
+            if(line.length() > 0){
+
+                if(line.contains(TemplateCompiler.JS_HINT_LINE)){
                     stringBuilder.append(line.replace(TemplateCompiler.JS_HINT_LINE, ""));
                 }else{
 
@@ -134,13 +200,8 @@ public class TemplateCompiler {
 
         output = "Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
 
-//        for(String line : output.split("\n")){
-//            System.out.println(line);
-//        }
-
-        System.out.println("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
-
         return output;
+
     }
 
     public String replaceEscapes(String template){

@@ -9,8 +9,8 @@ public class ProcessorUtils {
 
     public static String replaceSingleBrackets(String line){
 
-        line = line.replace("[[", "'+");
-        line = line.replace("]]", "+'");
+        line = line.replace(TemplateCompiler.BRACKET_LEFT, "'+");
+        line = line.replace(TemplateCompiler.BRACKET_RIGHT, "+'");
 
         return line;
 
@@ -18,10 +18,10 @@ public class ProcessorUtils {
 
     public static String replaceBrackets(String line){
 
-        line = line.replace("[[[", "'+\"'\"+");
-        line = line.replace("]]]", "+\"'\"+'");
-        line = line.replace("[[", "'+");
-        line = line.replace("]]", "+'");
+        line = line.replace(TemplateCompiler.BRACKET_QUOTE_LEFT, "'+\"'\"+");
+        line = line.replace(TemplateCompiler.BRACKET_QUOTE_RIGHT, "+\"'\"+'");
+        line = line.replace(TemplateCompiler.BRACKET_LEFT, "'+");
+        line = line.replace(TemplateCompiler.BRACKET_RIGHT, "+'");
 
         return line;
 

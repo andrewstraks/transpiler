@@ -42,7 +42,7 @@ public class Executor {
 
         if (type.equals("test-templates")) {
             type = "templates";
-            args = new String[]{null, "templates_input/", "templates_output/templates.js"};
+            args = new String[]{null, "templates_input/watch", "templates_output/templates.js", "templates_output/watchers.js"};
         } else if (type.equals("test-transpiler")) {
             type = "transpiler";
             args = new String[]{null, "scripts_input/spike-framework.spike", "scripts_output/compiled.js"};
@@ -73,12 +73,16 @@ public class Executor {
 
             List<File> files = templatesIO.getFileList(args[1]);
             List<String> functionBodies = new ArrayList<>();
+            List<String> watchersBodies = new ArrayList<>();
 
             for (File file : files) {
-                functionBodies.add(templatesCompiler.parseSpikeTemplate(file, args[1], importsCompiler.compileImports(file, true)));
+                String[] templates = templatesCompiler.parseSpikeTemplate(file, args[1], importsCompiler.compileImports(file, true));
+                functionBodies.add(templates[0]);
+                watchersBodies.add(templates[1]);
             }
 
             templatesIO.saveConcatedFiles(functionBodies, args[2]);
+            templatesIO.saveConcatedFiles(watchersBodies, args[3]);
 
         } else if (type.equals("cli")) {
             cli(args);

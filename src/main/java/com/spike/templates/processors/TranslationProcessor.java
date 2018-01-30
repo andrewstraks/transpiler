@@ -15,15 +15,14 @@ public class TranslationProcessor implements Processor {
         String params = element.attr(TemplateCompiler.PARAMS);
 
         if (params.length() == 0) {
-            translation = "[[app.message.get('" + translation + "')]]";
+            translation = TemplateCompiler.BRACKET_LEFT+"app.message.get('" + translation + "')"+TemplateCompiler.BRACKET_RIGHT;
         } else {
-            translation = "[[app.message.get('" + translation + "'," + "[" + params + "])]]";
+            translation = TemplateCompiler.BRACKET_LEFT+"app.message.get('" + translation + "'," + "[" + params + "])"+TemplateCompiler.BRACKET_RIGHT;
         }
 
         element.removeAttr(spikeAttribute);
         element.removeAttr(TemplateCompiler.PARAMS);
         element.html(translation);
-
 
     }
 

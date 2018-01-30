@@ -24,7 +24,7 @@
     <div sp-translation="test_translation"></div>
 
     <!-- Translation with params test -->
-    <div sp-translation="test_translation_with_params" [params]="scope.person.id, scope.person.name"></div>
+    <div sp-translation="test_translation_with_params" sp-params="scope.person.id, scope.person.name"></div>
 
     <!-- Translation variation test -->
     <div sp-translation="{{ $message.get('test_translation') }}"></div>
@@ -33,14 +33,14 @@
     <div sp-placeholder="test_placeholder"></div>
 
     <!-- Placeholder test params -->
-    <div sp-placeholder="test_placeholder" [params]="scope.person.id, scope.person.name"></div>
+    <div sp-placeholder="test_placeholder" sp-params="scope.person.id, scope.person.name"></div>
 
     <!-- Placeholder test -->
     <input placeholder="{{ $message.get('test_placeholder') }}" />
 
     <!-- Condition IF test with @spike tag-->
-    <spike [if]="scope.user.id > 10">
-        <span [if]="scope.user.id > 11">Show me if user id > 11</span>
+    <spike sp-if="scope.user.id > 10">
+        <span sp-if="scope.user.id > 11">Show me if user id > 11</span>
         Show me if user id > 10
         <div>
             Some inner child 1
@@ -51,7 +51,7 @@
     </spike>
 
     <!-- Condition IF test with @div tag-->
-    <div [if]="scope.user.id < 10">
+    <div sp-if="scope.user.id < 10">
         Remove me if user id > 10
         <div>
             Some inner child 1
@@ -62,93 +62,93 @@
     </div>
 
     <!-- Condition IF-ELSE test with @spike tag-->
-    <spike [if]="scope.user.id > 10">
+    <spike sp-if="scope.user.id > 10">
         Show me if user id > 10
     </spike>
-    <spike [else]>
+    <spike sp-else>
         Show me if first statement false
     </spike>
 
 
-    <!-- Condition IF-ELSEIF-ELSE test with @spike tag-->
-    <spike [if]="scope.user.id > 10">
+    <!-- Condition IF-else-if-ELSE test with @spike tag-->
+    <spike sp-if="scope.user.id > 10">
         Show me if user id > 10 <div id="dsd"></div>
     </spike>
-    <spike [elseif]="scope.user.id < 5">
+    <spike sp-else-if="scope.user.id < 5">
         Show me if user id < 5
     </spike>
-    <spike [else]>
+    <spike sp-else>
         Show me if first statement false
     </spike>
 
     <!-- Condition SWITCH test -->
-    <spike [switch]="scope.status">
+    <spike sp-switch="scope.status">
 
-        <spike [case]="200" [break]>
+        <spike sp-case="200" sp-break>
             <div class="success">OK</div>
         </spike>
 
-        <spike [case]="'error'"></spike>
-        <spike [case]="404">
+        <spike sp-case="'error'"></spike>
+        <spike sp-case="404">
             <div class="error">ERROR</div>
         </spike>
 
-        <spike [default]>
+        <spike sp-default>
             <div class="error">ERROR</div>
         </spike>
 
     </spike>
 
     <!-- For test -->
-    <spike [for]="index in scope.names">
+    <spike sp-for="index in scope.names">
         <p>Name: {{user.name}}</p>
     </spike>
 
-    <spike [for]="user, index in scope.names">
+    <spike sp-for="user, index in scope.names">
         <p>Index: {{index}}; Name: {{user.name}}</p>
     </spike>
 
-    <div [for]="user, index in scope.names">
+    <div sp-for="user, index in scope.names">
         <p>Index: {{index}}; Name: {{user.name}}</p>
     </div>
 
     <!-- Foreach test -->
-    <spike [foreach]="user in scope.names">
+    <spike sp-foreach="user in scope.names">
         <p>Name: {{user.name}}</p>
     </spike>
 
-    <spike [foreach]="user, index in scope.names">
+    <spike sp-foreach="user, index in scope.names">
         <p>Index: {{index}}; Name: {{user.name}}</p>
     </spike>
 
-    <div [foreach]="user, index in scope.names">
+    <div sp-foreach="user, index in scope.names">
         <p>Index: {{index}}; Name: {{user.name}}</p>
     </div>
 
     <!-- While test -->
 
-    <spike [while]="scope.count < 10">
-        <spike [js]="scope.count++"></spike>
+    <spike sp-while="scope.count < 10">
+        <spike sp-js="scope.count++"></spike>
     </spike>
 
     <!-- Events test -->
-    <button [click]="app.router.location({{['/post/1'}}])">Click me</button>
-    <select [change]="$menu.changeOption(event)">
+    <button sp-click="app.router.location({{{'/post/1'}}})">Click me</button>
+    <select sp-change="$menu.changeOption(event)">
         <option value="1">Test</option>
     </select>
 
     <!-- Template test -->
-    <spike [template]="templateName"></spike>
+    <spike sp-template="templateName"></spike>
 
     <!-- Partial include test -->
-    <spike [include]="$somePartial" [params]="user: scope.user"></spike>
-    <spike [include]="$somePartial"></spike>
+    <spike sp-include="$somePartial" sp-params="user: scope.user"></spike>
+    <spike sp-include="$somePartial"></spike>
 
     <!-- Inline JS test -->
-    <spike [js]="var demo = 'test'"></spike>
+    <spike sp-js="var demo = 'test'"></spike>
 
     <!-- Plain JS test -->
-    <spike [js]>
+    <spike sp-js>
 
         var declareObject = {
             name: "Ok",
@@ -160,6 +160,6 @@
 
     </spike>
 
-    <a spike-href="some.html">Some link</a>
+    <a sp-href="some.html">Some link</a>
 
 </div>

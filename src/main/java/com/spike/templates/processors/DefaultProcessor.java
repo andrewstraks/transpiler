@@ -12,7 +12,7 @@ public class DefaultProcessor implements Processor {
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
 
-        String prefix = U.js("default ");
+        String prefix = U.js("default :");
 
         if (element.tagName().equals("spike")) {
 
