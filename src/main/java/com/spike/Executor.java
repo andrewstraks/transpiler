@@ -42,10 +42,10 @@ public class Executor {
 
         if (type.equals("test-templates")) {
             type = "templates";
-            args = new String[]{null, "templates_input/watch", "templates_output/templates.js", "templates_output/watchers.js"};
+            args = new String[]{null, "templates_input/plain", "templates_output/templates.js", "templates_output/watchers.js"};
         } else if (type.equals("test-transpiler")) {
             type = "transpiler";
-            args = new String[]{null, "scripts_input/spike-framework.spike", "scripts_output/compiled.js"};
+            args = new String[]{null, "scripts_input/spike-framework.spike", "scripts_output/compiled.js", "spike"};
         } else if (type.equals("test-cli")) {
             args = new String[]{"cli", "cli/test/component/", "component", "UserPanel"};
             cli(args);
@@ -63,6 +63,10 @@ public class Executor {
 
 
         if (type.equals("transpiler")) {
+
+            if(args.length == 4){
+                ScriptsCompiler.SPIKE_COMPILATION = true;
+            }
 
             //String fileBody = importsCompiler.compileImports(new File(args[1]), false);
             String fileBody = scriptsCompiler.compileSyntax(scriptsIO.getFileContentBuffered(new File(args[1])));

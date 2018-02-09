@@ -7,6 +7,8 @@ import com.spike.transpiler.serialization.Serializer;
  */
 public class ScriptsCompiler {
 
+    public static boolean SPIKE_COMPILATION = false;
+
     public String compileSyntax(String fileBody) throws Exception {
 
         long start = System.currentTimeMillis();

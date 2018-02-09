@@ -1,8 +1,5 @@
 package com.spike.transpiler.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class ExtendingModel {
 
     public String extendsFrom;

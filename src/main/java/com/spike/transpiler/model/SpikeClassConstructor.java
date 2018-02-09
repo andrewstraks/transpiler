@@ -1,6 +1,8 @@
 package com.spike.transpiler.model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class SpikeClassConstructor {
 
@@ -38,10 +40,14 @@ public class SpikeClassConstructor {
     private void collectConstructorDetails(){
 
         if(this.spikeClass.classPackage.spikeFile.constructorsMap.get(this.spikeClass.classFullName) == null){
-            this.spikeClass.classPackage.spikeFile.constructorsMap.put(this.spikeClass.classFullName, new HashMap<Integer, String>());
+            this.spikeClass.classPackage.spikeFile.constructorsMap.put(this.spikeClass.classFullName, new ArrayList<String>());
         }
 
-        this.spikeClass.classPackage.spikeFile.constructorsMap.get(this.spikeClass.classFullName).put(this.argumentsCount, this.spikeClass.classPackage.packageName+"."+this.constructorArgumentsUniqueName);
+        String constructorFullName = this.spikeClass.classPackage.packageName+"."+this.constructorArgumentsUniqueName;
+
+        if(!this.spikeClass.classPackage.spikeFile.constructorsMap.get(this.spikeClass.classFullName).contains(constructorFullName)){
+            this.spikeClass.classPackage.spikeFile.constructorsMap.get(this.spikeClass.classFullName).add(constructorFullName);
+        }
 
     }
 
@@ -52,7 +58,7 @@ public class SpikeClassConstructor {
     private void collectConstructorArgumentsUniqueNames() {
 
         if (this.argumentsCount > 0) {
-            this.constructorArgumentsUniqueName = this.functionName + "_" + this.arguments.replace(",", "_");
+            this.constructorArgumentsUniqueName = this.functionName + "_" + this.argumentsCount;
         } else {
             this.constructorArgumentsUniqueName = this.functionName;
         }
@@ -82,7 +88,7 @@ public class SpikeClassConstructor {
                     .append("=function(")
                     .append(this.arguments)
                     .append("){")
-                    .append(constructorBody);
+                    .append(this.addThisKeywordReference(constructorBody));
 
             if (!constructorBody.endsWith(";")) {
                 compiledBuilder.append(";");
@@ -91,6 +97,10 @@ public class SpikeClassConstructor {
             this.compiled = compiledBuilder.toString();
 
         }
+    }
+
+    private String addThisKeywordReference(String constructorBody) {
+        return "var $this=this;" + constructorBody;
     }
 
     @Override

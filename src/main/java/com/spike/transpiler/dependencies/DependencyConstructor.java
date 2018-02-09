@@ -38,18 +38,98 @@ public class DependencyConstructor {
 
     }
 
-    public void createDependencies(List<String> dependenciesList, HashMap<String, List<String>> extendsClassesMap, SpikeFile spikeFile) {
+    public List<String> getClassConstructorsList(String classFullName, SpikeFile spikeFile){
+
+        if(spikeFile.constructorsMap.get(classFullName) != null) {
+            return spikeFile.constructorsMap.get(classFullName);
+        }
+
+        return null;
+
+    }
+
+    public List<Integer> getClassConstructorsCountList(String classFullName, SpikeFile spikeFile){
+
+        List<Integer> list = new ArrayList<>();
+
+        if(spikeFile.constructorsMap.get(classFullName) != null){
+
+            for (String classConstructor : spikeFile.constructorsMap.get(classFullName)) {
+
+                if(!classConstructor.contains("_")){
+                    list.add(0);
+                }else{
+                    int constructorArgsCount = Integer.valueOf(classConstructor.split("_")[1]);
+                    list.add(constructorArgsCount);
+                }
+
+            }
+
+        }
+
+        return list;
+
+    }
+
+    public String addConstructorsOverwrite(List<String> dependenciesList, HashMap<String, List<String>> extendsClassesMap, SpikeFile spikeFile) {
 
         StringBuilder compiledBuilder = new StringBuilder();
 
-        compiledBuilder.append("spike.core.Assembler.dependencies(function(){");
+        System.out.println("dependenciesList : " + dependenciesList);
+        System.out.println("extendsClassesMap : " + extendsClassesMap);
+        System.out.println("spikeFile.constructorsMap : " + spikeFile.constructorsMap);
+
+        for (Map.Entry<String, List<String>> extendsClasses: extendsClassesMap.entrySet()) {
+
+            String baseClassFullName = extendsClasses.getKey();
+            List<String> extendsClassesList = extendsClasses.getValue();
+
+            List<Integer> baseClassConstructorsArgsCountList = this.getClassConstructorsCountList(baseClassFullName, spikeFile);
+            for(String extendsClassFullName : extendsClassesList){
+                List<Integer> extendsClassConstructorsArgsCountList = this.getClassConstructorsCountList(extendsClassFullName, spikeFile);
+                extendsClassConstructorsArgsCountList.removeAll(baseClassConstructorsArgsCountList);
+
+                if(extendsClassConstructorsArgsCountList.size() > 0){
+
+                    System.out.println("baseClassFullName: "+baseClassFullName);
+                    System.out.println("extendsClassFullName: "+extendsClassFullName);
+                    System.out.println("extendsClassConstructorsArgsCountList : "+extendsClassConstructorsArgsCountList);
+
+                    for(Integer constructorArgumentsCount : extendsClassConstructorsArgsCountList){
+
+                        spikeFile.constructorsMap.get(baseClassFullName).add(baseClassFullName+"_"+constructorArgumentsCount);
+
+                        compiledBuilder
+                                .append(baseClassFullName)
+                                .append("_")
+                                .append(constructorArgumentsCount)
+                                .append("=")
+                                .append(extendsClassFullName)
+                                .append("_")
+                                .append(constructorArgumentsCount)
+                                .append(";");
+
+                    }
+
+                }
+
+            }
+
+            }
+
+        return compiledBuilder.toString();
+
+    }
+
+    public String addConstructorsExtending(List<String> dependenciesList, HashMap<String, List<String>> extendsClassesMap, SpikeFile spikeFile) {
+
+        StringBuilder compiledBuilder = new StringBuilder();
+
         for (String dependency : dependenciesList) {
-
             if (extendsClassesMap.get(dependency) != null) {
-
                 for (String extendsClassFullName : extendsClassesMap.get(dependency)) {
-
                     if (extendsClassFullName != null) {
+
                         compiledBuilder
                                 .append("spike.core.Assembler.extend(")
                                 .append(extendsClassFullName)
@@ -61,50 +141,44 @@ public class DependencyConstructor {
 
                         if (spikeFile.constructorsMap.get(extendsClassFullName) != null) {
 
-                            for (Map.Entry<Integer, String> extendsClassConstructor : spikeFile.constructorsMap.get(extendsClassFullName).entrySet()) {
+                            for (String constructorFullName : spikeFile.constructorsMap.get(extendsClassFullName)) {
 
-                                if (extendsClassConstructor.getKey() > 0) {
+                                if (constructorFullName.contains("_")) {
 
-                                    String constructorFullName = extendsClassConstructor.getValue();
-                                    String constructorsArguments = constructorFullName.substring(constructorFullName.indexOf("_"), constructorFullName.length());
-                                    int constructorArgsCount = constructorsArguments.split("_").length-1;
+                                    int constructorArgsCount = Integer.valueOf(constructorFullName.split("_")[1]);
 
-                                    System.out.println("constructorFullName : "+constructorFullName);
-                                    System.out.println("constructorsArguments : "+constructorsArguments);
-                                    System.out.println("constructorArgsCount : "+constructorArgsCount);
-                                    boolean constructorExist = false;
-
-                                    //check if constructor with this arguments lenght exists = if yes, reject (because shouldn't override
                                     if (spikeFile.constructorsMap.get(dependency) != null) {
 
-                                        if (spikeFile.constructorsMap.get(dependency).get(constructorArgsCount) != null) {
-                                            constructorExist = true;
+                                        for (String constructorDependencyFullName : spikeFile.constructorsMap.get(dependency)) {
+
+                                            if (constructorDependencyFullName.contains("_")) {
+
+                                                int constructorDependencyArgsCount = Integer.valueOf(constructorDependencyFullName.split("_")[1]);
+
+                                                if (constructorDependencyArgsCount == constructorArgsCount) {
+
+//                                                    compiledBuilder
+//                                                            .append(constructorDependencyFullName)
+//                                                            .append("?null:")
+//                                                            .append(constructorDependencyFullName)
+//                                                            .append("=")
+//                                                            .append(constructorFullName)
+//                                                            .append(";");
+
+                                                    compiledBuilder
+                                                            .append("spike.core.Assembler.extend(")
+                                                            .append(constructorFullName)
+                                                            .append(".prototype")
+                                                            .append(",")
+                                                            .append(constructorDependencyFullName)
+                                                            .append(".prototype")
+                                                            .append(");");
+
+                                                }
+
+                                            }
+
                                         }
-
-                                    }
-                                    //if not exist, add it
-
-                                    if (!constructorExist) {
-
-                                        compiledBuilder
-                                                .append(dependency)
-                                                .append(constructorsArguments)
-                                                .append("=")
-                                                .append(constructorFullName)
-                                                .append(";");
-
-
-                                        if (spikeFile.constructorsMap.get(dependency) != null) {
-                                            System.out.println("spikeFile.constructorsMap.get(dependency) : "+spikeFile.constructorsMap.get(dependency));
-                                            spikeFile.constructorsMap.get(dependency).put(constructorArgsCount, dependency + constructorsArguments);
-                                            System.out.println("spikeFile.constructorsMap.get(dependency)2 : "+spikeFile.constructorsMap.get(dependency));
-                                        }
-
-                                        //inny problem - konstruktory nie przechodzą ze spike do aplikacji - stąd nie mogą być dziedziczone
-
-                                        // spike.core.GlobalElement_parentElement_model = spike.core.Element_parentElement_model;
-
-
                                     }
 
                                 }
@@ -120,9 +194,19 @@ public class DependencyConstructor {
 
         }
 
-        compiledBuilder.append("});");
+        return compiledBuilder.toString();
 
-        System.out.println("spikeFile.constructorsMap : "+spikeFile.constructorsMap);
+    }
+
+    public void createDependencies(List<String> dependenciesList, HashMap<String, List<String>> extendsClassesMap, SpikeFile spikeFile) {
+
+        StringBuilder compiledBuilder = new StringBuilder();
+        compiledBuilder.append("spike.core.Assembler.dependencies(function(){");
+
+        compiledBuilder.append(this.addConstructorsOverwrite(dependenciesList, extendsClassesMap, spikeFile));
+        compiledBuilder.append(this.addConstructorsExtending(dependenciesList, extendsClassesMap, spikeFile));
+
+        compiledBuilder.append("});");
 
         this.compiled = compiledBuilder.toString();
 

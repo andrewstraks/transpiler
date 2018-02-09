@@ -3,7 +3,10 @@ package com.spike.transpiler.model;
 import com.spike.transpiler.dependencies.DependencyConstructor;
 import com.spike.transpiler.serialization.Serializer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,7 +15,7 @@ public class SpikeFile {
     public static int TOTAL_NAMESPACES = 0;
 
     public List<ExtendingModel> extendingMap = new ArrayList<>();
-    public HashMap<String, HashMap<Integer, String>> constructorsMap;
+    public HashMap<String, List<String>> constructorsMap;
     public List<SpikePackage> packages = new ArrayList<>();
 
     public String body = null;
@@ -92,25 +95,37 @@ public class SpikeFile {
 
     }
 
+    private String getConstructorArgumentsCount(String constructorFullName){
+
+        String[] split = constructorFullName.split("_");
+
+        if(split.length > 1){
+            return split[1];
+        }
+
+        return "0";
+
+    }
+
     private void compileConstructorsMap(){
 
         StringBuilder constructorsMapBuilder = new StringBuilder();
 
         constructorsMapBuilder.append("spike.core.Assembler.setConstructorsMap({");
-        for (Map.Entry<String, HashMap<Integer, String>> baseClass : this.constructorsMap.entrySet()) {
+        for (Map.Entry<String, List<String>> baseClass : this.constructorsMap.entrySet()) {
 
             constructorsMapBuilder
                     .append("'")
                     .append(baseClass.getKey())
                     .append("':{");
 
-            for (Map.Entry<Integer, String> constructor : baseClass.getValue().entrySet()) {
+            for(String constructorFullName : baseClass.getValue()){
 
                 constructorsMapBuilder
                         .append("'")
-                        .append(constructor.getKey())
+                        .append(this.getConstructorArgumentsCount(constructorFullName))
                         .append("':'")
-                        .append(constructor.getValue())
+                        .append(constructorFullName)
                         .append("',");
 
             }
@@ -166,7 +181,11 @@ public class SpikeFile {
     }
 
     private void minifyPackageNames() {
+
+
         //zrobić minifikacje nazw paczek, czyli przeleciec po paczkach i np wszystkie spike.core zamienic na 's.c' etc
         //zeby zmniejszyc rozmiar plikow
+
+
     }
 }

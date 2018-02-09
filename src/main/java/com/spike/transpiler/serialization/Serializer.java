@@ -1,7 +1,10 @@
 package com.spike.transpiler.serialization;
 
+import com.spike.transpiler.ScriptsCompiler;
+
 import java.io.*;
 import java.util.HashMap;
+import java.util.List;
 
 public class Serializer {
 
@@ -27,12 +30,13 @@ public class Serializer {
 
     }
 
-    public static void serializeConstructors(HashMap<String, HashMap<Integer, String>> constructorsMap) {
+    public static void serializeConstructors(HashMap<String, List<String>> constructorsMap) {
 
-        //Serializacja tylko dla spike
-        if(!constructorsMap.entrySet().iterator().next().getKey().contains("spike.core")){
+        if(!ScriptsCompiler.SPIKE_COMPILATION){
             return;
         }
+
+        System.out.println("SERIALIZING");
 
         File temp = new File(constructorsFilePath);
 
@@ -70,7 +74,11 @@ public class Serializer {
 
     }
 
-    public static HashMap<String, HashMap<Integer, String>> deserializeConstructors() {
+    public static HashMap<String, List<String>> deserializeConstructors() {
+
+        if( ScriptsCompiler.SPIKE_COMPILATION){
+            return new HashMap<>();
+        }
 
         File temp = new File(constructorsFilePath);
 
@@ -88,10 +96,10 @@ public class Serializer {
            // e.printStackTrace();
         }
 
-        HashMap<String, HashMap<Integer, String>> constructorsMap =  new HashMap<>();
+        HashMap<String, List<String>> constructorsMap = new HashMap<>();
 
         try {
-            constructorsMap = (HashMap<String, HashMap<Integer, String>>) in.readObject();
+            constructorsMap = (HashMap<String, List<String>>) in.readObject();
         } catch (Exception e) {
            // e.printStackTrace();
         }
