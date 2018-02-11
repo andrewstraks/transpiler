@@ -25,6 +25,7 @@ public class SpikeClass {
     public String body = null;
     public String compiled = null;
 
+    public String extendsConstructorsDeclarations = null;
     public HashMap<String, String> imports = new HashMap<>();
     public List<SpikeClassConstructor> constructors = new ArrayList<>();
     public List<SpikeClassField> fields = new ArrayList<>();
@@ -46,7 +47,7 @@ public class SpikeClass {
         this.classPackage.spikeFile.extendingMap.add(new ExtendingModel(this.extendsFullName, this.classFullName));
     }
 
-    private void collectClassFullName(){
+    private void collectClassFullName() {
         this.classFullName = this.classPackage.packageName + "." + this.className;
     }
 
@@ -240,6 +241,24 @@ public class SpikeClass {
 
     }
 
+    private String createConstructor(){
+
+        StringBuilder constructorBuilder = new StringBuilder();
+
+        constructorBuilder
+                .append(this.classFullName)
+                .append("=function(args){")
+                .append("if(this['constructor_'+args.length] !== undefined){")
+                .append("this['constructor_'+args.length].apply(this, args);")
+                .append("}else{")
+                .append("throw new Error('Spike: No matching constructor found ")
+                .append(this.classFullName)
+                .append(" with arguments count: '+args.length);}};");
+
+        return constructorBuilder.toString();
+
+    }
+
     private void createDefaultConstructor() {
 
         if (!this.hasDefaultConstructor()) {
@@ -265,6 +284,10 @@ public class SpikeClass {
 
         StringBuilder compiledBuilder = new StringBuilder();
 
+        if(!this.isStatic()){
+            compiledBuilder.append(this.createConstructor());
+        }
+
         for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
             spikeClassConstructor.compile();
             compiledBuilder.append(spikeClassConstructor.compiled);
@@ -280,26 +303,46 @@ public class SpikeClass {
             compiledBuilder.append(spikeClassFunction.compiled);
         }
 
+        this.compiled = compiledBuilder.toString();
 
-            for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
 
-                if(!spikeClassConstructor.isDefaultConstructor){
+        this.collectConstructorsExtendingDeclaration();
+        this.createAssemblerDeclaration();
 
-                    compiledBuilder
-                            .append(this.classPackage.packageName)
-                            .append(".")
-                            .append(spikeClassConstructor.constructorArgumentsUniqueName)
-                            .append(".prototype=")
-                            .append(this.classFullName)
-                            .append(".prototype")
-                            .append(";");
+    }
 
-                }
+    private void collectConstructorsExtendingDeclaration() {
+
+        StringBuilder extendingBuilder = new StringBuilder();
+
+        for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
+
+            if (!spikeClassConstructor.isDefaultConstructor) {
+
+//                    compiledBuilder
+//                            .append("spike.core.Assembler.extend(")
+//                            .append(extendsClassFullName)
+//                            .append(".prototype")
+//                            .append(",")
+//                            .append(dependency)
+//                            .append(".prototype")
+//                            .append(");");
+//
+                extendingBuilder
+                        .append("spike.core.Assembler.extend(")
+                        .append(this.classFullName)
+                        .append(".prototype,")
+                        .append(this.classPackage.packageName)
+                        .append(".")
+                        .append(spikeClassConstructor.constructorArgumentsUniqueName)
+                        .append(".prototype")
+                        .append(");");
 
             }
 
-        this.compiled = compiledBuilder.toString();
-        this.createAssemblerDeclaration();
+        }
+
+        this.extendsConstructorsDeclarations = extendingBuilder.toString();
 
     }
 
@@ -351,11 +394,8 @@ public class SpikeClass {
 
             declaration
                     .append("defineNamespace('")
-                    .append(this.classPackage.packageName)
+                    .append(this.classFullName)
                     .append("',")
-                    .append("[")
-                    .append(this.collectConstructorsNames())
-                    .append("],")
                     .append("function(){")
                     .append(this.compiled)
                     .append("});");

@@ -36,7 +36,7 @@ public class Serializer {
             return;
         }
 
-        System.out.println("SERIALIZING");
+        //System.out.println("SERIALIZING");
 
         File temp = new File(constructorsFilePath);
 

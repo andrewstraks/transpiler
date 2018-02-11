@@ -93,6 +93,8 @@ public class TemplateCompiler {
         String plainTemplate = this.processPlainTemplate(doc, templateFile);
         String watchTemplate = this.processWatchTemplate(doc, templateFile);
 
+        plainTemplate = "spike.core.Assembler.sourcePath='" + rootDir.substring(0, rootDir.lastIndexOf("/")) + "';" + plainTemplate;
+
         System.out.println("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
 
         return new String[] { plainTemplate, watchTemplate };
@@ -138,7 +140,7 @@ public class TemplateCompiler {
 
         }
 
-        output = "Watchers.watchers['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope, watcher){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
+        output = "spike.core.Watchers.watchers['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope, watcher){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
 
         return output;
 
@@ -198,7 +200,7 @@ public class TemplateCompiler {
 
         }
 
-        output = "Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
+        output = "spike.core.Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
 
         return output;
 

@@ -9,7 +9,7 @@ public class SpikeClassConstructor {
     public SpikeClass spikeClass = null;
 
     public boolean isDefaultConstructor = false;
-
+    public String constructorFullName = null;
     public String functionName = null;
     public String arguments = null;
     public Integer argumentsCount = null;
@@ -43,10 +43,10 @@ public class SpikeClassConstructor {
             this.spikeClass.classPackage.spikeFile.constructorsMap.put(this.spikeClass.classFullName, new ArrayList<String>());
         }
 
-        String constructorFullName = this.spikeClass.classPackage.packageName+"."+this.constructorArgumentsUniqueName;
+        this.constructorFullName = this.spikeClass.classPackage.packageName+"."+this.constructorArgumentsUniqueName;
 
-        if(!this.spikeClass.classPackage.spikeFile.constructorsMap.get(this.spikeClass.classFullName).contains(constructorFullName)){
-            this.spikeClass.classPackage.spikeFile.constructorsMap.get(this.spikeClass.classFullName).add(constructorFullName);
+        if(!this.spikeClass.classPackage.spikeFile.constructorsMap.get(this.spikeClass.classFullName).contains(this.constructorFullName)){
+            this.spikeClass.classPackage.spikeFile.constructorsMap.get(this.spikeClass.classFullName).add(this.constructorFullName);
         }
 
     }
@@ -57,11 +57,11 @@ public class SpikeClassConstructor {
 
     private void collectConstructorArgumentsUniqueNames() {
 
-        if (this.argumentsCount > 0) {
-            this.constructorArgumentsUniqueName = this.functionName + "_" + this.argumentsCount;
-        } else {
-            this.constructorArgumentsUniqueName = this.functionName;
-        }
+      //  if (this.argumentsCount > 0) {
+            this.constructorArgumentsUniqueName = this.functionName+".prototype.constructor_" + this.argumentsCount;
+      //  } else {
+     //       this.constructorArgumentsUniqueName = this.functionName;
+      //  }
 
     }
 
@@ -80,6 +80,7 @@ public class SpikeClassConstructor {
             }
 
             StringBuilder compiledBuilder = new StringBuilder();
+
 
             compiledBuilder
                     .append(this.spikeClass.classPackage.packageName)

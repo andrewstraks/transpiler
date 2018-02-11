@@ -38,7 +38,7 @@ public class SpikeFile {
         this.compiled = compiledBuilder.toString();
         this.collectDependencies();
         this.compileConstructorUsages();
-        this.compileConstructorsMap();
+        //this.compileConstructorsMap();
         this.collectTotalNamespaces();
     }
 
@@ -64,6 +64,8 @@ public class SpikeFile {
 
     private void compileConstructorUsages() {
 
+        System.out.println(this.constructorsMap);
+
         Pattern p = Pattern.compile("(new*\\s+[^\\)]*)");
         Matcher m = p.matcher(this.compiled);
         while (m.find()) {
@@ -86,7 +88,7 @@ public class SpikeFile {
                         e.printStackTrace();
                     }
                 } else {
-                    this.compiled = this.compiled.replace(matchedConstructor, "new " + foundConstructor + "(" + arguments);
+                    this.compiled = this.compiled.replace(matchedConstructor, "new " + baseConstructor + "([" + arguments+"]");
                 }
             }
 
@@ -95,51 +97,51 @@ public class SpikeFile {
 
     }
 
-    private String getConstructorArgumentsCount(String constructorFullName){
+//    private String getConstructorArgumentsCount(String constructorFullName){
+//
+//        String[] split = constructorFullName.split("_");
+//
+//        if(split.length > 1){
+//            return split[1];
+//        }
+//
+//        return "0";
+//
+//    }
 
-        String[] split = constructorFullName.split("_");
-
-        if(split.length > 1){
-            return split[1];
-        }
-
-        return "0";
-
-    }
-
-    private void compileConstructorsMap(){
-
-        StringBuilder constructorsMapBuilder = new StringBuilder();
-
-        constructorsMapBuilder.append("spike.core.Assembler.setConstructorsMap({");
-        for (Map.Entry<String, List<String>> baseClass : this.constructorsMap.entrySet()) {
-
-            constructorsMapBuilder
-                    .append("'")
-                    .append(baseClass.getKey())
-                    .append("':{");
-
-            for(String constructorFullName : baseClass.getValue()){
-
-                constructorsMapBuilder
-                        .append("'")
-                        .append(this.getConstructorArgumentsCount(constructorFullName))
-                        .append("':'")
-                        .append(constructorFullName)
-                        .append("',");
-
-            }
-
-            constructorsMapBuilder.append("},");
-
-
-        }
-
-        constructorsMapBuilder.append("});");
-
-        this.compiled = this.compiled + constructorsMapBuilder.toString();
-
-    }
+//    private void compileConstructorsMap(){
+//
+//        StringBuilder constructorsMapBuilder = new StringBuilder();
+//
+//        constructorsMapBuilder.append("spike.core.Assembler.setConstructorsMap({");
+//        for (Map.Entry<String, List<String>> baseClass : this.constructorsMap.entrySet()) {
+//
+//            constructorsMapBuilder
+//                    .append("'")
+//                    .append(baseClass.getKey())
+//                    .append("':{");
+//
+//            for(String constructorFullName : baseClass.getValue()){
+//
+//                constructorsMapBuilder
+//                        .append("'")
+//                        .append(this.getConstructorArgumentsCount(constructorFullName))
+//                        .append("':'")
+//                        .append(constructorFullName)
+//                        .append("',");
+//
+//            }
+//
+//            constructorsMapBuilder.append("},");
+//
+//
+//        }
+//
+//        constructorsMapBuilder.append("});");
+//
+//        this.compiled = this.compiled + constructorsMapBuilder.toString();
+//
+//    }
 
     private String getConstructorUsageArguments(String arguments){
 
