@@ -146,6 +146,7 @@ public class TemplateCompiler {
 
     }
 
+    private static int componentId = 0;
     private void compileProcessors(Document doc, HashMap<String, Processor> processorHashMap) throws Exception {
 
         for (Map.Entry<String, Processor> entry : processorHashMap.entrySet()) {
@@ -158,6 +159,13 @@ public class TemplateCompiler {
                 processor.process(element, spikeAttribute);
             }
 
+        }
+
+        Element fistElement = doc.body().children().first();
+
+        if(fistElement.attr("id").isEmpty()){
+            componentId++;
+            fistElement.attr("id", "component"+componentId);
         }
 
     }
