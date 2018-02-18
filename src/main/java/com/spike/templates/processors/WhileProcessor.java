@@ -1,5 +1,6 @@
 package com.spike.templates.processors;
 
+import com.spike.templates.U;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.TextNode;
 
@@ -16,8 +17,8 @@ public class WhileProcessor implements Processor {
 
         if (element.tagName().equals("spike")) {
 
-            element.before(prefix);
-            element.after(suffix);
+            element.before(U.js(prefix));
+            element.after(U.js(suffix));
             element.removeAttr(spikeAttribute);
 
         } else {

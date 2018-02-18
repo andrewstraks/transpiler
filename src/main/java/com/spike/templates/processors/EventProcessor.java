@@ -13,6 +13,7 @@ public class EventProcessor implements Processor {
     @Override
     public void process(Element element, String event) throws Exception {
 
+
         if (element.tagName().equals("spike")) {
             throw new Exception("Spike Compiler: Events binding not allowed on @spike tags");
         } else {
@@ -28,7 +29,7 @@ public class EventProcessor implements Processor {
             if(element.id().isEmpty()){
                 eventId++;
                 element.attr("id", "spike-event-"+eventId);
-            }else{
+            }else if(TemplateCompiler.OLD_VERSION == false){
                 throw new Exception("Spike Compiler: Events binding not allowed on elements with id attribute");
             }
 

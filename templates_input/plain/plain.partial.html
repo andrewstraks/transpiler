@@ -89,7 +89,7 @@
         </spike>
 
         <spike sp-case="'error'"></spike>
-        <spike sp-case="404">
+        <spike sp-case="404" sp-break>
             <div class="error">ERROR</div>
         </spike>
 
@@ -100,6 +100,10 @@
     </spike>
 
     <!-- For test -->
+    <spike sp-for="var index = 1; index < scope.names.length; i++">
+        <p>Name: {{user.name}}</p>
+    </spike>
+
     <spike sp-for="index in scope.names">
         <p>Name: {{user.name}}</p>
     </spike>
@@ -160,6 +164,17 @@
 
     </spike>
 
-    <a sp-href="some.html">Some link</a>
+    <spike sp-project="GOOGLE">
+        <a sp-href="some.html">Some link GOOGLE&apos;</a>
+    </spike>
+
+    <spike sp-not-project="GOOGLE">
+        <a sp-href="some.html">Some link NOT GOOGLE</a>
+    </spike>
+
+    <spike sp-env="DEV">
+        <span>this is prod</span>
+    </spike>
+
 
 </div>

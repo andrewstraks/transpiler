@@ -1,4 +1,4 @@
-group 'spike-compiler'
+group 'spike-transpier'
 version ''
 
 apply plugin: 'java'

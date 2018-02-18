@@ -28,6 +28,8 @@ public class NewImportCompiler {
 
             if (str.startsWith(importWord)) {
 
+                System.out.println("str "+str);
+
                 String key = str.replace("'", "").substring(0, str.indexOf("from") - 1).replace("import", "").trim();
                 String value = str.substring(str.indexOf("from") + 4, str.length()).replace("'", "").replace(";", "").trim();
                 importsReplacements.put(key, value);

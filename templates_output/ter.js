@@ -66,7 +66,35 @@
 //
 //
 //
+var scope = {
+  name: ''
+}
 
+
+function checkChanged(oldVal, newVal){
+
+  if(oldVal !== newVal){
+    console.log('values changed');
+  }
+
+}
+
+Object.defineProperty(scope, 'name', {
+
+  set: function(newValue){
+    checkChanged(this.__value, newValue);
+    this.__value = newValue;
+  },
+  get: function(){
+    return this.__value;
+  }
+
+})
+
+scope.name = 'Dawid';
+scope.name = 'Dawid1';
+scope.name = 'Dawid2'
+scope.name = 'Dawid3';
 
 /**
  * Templatka HTML docelowa

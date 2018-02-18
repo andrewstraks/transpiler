@@ -31,9 +31,6 @@ public class TemplatesIO {
         Set<File> fileTree = listFileTree(dir);
 
         for (File file : fileTree) {
-            System.out.println(file.getName());
-            System.out.println(nameWithExtension);
-
             if(file.getName().equals(nameWithExtension)){
                 return file;
             }

@@ -23,19 +23,28 @@ public class ForProcessor implements Processor {
         templateParts.indexName = null;
         templateParts.listName = "";
 
-        String[] repeatElements = repeat.split(" in ");
+        if(repeat.contains("++") || repeat.contains("--")){
 
-        if (repeatElements[0].contains(",")) {
-            templateParts.varName = repeatElements[0].split(",")[0];
-            templateParts.indexName = repeatElements[0].split(",")[1];
-        } else {
-            templateParts.indexName = repeatElements[0];
+            templateParts.prefix = "for("+repeat+"){";
+            templateParts.suffix = "}";
+
+        }else{
+
+            String[] repeatElements = repeat.split(" in ");
+
+            if (repeatElements[0].contains(",")) {
+                templateParts.varName = repeatElements[0].split(",")[0];
+                templateParts.indexName = repeatElements[0].split(",")[1];
+            } else {
+                templateParts.indexName = repeatElements[0];
+            }
+
+            templateParts.listName = repeatElements[1];
+
+            templateParts.prefix = "for(var " + templateParts.indexName + " = 0; " + templateParts.indexName + " < " + templateParts.listName + ".length; " + templateParts.indexName + "++){";
+            templateParts.suffix = "}";
+
         }
-
-        templateParts.listName = repeatElements[1];
-
-        templateParts.prefix = "for(var " + templateParts.indexName + " = 0; i < " + templateParts.listName + ".length; " + templateParts.indexName + "++){";
-        templateParts.suffix = "}";
 
         return templateParts;
 

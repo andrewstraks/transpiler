@@ -1,9 +1,11 @@
 package com.spike.templates;
 
 import com.spike.templates.processors.*;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Entities;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 
@@ -29,6 +31,11 @@ public class TemplateCompiler {
     public static final String BRACKET_RIGHT = "}}";
     public static final  String PARAMS = U.s("params");
 
+    public static String PROJECT = "";
+    public static String ENV = "";
+
+    public static boolean OLD_VERSION = false ;
+
     String getFileName(File templateFile) {return templateFile.getPath().replaceAll("\\\\", "/");}
 
     public static HashMap<String, Processor> commands = new HashMap<>();
@@ -37,6 +44,13 @@ public class TemplateCompiler {
     static {
 
         EventProcessor eventProcessor = new EventProcessor();
+
+        /**
+         * Replacers
+         */
+        commands.put(U.s("project"), new ProjectIfProcessor());
+        commands.put(U.s("not-project"), new ProjectNotIfProcessor());
+        commands.put(U.s("env"), new EnvIfProcessor());
 
         commands.put(U.s("print"), new PrintProcessor());
         commands.put(U.s("translation"), new TranslationProcessor());
@@ -77,6 +91,9 @@ public class TemplateCompiler {
         commands.put(U.s("js"), new JsProcessor());
         commands.put(U.s("href"), new HrefProcessor());
 
+        /**
+         * Watchers
+         */
         watchCommands.put(U.s("watch"), new WatchProcessor());
         watchCommands.put(U.s("bind"), new BindProcessor());
     }
@@ -91,7 +108,7 @@ public class TemplateCompiler {
         this.compileProcessors(doc, commands);
 
         String plainTemplate = this.processPlainTemplate(doc, templateFile);
-        String watchTemplate = this.processWatchTemplate(doc, templateFile);
+        String watchTemplate = TemplateCompiler.OLD_VERSION ? "" : this.processWatchTemplate(doc, templateFile);
 
         plainTemplate = "spike.core.Assembler.sourcePath='" + rootDir.substring(0, rootDir.lastIndexOf("/")) + "';" + plainTemplate;
 
@@ -112,11 +129,22 @@ public class TemplateCompiler {
         StringBuilder stringBuilder = new StringBuilder(output.length());
         for(String line : output.split("\n")){
             line = ProcessorUtils.replaceJS(line);
+            line = ProcessorUtils.escapeSingleQuotes(line);
             stringBuilder.append(line+"\n");
         }
 
         output = stringBuilder.toString();
-        stringBuilder = new StringBuilder(output.length());
+        output = this.processJSHints(output);
+
+        output = "spike.core.Watchers.watchers['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope, watcher){var t='';" + this.replaceEscapes(output) +" return t;};";
+
+        return output;
+
+    }
+
+    private String processJSHints(String output){
+
+        StringBuilder stringBuilder = new StringBuilder(output.length());
         for(String line : output.split("\n")){
 
             line = line.trim();
@@ -140,9 +168,7 @@ public class TemplateCompiler {
 
         }
 
-        output = "spike.core.Watchers.watchers['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope, watcher){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
-
-        return output;
+        return stringBuilder.toString();
 
     }
 
@@ -161,11 +187,14 @@ public class TemplateCompiler {
 
         }
 
-        Element fistElement = doc.body().children().first();
+        if(!TemplateCompiler.OLD_VERSION){
 
-        if(fistElement.attr("id").isEmpty()){
-            componentId++;
-            fistElement.attr("id", "component"+componentId);
+            Element fistElement = doc.body().children().first();
+            if(fistElement.attr("id").isEmpty()){
+                componentId++;
+                fistElement.attr("id", "component"+componentId);
+            }
+
         }
 
     }
@@ -180,35 +209,13 @@ public class TemplateCompiler {
         StringBuilder stringBuilder = new StringBuilder(output.length());
         for(String line : output.split("\n")){
             line = ProcessorUtils.replaceJS(line);
+            line = ProcessorUtils.escapeSingleQuotes(line);
             stringBuilder.append(line+"\n");
         }
 
         output = stringBuilder.toString();
-        stringBuilder = new StringBuilder(output.length());
-        for(String line : output.split("\n")){
-
-            line = line.trim();
-            if(line.length() > 0){
-
-                if(line.contains(TemplateCompiler.JS_HINT_LINE)){
-                    stringBuilder.append(line.replace(TemplateCompiler.JS_HINT_LINE, ""));
-                }else{
-
-                    if(line.endsWith("+'")){
-                        line = line.substring(0, line.length()-2);
-                    }else{
-                        line = line+"'";
-                    }
-
-                    stringBuilder.append(("t+='"+line+";").replace("+=''+","+="));
-
-                }
-
-            }
-
-        }
-
-        output = "spike.core.Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + this.replaceEscapes(stringBuilder.toString()) +" return t;}";
+        output = this.processJSHints(output);
+        output = "spike.core.Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + this.replaceEscapes(output) +" return t;};";
 
         return output;
 
@@ -216,6 +223,8 @@ public class TemplateCompiler {
 
     public String replaceEscapes(String template){
 
+        template = template.replaceAll("&amp;", "&");
+        template = template.replaceAll("amp;", "");
         template = template.replaceAll("&lt;", "<");
         template = template.replaceAll("&gt;", ">");
         template = template.replaceAll("&le;", "<=");

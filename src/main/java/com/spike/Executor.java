@@ -42,7 +42,8 @@ public class Executor {
 
         if (type.equals("test-templates")) {
             type = "templates";
-            args = new String[]{null, "templates_input/plain", "templates_output/templates.js", "templates_output/watchers.js"};
+           // args = new String[]{null, "templates_input/plain", "templates_output/templates.js", "templates_output/watchers.js"};
+            args = new String[]{null, "templates_input/plain", "templates_output/templates.js", "none", "old", "PROJECT:GOOGLE,ENV:PROD"};
         } else if (type.equals("test-transpiler")) {
             type = "transpiler";
             args = new String[]{null, "scripts_input/spike-framework.spike", "scripts_output/compiled.js", "spike"};
@@ -75,7 +76,34 @@ public class Executor {
 
         } else if (type.equals("templates")) {
 
-            List<File> files = templatesIO.getFileList(args[1]);
+            if(args.length > 4){
+
+                if(args[4].equals("old")) {
+                    TemplateCompiler.OLD_VERSION = true;
+                }
+
+            }
+
+            if(args.length == 6){
+
+                String[] params = args[5].split(",");
+
+                for(String param : params){
+
+                    String[] split = param.split(":");
+                    if(split[0].equals("PROJECT")){
+                        TemplateCompiler.PROJECT = split[1];
+                    }
+
+                    if(split[0].equals("ENV")){
+                        TemplateCompiler.ENV = split[1];
+                    }
+
+                }
+
+            }
+
+            List<File> files = TemplatesIO.getFileList(args[1]);
             List<String> functionBodies = new ArrayList<>();
             List<String> watchersBodies = new ArrayList<>();
 
@@ -86,7 +114,11 @@ public class Executor {
             }
 
             templatesIO.saveConcatedFiles(functionBodies, args[2]);
-            templatesIO.saveConcatedFiles(watchersBodies, args[3]);
+
+            if(!TemplateCompiler.OLD_VERSION){
+                templatesIO.saveConcatedFiles(watchersBodies, args[3]);
+            }
+
 
         } else if (type.equals("cli")) {
             cli(args);
