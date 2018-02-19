@@ -27,7 +27,7 @@
     <div sp-translation="test_translation_with_params" sp-params="scope.person.id, scope.person.name"></div>
 
     <!-- Translation variation test -->
-    <div sp-translation="{{ $message.get('test_translation') }}"></div>
+    <!--<div sp-translation="{{ $message.get('test_translation') }}"></div>-->
 
     <!-- Placeholder test -->
     <div sp-placeholder="test_placeholder"></div>
@@ -136,7 +136,7 @@
     </spike>
 
     <!-- Events test -->
-    <button sp-click="app.router.location({{{'/post/1'}}})">Click me</button>
+    <button sp-click="app.router.location('/post/1')">Click me</button>
     <select sp-change="$menu.changeOption(event)">
         <option value="1">Test</option>
     </select>

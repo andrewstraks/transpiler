@@ -3,6 +3,9 @@ package com.spike.templates.processors;
 import com.spike.templates.TemplateCompiler;
 import org.apache.commons.lang.StringEscapeUtils;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Created by Dawid on 2017-09-06.
  */
@@ -17,14 +20,26 @@ public class ProcessorUtils {
 
     }
 
-    public static String replaceBrackets(String line){
+    public static String replaceBrackets(String line) {
 
-        line = line.replace(TemplateCompiler.BRACKET_QUOTE_LEFT, "'+\"'\"+");
-        line = line.replace(TemplateCompiler.BRACKET_QUOTE_RIGHT, "+\"'\"+'");
-        line = line.replace(TemplateCompiler.BRACKET_LEFT, "'+");
-        line = line.replace(TemplateCompiler.BRACKET_RIGHT, "+'");
+        String processedLine = line;
 
-        return line;
+        Pattern p = Pattern.compile("\\{\\{(.*?)\\}\\}");
+        Matcher m = p.matcher(line);
+        while (m.find()) {
+
+            String matched = m.group();
+            String processedMatched = matched.replace("{{","'+").replace("}}","+'").replaceAll("\\\\'", "'");
+            processedLine = processedLine.replace(matched, processedMatched);
+
+        }
+
+//        line = line.replaceAll("\\{\\{", "'+");
+//        line = line.replaceAll("\\}\\}", "+'");
+//        line = line.replace(TemplateCompiler.BRACKET_LEFT, "'+");
+//        line = line.replace(TemplateCompiler.BRACKET_RIGHT, "+'");
+
+        return processedLine;
 
     }
 

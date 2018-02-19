@@ -100,8 +100,6 @@ public class TemplateCompiler {
 
     public String[] parseSpikeTemplate(File templateFile, String rootDir, String template) throws Exception {
 
-        long start = System.currentTimeMillis();
-
         Document doc = Jsoup.parseBodyFragment(template);
         removeComments(doc);
 
@@ -110,9 +108,9 @@ public class TemplateCompiler {
         String plainTemplate = this.processPlainTemplate(doc, templateFile);
         String watchTemplate = TemplateCompiler.OLD_VERSION ? "" : this.processWatchTemplate(doc, templateFile);
 
-        plainTemplate = "spike.core.Assembler.sourcePath='" + rootDir.substring(0, rootDir.lastIndexOf("/")) + "';" + plainTemplate;
-
-        System.out.println("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
+        if(!TemplateCompiler.OLD_VERSION){
+            plainTemplate = "spike.core.Assembler.sourcePath='" + rootDir.substring(0, rootDir.lastIndexOf("/")) + "';" + plainTemplate;
+        }
 
         return new String[] { plainTemplate, watchTemplate };
     }
@@ -204,7 +202,7 @@ public class TemplateCompiler {
         String output = doc.outerHtml();
         output = output.replace("<html>","").replace("</html>","").replace("<head></head>","").replace("<body>","").replace("</body>","");
         output = output.replaceAll("<spike>", "").replaceAll("</spike>","");
-        output = ProcessorUtils.replaceBrackets(output);
+       // output = ProcessorUtils.replaceBrackets(output);
 
         StringBuilder stringBuilder = new StringBuilder(output.length());
         for(String line : output.split("\n")){
@@ -215,7 +213,14 @@ public class TemplateCompiler {
 
         output = stringBuilder.toString();
         output = this.processJSHints(output);
-        output = "spike.core.Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + this.replaceEscapes(output) +" return t;};";
+        output = this.replaceEscapes(output);
+        output = ProcessorUtils.replaceBrackets(output);
+
+        if(TemplateCompiler.OLD_VERSION){
+            output = "; window['_spike_templates']['" + getFileName(templateFile) + "']=function(model){var t='';" + output +" return t;};";
+        }else{
+            output = "spike.core.Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + output +" return t;};";
+        }
 
         return output;
 

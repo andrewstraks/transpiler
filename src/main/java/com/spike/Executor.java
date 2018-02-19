@@ -107,11 +107,15 @@ public class Executor {
             List<String> functionBodies = new ArrayList<>();
             List<String> watchersBodies = new ArrayList<>();
 
+            long start = System.currentTimeMillis();
+
             for (File file : files) {
                 String[] templates = templatesCompiler.parseSpikeTemplate(file, args[1], importsCompiler.compileImports(file, true));
                 functionBodies.add(templates[0]);
                 watchersBodies.add(templates[1]);
             }
+
+            System.out.println("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
 
             templatesIO.saveConcatedFiles(functionBodies, args[2]);
 

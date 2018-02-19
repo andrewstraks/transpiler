@@ -86,7 +86,13 @@ public class TemplatesIO {
         File distFile = new File(distPath);
         distFile.getParentFile().mkdirs();
 
-        FileUtils.writeStringToFile(distFile, StringUtils.join(functionBodiesList, ""), "UTF-8");
+        String body = StringUtils.join(functionBodiesList, "");
+
+        if(TemplateCompiler.OLD_VERSION){
+            body = "window['_spike_templates'] = {};"+body;
+        }
+
+        FileUtils.writeStringToFile(distFile, body, "UTF-8");
 
     }
 

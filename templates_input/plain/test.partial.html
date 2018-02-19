@@ -1,0 +1,24 @@
+
+'import $router from app.router';
+'import $topMenuLoggedPanel from app.partial.TopMenuLoggedPanel';
+'import $topMenuUnloggedPanel from app.partial.TopMenuUnloggedPanel';
+
+<div id="topMenu" class="topMenuComponent container-fluid col-all-12">
+
+    <div class="col-all-12 main-row">
+
+        <div class="header-logo col-all-2"  sp-click="$router.redirect('/');"></div>
+
+        <!--<component name="languageChange" layout-type="dropdown"></component>-->
+
+        <spike sp-include="$topMenuLoggedPanel"></spike>
+        <spike sp-include="$topMenuUnloggedPanel"></spike>
+
+    </div>
+
+    <div class="col-all-12 menu-items">
+        <partial id="topMenuItems"></partial>
+    </div>
+
+
+</div>
