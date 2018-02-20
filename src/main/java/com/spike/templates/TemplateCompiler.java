@@ -1,17 +1,17 @@
 package com.spike.templates;
 
 import com.spike.templates.processors.*;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.Entities;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by Dawid on 2017-09-03.
@@ -96,6 +96,7 @@ public class TemplateCompiler {
          */
         watchCommands.put(U.s("watch"), new WatchProcessor());
         watchCommands.put(U.s("bind"), new BindProcessor());
+
     }
 
     public String[] parseSpikeTemplate(File templateFile, String rootDir, String template) throws Exception {
@@ -197,12 +198,26 @@ public class TemplateCompiler {
 
     }
 
+    private String processRemovableAttributes(String output){
+
+        System.out.println(output);
+        Pattern p = Pattern.compile("(?<=sp-disabled=\\\\\")[^\\\\\"]*");
+        Matcher m = p.matcher(output);
+        while (m.find()) {
+
+            String matched = m.group();
+            System.out.println("matched : "+matched);
+
+        }
+
+        return output;
+    }
+
     private String processPlainTemplate(Document doc, File templateFile){
 
         String output = doc.outerHtml();
         output = output.replace("<html>","").replace("</html>","").replace("<head></head>","").replace("<body>","").replace("</body>","");
         output = output.replaceAll("<spike>", "").replaceAll("</spike>","");
-       // output = ProcessorUtils.replaceBrackets(output);
 
         StringBuilder stringBuilder = new StringBuilder(output.length());
         for(String line : output.split("\n")){
@@ -215,6 +230,8 @@ public class TemplateCompiler {
         output = this.processJSHints(output);
         output = this.replaceEscapes(output);
         output = ProcessorUtils.replaceBrackets(output);
+
+        output = this.processRemovableAttributes(output);
 
         if(TemplateCompiler.OLD_VERSION){
             output = "; window['_spike_templates']['" + getFileName(templateFile) + "']=function(model){var t='';" + output +" return t;};";

@@ -16,8 +16,9 @@ public class ForEachProcessor implements Processor {
         public String varName;
         public String indexName;
         public String listName;
-        public String prefix;
-        public String suffix;
+        public String prefix = "";
+        public String suffix = "";
+        public String propName;
     }
 
     private TemplateParts getTemplateParts(String repeat) {
@@ -29,22 +30,41 @@ public class ForEachProcessor implements Processor {
 
         String[] repeatElements = repeat.split(" in ");
 
-        String propName = PROP + NEXT_INDEX;
+        templateParts.propName = PROP + NEXT_INDEX;
+
         if (repeatElements[0].contains(",")) {
-            templateParts.varName = repeatElements[0].split(",")[0];
-            templateParts.indexName = repeatElements[0].split(",")[1];
+            String[] split = repeatElements[0].split(",");
+
+            templateParts.varName = split[0];
+            templateParts.propName = split[1];
+
+            if (split.length == 3) {
+                templateParts.indexName = split[2];
+            }
+//            else if(split.length == ){
+//                templateParts.indexName = INDEX + NEXT_INDEX;
+//                NEXT_INDEX++;
+//            }
+
         } else {
             templateParts.varName = repeatElements[0];
-            templateParts.indexName = INDEX + NEXT_INDEX;
-            NEXT_INDEX++;
         }
 
         templateParts.listName = repeatElements[1];
 
-        templateParts.prefix = "var "+templateParts.indexName+" = 0; for(var "+propName+ " in " + templateParts.listName + "){";
-        templateParts.prefix += " var "+templateParts.varName+" = "+templateParts.listName+"["+propName+"];";
-        templateParts.suffix = " "+templateParts.indexName+"++; }";
+        if (templateParts.indexName != null) {
+            templateParts.prefix = "var " + templateParts.indexName + " = 0;";
+        }
 
+        templateParts.prefix += "for(var " + templateParts.propName + " in " + templateParts.listName + "){";
+
+        templateParts.prefix += "if("+templateParts.listName+".hasOwnProperty("+templateParts.propName+")){";
+        templateParts.prefix += " var " + templateParts.varName + " = " + templateParts.listName + "[" + templateParts.propName + "];";
+
+        if (templateParts.indexName != null) {
+            templateParts.suffix = " " + templateParts.indexName + "++;";
+        }
+        templateParts.suffix = "}}";
         return templateParts;
 
     }
