@@ -124,7 +124,9 @@ public class SpikeClass {
                     squareBracketsLeft = 0;
                     squareBracketsRight = 0;
 
-                    if (line.contains(":") && (line.contains("[") || line.contains("{")) && !line.contains("function")) {
+                    if(line.contains("@if") || line.contains("@endif")){
+                        this.fields.add(new SpikeClassField(this, line));
+                    }else if (line.contains(":") && (line.contains("[") || line.contains("{")) && !line.contains("function")) {
                         nodeCollecting = true;
                         nodeBody = new StringBuilder();
                         propCollecting = true;
@@ -133,11 +135,15 @@ public class SpikeClass {
                             isSquareBrackets = true;
                         }
 
-                    } else if (line.contains(":") && line.contains("function")) {
+                    } else if (line.contains("function") && line.contains("abstract")) {
+                        this.functions.add(new SpikeClassFunction(this, line));
+                    }  else if (line.contains(":") && line.contains("function")) {
                         nodeCollecting = true;
                         nodeBody = new StringBuilder();
                         functionCollecting = true;
-                    } else if (line.contains(":") && line.endsWith(",")) {
+                    }  else if (line.contains("abstract") ) {
+                        this.fields.add(new SpikeClassField(this, line));
+                    }else if (line.contains(":") ) {
                         this.fields.add(new SpikeClassField(this, line));
                     }
 
@@ -243,17 +249,38 @@ public class SpikeClass {
 
     private String createConstructor(){
 
+        StringBuilder fieldsBuilder = new StringBuilder();
+        for (SpikeClassField spikeClassField : this.fields) {
+            spikeClassField.compile();
+            fieldsBuilder.append(spikeClassField.compiled);
+        }
+
+
         StringBuilder constructorBuilder = new StringBuilder();
 
         constructorBuilder
                 .append(this.classFullName)
                 .append("=function(args){")
+                .append(fieldsBuilder.toString())
                 .append("if(this['constructor_'+args.length] !== undefined){")
                 .append("this['constructor_'+args.length].apply(this, args);")
                 .append("}else{")
                 .append("throw new Error('Spike: No matching constructor found ")
                 .append(this.classFullName)
                 .append(" with arguments count: '+args.length);}};");
+
+        constructorBuilder
+                .append(this.classFullName)
+                .append(".prototype.")
+                .append(this.className)
+                .append("=function(){")
+                .append(fieldsBuilder.toString())
+                .append("if(this['constructor_'+arguments.length] !== undefined){")
+                .append("this['constructor_'+arguments.length].apply(this, arguments);")
+                .append("}else{")
+                .append("throw new Error('Spike: No matching constructor found ")
+                .append(this.classFullName)
+                .append(" with arguments count: '+arguments.length);}};");
 
         return constructorBuilder.toString();
 
@@ -284,6 +311,7 @@ public class SpikeClass {
 
         StringBuilder compiledBuilder = new StringBuilder();
 
+
         if(!this.isStatic()){
             compiledBuilder.append(this.createConstructor());
         }
@@ -293,10 +321,10 @@ public class SpikeClass {
             compiledBuilder.append(spikeClassConstructor.compiled);
         }
 
-        for (SpikeClassField spikeClassField : this.fields) {
-            spikeClassField.compile();
-            compiledBuilder.append(spikeClassField.compiled);
-        }
+//        for (SpikeClassField spikeClassField : this.fields) {
+//            spikeClassField.compile();
+//            compiledBuilder.append(spikeClassField.compiled);
+//        }
 
         for (SpikeClassFunction spikeClassFunction : this.functions) {
             spikeClassFunction.compile();
@@ -346,23 +374,6 @@ public class SpikeClass {
 
     }
 
-    private String collectConstructorsNames() {
-
-        String constructorsNames = "";
-        StringBuilder constructorNamesList = new StringBuilder();
-        for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
-            constructorNamesList
-                    .append(",'")
-                    .append(spikeClassConstructor.constructorArgumentsUniqueName)
-                    .append("'");
-        }
-
-        constructorsNames = constructorNamesList.toString();
-        constructorsNames = constructorsNames.substring(1, constructorsNames.length());
-
-        return constructorsNames;
-    }
-
     private void createAssemblerDeclaration() {
 
         StringBuilder declaration = new StringBuilder();
@@ -387,7 +398,7 @@ public class SpikeClass {
 
             declaration
                     .append(",")
-                    .append("{" + this.compiled + "}")
+                    .append("function(){ return {" + this.compiled + "}}")
                     .append(");");
 
         } else {
@@ -410,6 +421,7 @@ public class SpikeClass {
 
         this.functions.add(new SpikeClassFunction(this, "getSuper:function(){ return '" + (this.extendsName != null ? this.extendsFullName : this.classFullName) + "'; };"));
         this.functions.add(new SpikeClassFunction(this, "getClass:function(){ return '" + this.classFullName + "'; };"));
+        this.fields.add(new SpikeClassField(this, "isClass: true,"));
 
     }
 

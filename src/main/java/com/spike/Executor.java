@@ -19,14 +19,6 @@ public class Executor {
 
     static Boolean DEBUG = false;
 
-    static void debug(Object data) {
-
-        if (DEBUG) {
-            System.out.println(data);
-        }
-
-    }
-
     static CliCreator cliCreator = new CliCreator();
 
     static ScriptsIO scriptsIO = new ScriptsIO();
@@ -42,23 +34,20 @@ public class Executor {
 
         if (type.equals("test-templates")) {
             type = "templates";
-           // args = new String[]{null, "templates_input/plain", "templates_output/templates.js", "templates_output/watchers.js"};
-            args = new String[]{null, "templates_input/plain", "templates_output/templates.js", "none", "old", "PROJECT:GOOGLE,ENV:PROD"};
+            args = new String[]{null, "templates_input/watch", "templates_output/templates.js", "templates_output/watchers.js", "new", "PROJECT:GOOGLE,ENV:PROD"};
+            //args = new String[]{null, "templates_input/plain", "templates_output/templates.js", "none", "old", "PROJECT:GOOGLE,ENV:PROD"};
         } else if (type.equals("test-transpiler")) {
             type = "transpiler";
-            args = new String[]{null, "scripts_input/spike-framework.spike", "scripts_output/compiled.js", "spike"};
+            args = new String[]{null, "scripts_input/spike-framework.spike", "scripts_output/compiled.js", "spike", "PROJECT:DEMO,ENV:PROD"};
         } else if (type.equals("test-cli")) {
-            args = new String[]{"cli", "cli/test/component/", "component", "UserPanel"};
+
+            args = new String[]{"cli", "cli/test", "app.model.response.PersonalData", "class"};
             cli(args);
-            args = new String[]{"cli", "cli/test/controller/", "controller", "Home"};
+            args = new String[]{"cli", "cli/test", "app.service.Auth", "static-class"};
             cli(args);
-            args = new String[]{"cli", "cli/test/modal/", "modal", "Message"};
+            args = new String[]{"cli", "cli/test", "app.controller.home.Home", "controller", "css"};
             cli(args);
-            args = new String[]{"cli", "cli/test/partial/", "partial", "LoginForm"};
-            cli(args);
-            args = new String[]{"cli", "cli/test/service/", "service", "Auth"};
-            cli(args);
-            args = new String[]{"cli", "cli/test/util", "util", "Utils"};
+            args = new String[]{"cli", "cli/test", "app.enums.api.Session", "enum"};
             cli(args);
         }
 
@@ -69,6 +58,25 @@ public class Executor {
                 ScriptsCompiler.SPIKE_COMPILATION = true;
             }
 
+            if(args.length > 4){
+
+                String[] params = args[4].split(",");
+
+                for(String param : params){
+
+                    String[] split = param.split(":");
+                    if(split[0].equals("PROJECT")){
+                        TemplateCompiler.PROJECT = split[1];
+                    }
+
+                    if(split[0].equals("ENV")){
+                        TemplateCompiler.ENV = split[1];
+                    }
+
+                }
+
+            }
+
             //String fileBody = importsCompiler.compileImports(new File(args[1]), false);
             String fileBody = scriptsCompiler.compileSyntax(scriptsIO.getFileContentBuffered(new File(args[1])));
 
@@ -76,10 +84,13 @@ public class Executor {
 
         } else if (type.equals("templates")) {
 
+            TemplateCompiler.MESSAGES_CLASS = "spike.core.Message.get";
+
             if(args.length > 4){
 
                 if(args[4].equals("old")) {
                     TemplateCompiler.OLD_VERSION = true;
+                    TemplateCompiler.MESSAGES_CLASS = "app.message.get";
                 }
 
             }
@@ -110,12 +121,12 @@ public class Executor {
             long start = System.currentTimeMillis();
 
             for (File file : files) {
-                String[] templates = templatesCompiler.parseSpikeTemplate(file, args[1], importsCompiler.compileImports(file, true));
+                String[] templates = templatesCompiler.parseSpikeTemplate(file, args[1], importsCompiler.compileImports(file, false));
                 functionBodies.add(templates[0]);
                 watchersBodies.add(templates[1]);
             }
 
-            System.out.println("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
+            Console.log("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
 
             templatesIO.saveConcatedFiles(functionBodies, args[2]);
 
@@ -130,28 +141,32 @@ public class Executor {
 
     }
 
+    /**
+     * For plain class:
+     * java -jar spike-transpiler.jar cli src app.model.response.PersonalData class
+     *
+     * For static class:
+     * java -jar spike-transpiler.jar cli src app.service.Auth static-class
+     *
+     * For module:
+     * java -jar spike-transpiler.jar cli src app.controller.home.Home controller css
+     *
+     * @param args
+     * @throws IOException
+     */
     static void cli(String[] args) throws IOException {
 
-        switch (args[2]) {
-            case "component":
-                cliCreator.createComponent(args[1], args[3]);
-                break;
-            case "partial":
-                cliCreator.createPartial(args[1], args[3]);
-                break;
-            case "controller":
-                cliCreator.createController(args[1], args[3]);
-                break;
-            case "modal":
-                cliCreator.createModal(args[1], args[3]);
-                break;
-            case "service":
-                cliCreator.createService(args[1], args[3]);
-                break;
-            case "util":
-                cliCreator.createUtil(args[1], args[3]);
-                break;
+        String rootPath = args[1];
+        String moduleFullClassName = args[2];
+        String moduleType = args[3];
+        String preprocessor = null;
+
+        if(args.length == 5){
+            preprocessor = args[4];
         }
+
+        cliCreator.createModule(rootPath, moduleFullClassName, moduleType, preprocessor);
+
 
     }
 

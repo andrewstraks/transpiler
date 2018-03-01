@@ -1,0 +1,20 @@
+spike.core.Watchers.watchers['templates_input_watch_watch_partial_html'] = function (scope) {
+  var __w = [];
+  var __a = ['', ''];
+  var t = '';
+  __a[0] = 'watcher-0';
+  __a[1] += '<form autocomplete=\"off\" sp-watch=\"watcher-0\" spike-unbinded=\"\" spike-event-submit=\"scope.login(event)\" id=\"spike-event-1\">';
+  __a[1] += '<input type=\"text\" name=\"loginName\" placeholder=\"' + ( spike.core.Message.get('login_placeholder') ) + '\">';
+  __a[1] += '<input type=\"password\" name=\"password\" placeholder=\"' + ( spike.core.Message.get('password_placeholder') ) + '\">';
+  __a[1] += '<button type=\"submit\" class=\"default\">' + (spike.core.Message.get('login_button')) + '<\/button>';
+  __a[1] += '<p class=\"error ' + ( scope.model.error === true ? 'show' : 'hide' ) + '\">' + (spike.core.Message.get('login_error')) + '<\/p>';
+  __a[1] += '<\/form>';
+  __w.push(__a);
+  var x = 'ok';
+  __a[0] = 'watcher-1';
+  __a[1] += '<div sp-watch=\"watcher-1\" id=\"watcher-1\">';
+  __a[1] += '' + ( x ) + '';
+  __a[1] += '<\/div>';
+  __w.push(__a);
+  return __w;
+};

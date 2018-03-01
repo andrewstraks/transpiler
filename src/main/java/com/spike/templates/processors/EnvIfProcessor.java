@@ -12,7 +12,7 @@ public class EnvIfProcessor implements Processor {
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
 
-        if(!TemplateCompiler.ENV.toLowerCase().equals(element.attr(spikeAttribute).toLowerCase().trim())){
+        if(!element.attr(spikeAttribute).toLowerCase().contains(TemplateCompiler.ENV.toLowerCase())){
             element.remove();
         }else{
             element.removeAttr(spikeAttribute);

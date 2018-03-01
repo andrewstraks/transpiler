@@ -1,4 +1,6 @@
 package com.spike.transpiler;
+
+import com.spike.Console;
 import com.spike.transpiler.model.SpikeFile;
 import com.spike.transpiler.serialization.Serializer;
 
@@ -27,12 +29,11 @@ public class ScriptsCompiler {
 
             Serializer.serializeConstructors(spikeFile.constructorsMap);
 
-            System.out.println("Transpilation takes: " + (System.currentTimeMillis() - start) + "ms");
+            Console.log("Transpilation takes: " + (System.currentTimeMillis() - start) + "ms");
 
             return spikeFile.compiled;
 
         }
-
 
 
         return null;

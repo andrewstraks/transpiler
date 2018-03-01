@@ -12,8 +12,8 @@ public class ForProcessor implements Processor {
         public String varName;
         public String indexName;
         public String listName;
-        public String prefix;
-        public String suffix;
+        public String prefix = "";
+        public String suffix = "";
     }
 
     private TemplateParts getTemplateParts(String repeat) {
@@ -33,15 +33,18 @@ public class ForProcessor implements Processor {
             String[] repeatElements = repeat.split(" in ");
 
             if (repeatElements[0].contains(",")) {
-                templateParts.varName = repeatElements[0].split(",")[0];
-                templateParts.indexName = repeatElements[0].split(",")[1];
+                templateParts.indexName = repeatElements[0].split(",")[0];
+                templateParts.varName = repeatElements[0].split(",")[1];
             } else {
                 templateParts.indexName = repeatElements[0];
             }
 
             templateParts.listName = repeatElements[1];
 
-            templateParts.prefix = "for(var " + templateParts.indexName + " = 0; " + templateParts.indexName + " < " + templateParts.listName + ".length; " + templateParts.indexName + "++){";
+            templateParts.prefix += "for(var " + templateParts.indexName + " = 0; " + templateParts.indexName + " < " + templateParts.listName + ".length; " + templateParts.indexName + "++){";
+            if(templateParts.varName != null){
+                templateParts.prefix += "var "+templateParts.varName+" = "+templateParts.listName+"["+templateParts.indexName+"];";
+            }
             templateParts.suffix = "}";
 
         }

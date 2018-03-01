@@ -1,12 +1,15 @@
 package com.spike.transpiler.model;
 
+import com.spike.templates.TemplateCompiler;
 import com.spike.transpiler.dependencies.DependencyConstructor;
 import com.spike.transpiler.serialization.Serializer;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,7 +30,7 @@ public class SpikeFile {
         this.createPackages();
     }
 
-    public void compile() {
+    public void compile() throws Exception {
 
         StringBuilder compiledBuilder = new StringBuilder();
         for (SpikePackage spikePackage : this.packages) {
@@ -38,8 +41,9 @@ public class SpikeFile {
         this.compiled = compiledBuilder.toString();
         this.collectDependencies();
         this.compileConstructorUsages();
-        //this.compileConstructorsMap();
+        this.compileSuperUsages();
         this.collectTotalNamespaces();
+        this.compileGlobalVariables();
     }
 
     private void createPackages() {
@@ -63,8 +67,6 @@ public class SpikeFile {
     }
 
     private void compileConstructorUsages() {
-
-        System.out.println(this.constructorsMap);
 
         Pattern p = Pattern.compile("(new*\\s+[^\\)]*)");
         Matcher m = p.matcher(this.compiled);
@@ -97,51 +99,25 @@ public class SpikeFile {
 
     }
 
-//    private String getConstructorArgumentsCount(String constructorFullName){
-//
-//        String[] split = constructorFullName.split("_");
-//
-//        if(split.length > 1){
-//            return split[1];
-//        }
-//
-//        return "0";
-//
-//    }
+    private void compileSuperUsages() {
 
-//    private void compileConstructorsMap(){
-//
-//        StringBuilder constructorsMapBuilder = new StringBuilder();
-//
-//        constructorsMapBuilder.append("spike.core.Assembler.setConstructorsMap({");
-//        for (Map.Entry<String, List<String>> baseClass : this.constructorsMap.entrySet()) {
-//
-//            constructorsMapBuilder
-//                    .append("'")
-//                    .append(baseClass.getKey())
-//                    .append("':{");
-//
-//            for(String constructorFullName : baseClass.getValue()){
-//
-//                constructorsMapBuilder
-//                        .append("'")
-//                        .append(this.getConstructorArgumentsCount(constructorFullName))
-//                        .append("':'")
-//                        .append(constructorFullName)
-//                        .append("',");
-//
-//            }
-//
-//            constructorsMapBuilder.append("},");
-//
-//
-//        }
-//
-//        constructorsMapBuilder.append("});");
-//
-//        this.compiled = this.compiled + constructorsMapBuilder.toString();
-//
-//    }
+        Pattern p = Pattern.compile("(this\\.super\\([^\\)]*)");
+        Matcher m = p.matcher(this.compiled);
+        while (m.find()) {
+
+            String matchedConstructor = m.group();
+
+            String baseConstructor = matchedConstructor.substring(matchedConstructor.indexOf("new") + 3, matchedConstructor.indexOf("(")).trim();
+            String arguments = matchedConstructor.substring(matchedConstructor.indexOf("(") + 1, matchedConstructor.length()).trim();
+            String argumentsCleaned = this.getConstructorUsageArguments(arguments);
+
+            int argumentsCount = argumentsCleaned.length() == 0 ? 0 : argumentsCleaned.split(",").length;
+
+            this.compiled = this.compiled.replace(matchedConstructor,"this.super.constructor_" + argumentsCount + ".apply(this,[" + arguments+"]");
+
+        }
+
+    }
 
     private String getConstructorUsageArguments(String arguments){
 
@@ -182,12 +158,58 @@ public class SpikeFile {
 
     }
 
-    private void minifyPackageNames() {
+    private void compileGlobalVariables() throws Exception {
+
+        System.out.println("enters");
+        System.out.println(this.compiled.contains("@if"));
+
+        List<String> conditionsToReplace = new ArrayList<>();
+
+        Pattern p = Pattern.compile("(?s)(?<=@if).*?(?=@endif)");
+        Matcher m = p.matcher(this.compiled);
+        while (m.find()) {
+
+            String matchedCondition = m.group();
+
+            System.out.println("matchedCondition : "+matchedCondition);
+
+            String[] split = matchedCondition.split("\n");
+            String condition = split[0];
+
+            System.out.println("condition : "+condition);
+
+            conditionsToReplace.add(condition);
+            condition = condition.replaceAll("ENV", "'"+TemplateCompiler.ENV+"'").replaceAll("PROJECT", "'"+TemplateCompiler.PROJECT+"'");
+
+            ScriptEngineManager factory = new ScriptEngineManager();
+            ScriptEngine engine = factory.getEngineByName("JavaScript");
+            try {
+                engine.eval("var result = false; if("+condition+"){ result = true;} ");
+                Boolean result = (Boolean) engine.get("result");
+
+                System.out.println("condition : "+condition);
+                System.out.println("result : "+result);
+
+                if(!result){
+                    this.compiled = this.compiled.replace(matchedCondition, "");
+                }
+
+            } catch (ScriptException e) {
+                e.printStackTrace();
+                throw new Exception("Spike Transpiler: Cannot eval condition "+condition);
+            }
 
 
-        //zrobić minifikacje nazw paczek, czyli przeleciec po paczkach i np wszystkie spike.core zamienic na 's.c' etc
-        //zeby zmniejszyc rozmiar plikow
+        }
+
+        this.compiled = this.compiled.replaceAll("@if","").replaceAll("@endif","");
+
+        for(String condition : conditionsToReplace){
+            this.compiled = this.compiled.replace(condition, "");
+        }
 
 
     }
+
+
 }

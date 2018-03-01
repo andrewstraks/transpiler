@@ -9,9 +9,9 @@ import java.util.HashMap;
 /**
  * Created by Dawid on 2017-09-06.
  */
-public class WatchProcessor implements Processor {
+public class WatchIdProcessor implements Processor {
 
-    public static HashMap<String, Element> watchers = new HashMap<>();
+    static private int watchId = 0;
 
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
@@ -20,16 +20,15 @@ public class WatchProcessor implements Processor {
             throw new Exception("Spike transpiler: Watcher cannot contains another watchers");
         }
 
-        String watcherName = element.attr(TemplateCompiler.PREFIX+"watch");
+        String watchName = "watcher-"+watchId;
+        watchId++;
+
+        element.attr(TemplateCompiler.PREFIX+"watch", watchName);
 
         if (element.id().isEmpty()) {
-            element.attr("id", watcherName);
+            watchId++;
+            element.attr("id", watchName);
         }
-
-        String prefix = U.js("'@@"+watcherName+"@@'");
-        element.before(prefix);
-
-        watchers.put(watcherName, element);
 
     }
 

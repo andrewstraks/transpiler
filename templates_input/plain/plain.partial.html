@@ -1,5 +1,5 @@
-'import $dicts from app.service.Dict';
-'import $menu from app.component.Menu';
+import $dicts from app.service.Dict
+import $menu from app.component.Menu
 
 <div class="testClass">
 
@@ -147,6 +147,10 @@
     <!-- Partial include test -->
     <spike sp-include="$somePartial" sp-params="user: scope.user"></spike>
     <spike sp-include="$somePartial"></spike>
+
+    <!-- Partial include test -->
+    <spike sp-element="$somePartial" sp-params="user: scope.user"></spike>
+    <spike sp-element="$somePartial"></spike>
 
     <!-- Inline JS test -->
     <spike sp-js="var demo = 'test'"></spike>

@@ -18,7 +18,9 @@ import java.util.regex.Pattern;
  */
 public class TemplateCompiler {
 
+    public static String MESSAGES_CLASS = "";
     public static final String TEMPLATE_SPIKE = "@template";
+    public static final String INCLUDE_ELEMENT = "scope.include";
     public static final String INCLUDE_SPIKE = "app.partial.include";
     public static final String JS_HINT_LINE = "#js__line#";
     public static final String JS_HINT_BEGIN = "#js__begin#";
@@ -29,14 +31,16 @@ public class TemplateCompiler {
     public static final String BRACKET_QUOTE_RIGHT = "}}}";
     public static final String BRACKET_LEFT = "{{";
     public static final String BRACKET_RIGHT = "}}";
-    public static final  String PARAMS = U.s("params");
+    public static final String PARAMS = U.s("params");
 
     public static String PROJECT = "";
     public static String ENV = "";
 
-    public static boolean OLD_VERSION = false ;
+    public static boolean OLD_VERSION = false;
 
-    String getFileName(File templateFile) {return templateFile.getPath().replaceAll("\\\\", "/");}
+    String getFileName(File templateFile) {
+        return templateFile.getPath().replaceAll("\\\\", "/");
+    }
 
     public static HashMap<String, Processor> commands = new HashMap<>();
     public static HashMap<String, Processor> watchCommands = new HashMap<>();
@@ -88,10 +92,13 @@ public class TemplateCompiler {
         commands.put(U.s("unload"), eventProcessor);
         commands.put(U.s("template"), new TemplateProcessor());
         commands.put(U.s("include"), new IncludeProcessor());
+        commands.put(U.s("element"), new ElementProcessor());
         commands.put(U.s("js"), new JsProcessor());
         commands.put(U.s("href"), new HrefProcessor());
+        commands.put(U.s("log"), new LogProcessor());
+        commands.put(U.s("watch"), new WatchIdProcessor());
 
-        /**
+        /*
          * Watchers
          */
         watchCommands.put(U.s("watch"), new WatchProcessor());
@@ -99,67 +106,148 @@ public class TemplateCompiler {
 
     }
 
+    public static int generalId = 0;
+
     public String[] parseSpikeTemplate(File templateFile, String rootDir, String template) throws Exception {
 
         Document doc = Jsoup.parseBodyFragment(template);
         removeComments(doc);
+
+        Elements elements = doc.body().getAllElements();
+        for(Element element : elements){
+
+            if (element.attr("id").isEmpty()) {
+                generalId++;
+                element.attr("id", "id-" + generalId);
+            }
+
+        }
 
         this.compileProcessors(doc, commands);
 
         String plainTemplate = this.processPlainTemplate(doc, templateFile);
         String watchTemplate = TemplateCompiler.OLD_VERSION ? "" : this.processWatchTemplate(doc, templateFile);
 
-        if(!TemplateCompiler.OLD_VERSION){
+        if (!TemplateCompiler.OLD_VERSION) {
             plainTemplate = "spike.core.Assembler.sourcePath='" + rootDir.substring(0, rootDir.lastIndexOf("/")) + "';" + plainTemplate;
         }
 
-        return new String[] { plainTemplate, watchTemplate };
+        return new String[]{plainTemplate, watchTemplate};
     }
 
     private String processWatchTemplate(Document doc, File templateFile) throws Exception {
 
         this.compileProcessors(doc, watchCommands);
 
-        String output = doc.outerHtml();
-        output = output.replace("<html>","").replace("</html>","").replace("<head></head>","").replace("<body>","").replace("</body>","");
-        output = output.replaceAll("<spike>", "").replaceAll("</spike>","");
-        output = ProcessorUtils.replaceBrackets(output);
+        String output;
 
-        StringBuilder stringBuilder = new StringBuilder(output.length());
-        for(String line : output.split("\n")){
-            line = ProcessorUtils.replaceJS(line);
-            line = ProcessorUtils.escapeSingleQuotes(line);
-            stringBuilder.append(line+"\n");
+        if (WatchProcessor.watchers.entrySet().size() > 0) {
+
+            output = doc.outerHtml();
+            output = this.replaceEscapes(output);
+            output = output.replace("<html>", "").replace("</html>", "").replace("<head></head>", "").replace("<body>", "").replace("</body>", "");
+            output = output.replaceAll("<spike>", "").replaceAll("</spike>", "");
+            output = ProcessorUtils.replaceBrackets(output);
+
+            StringBuilder stringBuilder = new StringBuilder(output.length());
+            for (String line : output.split("\n")) {
+                line = ProcessorUtils.replaceJS(line);
+                line = ProcessorUtils.escapeSingleQuotes(line);
+                stringBuilder.append(line + "\n");
+            }
+
+            output = stringBuilder.toString();
+            output = this.processJSHints(output, true);
+            output = ProcessorUtils.replaceBrackets(output);
+            output = this.processRemovableAttributes(output);
+
+            for (Map.Entry<String, Element> watcher : WatchProcessor.watchers.entrySet()) {
+
+                String watcherOutput = watcher.getValue().outerHtml();
+              //  watcherOutput = this.replaceEscapes(watcherOutput);
+               // watcherOutput = ProcessorUtils.replaceBrackets(watcherOutput);
+
+                StringBuilder stringBuilder2 = new StringBuilder(watcherOutput.length());
+                for (String line : watcherOutput.split("\n")) {
+                    line = ProcessorUtils.replaceJS(line);
+                    line = ProcessorUtils.escapeSingleQuotes(line);
+                    stringBuilder2.append(line + "\n");
+                }
+
+                watcherOutput = stringBuilder2.toString();
+                watcherOutput = this.processJSHintsForWatcher(watcherOutput, watcher.getKey(), false);
+                watcherOutput = ProcessorUtils.replaceBrackets(watcherOutput);
+                watcherOutput = this.processRemovableAttributes(watcherOutput);
+
+                System.out.println(watcherOutput);
+
+                output = output.replace("'@@" + watcher.getKey() + "@@'", watcherOutput);
+
+            }
+
+            output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_") + "']=function(scope){var __w = []; var __a = ['','']; var t='';" + this.replaceEscapes(output) + " return __w;};";
+        } else {
+            output = "";
         }
-
-        output = stringBuilder.toString();
-        output = this.processJSHints(output);
-
-        output = "spike.core.Watchers.watchers['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope, watcher){var t='';" + this.replaceEscapes(output) +" return t;};";
 
         return output;
 
     }
 
-    private String processJSHints(String output){
+    private String processJSHintsForWatcher(String output, String watcherName, Boolean omitHtml) {
+
 
         StringBuilder stringBuilder = new StringBuilder(output.length());
-        for(String line : output.split("\n")){
+        stringBuilder.append("__a[0] = '"+watcherName+"';");
+
+        for (String line : output.split("\n")) {
 
             line = line.trim();
-            if(line.length() > 0){
+            if (line.length() > 0) {
 
-                if(line.contains(TemplateCompiler.JS_HINT_LINE)){
+                if (line.contains(TemplateCompiler.JS_HINT_LINE)) {
                     stringBuilder.append(line.replace(TemplateCompiler.JS_HINT_LINE, ""));
-                }else{
+                } else if (!omitHtml) {
 
-                    if(line.endsWith("+'")){
-                        line = line.substring(0, line.length()-2);
-                    }else{
-                        line = line+"'";
+                    if (line.endsWith("+'")) {
+                        line = line.substring(0, line.length() - 2);
+                    } else {
+                        line = line + "'";
                     }
 
-                    stringBuilder.append(("t+='"+line+";").replace("+=''+","+="));
+                    stringBuilder.append(("__a[1] +='" + line + ";").replace("+=''+", "+="));
+
+                }
+
+            }
+
+        }
+
+        stringBuilder.append("__w.push(__a);");
+
+        return stringBuilder.toString();
+
+    }
+
+    private String processJSHints(String output, Boolean omitHtml) {
+
+        StringBuilder stringBuilder = new StringBuilder(output.length());
+        for (String line : output.split("\n")) {
+
+            line = line.trim();
+            if (line.length() > 0) {
+
+                if (line.contains(TemplateCompiler.JS_HINT_LINE)) {
+                    stringBuilder.append(line.replace(TemplateCompiler.JS_HINT_LINE, ""));
+                } else if (!omitHtml) {
+
+                    if (line.endsWith("+'")) {
+                        line = line.substring(0, line.length() - 2);
+                    } else {
+                        line = line + "'";
+                    }
+
+                    stringBuilder.append(("t+='" + line + ";").replace("+=''+", "+="));
 
                 }
 
@@ -171,7 +259,8 @@ public class TemplateCompiler {
 
     }
 
-    private static int componentId = 0;
+    private static int elementId = 0;
+
     private void compileProcessors(Document doc, HashMap<String, Processor> processorHashMap) throws Exception {
 
         for (Map.Entry<String, Processor> entry : processorHashMap.entrySet()) {
@@ -186,64 +275,63 @@ public class TemplateCompiler {
 
         }
 
-        if(!TemplateCompiler.OLD_VERSION){
+        if (!TemplateCompiler.OLD_VERSION) {
 
             Element fistElement = doc.body().children().first();
-            if(fistElement.attr("id").isEmpty()){
-                componentId++;
-                fistElement.attr("id", "component"+componentId);
+            if (fistElement.attr("id").isEmpty()) {
+                elementId++;
+                fistElement.attr("id", "element-" + elementId);
             }
+
 
         }
 
     }
 
-    private String processRemovableAttributes(String output){
+    private String processRemovableAttributes(String output) {
 
-        System.out.println(output);
         Pattern p = Pattern.compile("(?<=sp-disabled=\\\\\")[^\\\\\"]*");
         Matcher m = p.matcher(output);
         while (m.find()) {
 
             String matched = m.group();
-            System.out.println("matched : "+matched);
 
         }
 
         return output;
     }
 
-    private String processPlainTemplate(Document doc, File templateFile){
+    private String processPlainTemplate(Document doc, File templateFile) {
 
         String output = doc.outerHtml();
-        output = output.replace("<html>","").replace("</html>","").replace("<head></head>","").replace("<body>","").replace("</body>","");
-        output = output.replaceAll("<spike>", "").replaceAll("</spike>","");
+        output = output.replace("<html>", "").replace("</html>", "").replace("<head></head>", "").replace("<body>", "").replace("</body>", "");
+        output = output.replaceAll("<spike>", "").replaceAll("</spike>", "");
 
         StringBuilder stringBuilder = new StringBuilder(output.length());
-        for(String line : output.split("\n")){
+        for (String line : output.split("\n")) {
             line = ProcessorUtils.replaceJS(line);
             line = ProcessorUtils.escapeSingleQuotes(line);
-            stringBuilder.append(line+"\n");
+            stringBuilder.append(line + "\n");
         }
 
         output = stringBuilder.toString();
-        output = this.processJSHints(output);
+        output = this.processJSHints(output, false);
         output = this.replaceEscapes(output);
         output = ProcessorUtils.replaceBrackets(output);
 
         output = this.processRemovableAttributes(output);
 
-        if(TemplateCompiler.OLD_VERSION){
-            output = "; window['_spike_templates']['" + getFileName(templateFile) + "']=function(model){var t='';" + output +" return t;};";
-        }else{
-            output = "spike.core.Templates.templates['"+templateFile.getPath().replaceAll("\\\\","_").replace(".","_")+"']=function(scope){var t='';" + output +" return t;};";
+        if (TemplateCompiler.OLD_VERSION) {
+            output = "; window['_spike_templates']['" + getFileName(templateFile) + "']=function(model){var t='';" + output + " return t;};";
+        } else {
+            output = "spike.core.Templates.templates['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_") + "']=function(scope){var t='';" + output + " return t;};";
         }
 
         return output;
 
     }
 
-    public String replaceEscapes(String template){
+    public String replaceEscapes(String template) {
 
         template = template.replaceAll("&amp;", "&");
         template = template.replaceAll("amp;", "");
@@ -256,7 +344,7 @@ public class TemplateCompiler {
     }
 
     public void removeComments(Node node) {
-        for (int i = 0; i < node.childNodes().size();) {
+        for (int i = 0; i < node.childNodes().size(); ) {
             Node child = node.childNode(i);
             if (child.nodeName().equals("#comment")) child.remove();
             else {

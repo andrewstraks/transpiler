@@ -1,0 +1,11 @@
+package app.model.response;
+
+import Log from spike.core.Log;
+
+class PersonalData {
+
+    PersonalData: function () {
+
+    }
+
+}

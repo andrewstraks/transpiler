@@ -56,9 +56,9 @@ public class SpikeEnum {
                 .append("','")
                 .append(this.enumName).append("', ")
                 .append("null")
-                .append(",")
+                .append(",function(){return")
                 .append(this.compiled)
-                .append(");");
+                .append("});");
 
 
         SpikeFile.TOTAL_NAMESPACES++;

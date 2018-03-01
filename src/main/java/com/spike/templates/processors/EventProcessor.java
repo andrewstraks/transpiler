@@ -29,8 +29,6 @@ public class EventProcessor implements Processor {
             if(element.id().isEmpty()){
                 eventId++;
                 element.attr("id", "spike-event-"+eventId);
-            }else if(TemplateCompiler.OLD_VERSION == false){
-                throw new Exception("Spike Compiler: Events binding not allowed on elements with id attribute");
             }
 
         }

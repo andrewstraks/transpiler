@@ -16,12 +16,10 @@ public class HrefProcessor implements Processor {
         if(element.id().isEmpty()){
             hrefId++;
             element.attr("id", "spike-href-"+hrefId);
-            element.attr("href", element.attr("spike-href"));
-            element.removeAttr("spike-href");
-        }else{
-            throw new Exception("Spike Compiler: Spike href binding not allowed on elements with id attribute");
         }
 
+        element.attr("href", element.attr("spike-href"));
+        element.removeAttr("spike-href");
 
     }
 

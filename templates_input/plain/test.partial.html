@@ -1,24 +1,23 @@
+import Message from spike.core.Message;
 
-'import $router from app.router';
-'import $topMenuLoggedPanel from app.partial.TopMenuLoggedPanel';
-'import $topMenuUnloggedPanel from app.partial.TopMenuUnloggedPanel';
+<div class="loginController">
 
-<div id="topMenu" class="topMenuComponent container-fluid col-all-12">
+    <div class="box">
 
-    <div class="col-all-12 main-row">
+        <div class="logo"></div>
 
-        <div class="header-logo col-all-2"  sp-click="$router.redirect('/');"></div>
+        <form autocomplete="off" sp-submit="scope.login(event)" sp-watch>
 
-        <!--<component name="languageChange" layout-type="dropdown"></component>-->
+            <input type="text" name="loginName" placeholder="{{ Message.get('login_placeholder') }}"/>
+            <input type="password" name="password" placeholder="{{ Message.get('password_placeholder') }}"/>
 
-        <spike sp-include="$topMenuLoggedPanel"></spike>
-        <spike sp-include="$topMenuUnloggedPanel"></spike>
+            <button type="submit" class="default" sp-translation="login_button"></button>
+
+            <p class="error {{ scope.model.error === true ? 'show' : 'hide' }}" sp-translation="login_error"></p>
+        </form>
 
     </div>
-
-    <div class="col-all-12 menu-items">
-        <partial id="topMenuItems"></partial>
-    </div>
-
+    <div class="footer" sp-translation="ac_version"></div>
 
 </div>
+

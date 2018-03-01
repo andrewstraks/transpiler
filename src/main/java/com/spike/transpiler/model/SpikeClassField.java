@@ -10,28 +10,48 @@ public class SpikeClassField {
     public SpikeClassField(SpikeClass spikeClass, String body) {
         this.spikeClass = spikeClass;
         this.body = body.trim();
-        this.collectFieldName();
+
+            this.processVirtualField();
+            this.collectFieldName();
+
+    }
+
+    private boolean isGlobalCondition(){
+        return this.body.contains("@if") || this.body.contains("@endif");
+    }
+    private void processVirtualField() {
+
+        if (this.body.contains("abstract")) {
+            this.body = this.body.substring(this.body.lastIndexOf("abstract") + 8, this.body.length()).replace(";", "") + ":null,";
+        }
 
     }
 
     private void collectFieldName() {
-        this.fieldName = this.body.substring(0, this.body.indexOf(":")).trim();
+
+        if(!this.isGlobalCondition()){
+            this.fieldName = this.body.substring(0, this.body.indexOf(":")).trim();
+        }else{
+            this.fieldName = "";
+        }
+
     }
 
     public void compile() {
 
-        if (this.spikeClass.isStatic()) {
 
-            if(this.body.endsWith(";")){
+      if (this.spikeClass.isStatic() && !this.isGlobalCondition()) {
+
+            if (this.body.endsWith(";")) {
                 this.body = this.body.substring(0, this.body.lastIndexOf(";"));
             }
 
-            if(!this.body.endsWith(",")){
-                this.body = this.body+",";
+            if (!this.body.endsWith(",")) {
+                this.body = this.body + ",";
             }
 
             this.compiled = this.body;
-        } else {
+        } else if(!this.isGlobalCondition()){
 
 
             String fieldBody = this.body.substring(0, this.body.indexOf(":")) + "=" + this.body.substring(this.body.indexOf(":") + 1, this.body.length());
@@ -53,7 +73,9 @@ public class SpikeClassField {
 
             this.compiled = compiledBuilder.toString();
 
-        }
+        }else{
+          this.compiled = this.body+"\n";
+      }
 
     }
 

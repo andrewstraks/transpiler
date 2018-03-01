@@ -14,11 +14,13 @@ public class TranslationProcessor implements Processor {
         String translation = element.attr(spikeAttribute);
         String params = element.attr(TemplateCompiler.PARAMS);
 
-        if (params.length() == 0) {
-            translation = TemplateCompiler.BRACKET_LEFT+"app.message.get('" + translation + "')"+TemplateCompiler.BRACKET_RIGHT;
-        } else {
-            translation = TemplateCompiler.BRACKET_LEFT+"app.message.get('" + translation + "'," + "[" + params + "])"+TemplateCompiler.BRACKET_RIGHT;
-        }
+
+            if (params.length() == 0) {
+                translation = TemplateCompiler.BRACKET_LEFT+TemplateCompiler.MESSAGES_CLASS+"('" + translation + "')"+TemplateCompiler.BRACKET_RIGHT;
+            } else {
+                translation = TemplateCompiler.BRACKET_LEFT+TemplateCompiler.MESSAGES_CLASS+"('" + translation + "'," + "[" + params + "])"+TemplateCompiler.BRACKET_RIGHT;
+            }
+
 
         element.removeAttr(spikeAttribute);
         element.removeAttr(TemplateCompiler.PARAMS);

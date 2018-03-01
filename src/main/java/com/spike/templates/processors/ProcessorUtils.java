@@ -11,15 +11,6 @@ import java.util.regex.Pattern;
  */
 public class ProcessorUtils {
 
-    public static String replaceSingleBrackets(String line){
-
-        line = line.replace(TemplateCompiler.BRACKET_LEFT, "'+");
-        line = line.replace(TemplateCompiler.BRACKET_RIGHT, "+'");
-
-        return line;
-
-    }
-
     public static String replaceBrackets(String line) {
 
         String processedLine = line;
@@ -29,15 +20,10 @@ public class ProcessorUtils {
         while (m.find()) {
 
             String matched = m.group();
-            String processedMatched = matched.replace("{{","'+").replace("}}","+'").replaceAll("\\\\'", "'");
+            String processedMatched = matched.replace("{{","'+(").replace("}}",")+'").replaceAll("\\\\'", "'");
             processedLine = processedLine.replace(matched, processedMatched);
 
         }
-
-//        line = line.replaceAll("\\{\\{", "'+");
-//        line = line.replaceAll("\\}\\}", "+'");
-//        line = line.replace(TemplateCompiler.BRACKET_LEFT, "'+");
-//        line = line.replace(TemplateCompiler.BRACKET_RIGHT, "+'");
 
         return processedLine;
 

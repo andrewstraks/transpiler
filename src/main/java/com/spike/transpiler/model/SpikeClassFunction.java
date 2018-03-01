@@ -12,8 +12,17 @@ public class SpikeClassFunction {
     public SpikeClassFunction(SpikeClass spikeClass, String body) {
         this.spikeClass = spikeClass;
         this.body = body.trim();
+        this.processVirtualFunction();
         this.collectFunctionName();
         this.collectArguments();
+    }
+
+    private void processVirtualFunction(){
+
+        if(this.body.contains("abstract")){
+            this.body = this.body.substring(this.body.lastIndexOf("function")+8, this.body.length()).replace(";","")+":function(){},";
+        }
+
     }
 
     private void collectArguments() {

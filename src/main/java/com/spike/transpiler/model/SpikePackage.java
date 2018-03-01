@@ -46,6 +46,7 @@ public class SpikePackage {
 
     private void collectClassNodes() {
 
+        Boolean collectClass = false;
         List<String> imports = new ArrayList<>();
         boolean nodeCollecting = false;
         StringBuilder nodeBody = null;
@@ -53,9 +54,9 @@ public class SpikePackage {
         for (int i = 0, l = lines.length; i < l; i++) {
 
             String line = lines[i].trim();
-            int keywordIndexEnd = line.indexOf(" ");
 
-            if (keywordIndexEnd > 4) {
+            if (line.contains("enum ") || line.contains("private ") || line.contains("static ") || line.contains("class ") || line.contains("package ") ||
+                    line.contains("import ")) {
 
                 String keyword = line.substring(0, line.indexOf(" "));
 
@@ -71,18 +72,22 @@ public class SpikePackage {
                     case "class":
                     case "enum":
 
+                        if (keyword.equals("enum")) {
+                            collectClass = false;
+                        } else {
+                            collectClass = true;
+                        }
+
                         if (nodeCollecting) {
-                            nodeCollecting = false;
 
                             String nodeBodyStr = nodeBody.toString();
 
                             if (nodeBodyStr.replace("private", "").replace("static", "").trim().startsWith("class")) {
                                 this.classes.add(new SpikeClass(this, nodeBody.toString(), imports));
-                            } else {
+                            } else if(nodeBodyStr.replace("private", "").replace("static", "").trim().startsWith("enum")) {
                                 this.enums.add(new SpikeEnum(this, nodeBody.toString(), imports));
                             }
 
-                            nodeBody = null;
                         }
 
                         nodeCollecting = true;
@@ -95,8 +100,16 @@ public class SpikePackage {
             if (i == l - 1) {
                 nodeBody.append(line).append("\n");
                 nodeCollecting = false;
-                this.classes.add(new SpikeClass(this, nodeBody.toString(), imports));
+
+                if (collectClass) {
+                    this.classes.add(new SpikeClass(this, nodeBody.toString(), imports));
+                } else {
+                    this.enums.add(new SpikeEnum(this, nodeBody.toString(), imports));
+                }
+
+                collectClass = false;
                 nodeBody = null;
+
             }
 
             if (nodeCollecting) {
@@ -133,18 +146,28 @@ public class SpikePackage {
 
     private void compilePackageImports() {
 
-        HashMap<String, String> imports = this.classes.get(0).imports;
+        HashMap<String, String> imports = null;
 
-        for (Map.Entry<String, String> importEntry : imports.entrySet()) {
+        if(this.classes.size() > 0){
+            imports = this.classes.get(0).imports;
+        }else if(this.enums.size() > 0){
+            imports = this.enums.get(0).imports;
+        }
 
-            String importName = importEntry.getKey();
-            String importFrom = importEntry.getValue();
+        if(imports != null){
 
-            this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importFrom) + "\\b", importName);
-            this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importName) + "\\b", importFrom);
+            for (Map.Entry<String, String> importEntry : imports.entrySet()) {
 
-            String importFromPackage = importFrom.substring(0, importFrom.lastIndexOf("."));
-            this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importFromPackage+"."+importFromPackage) + "\\b", importFrom);
+                String importName = importEntry.getKey();
+                String importFrom = importEntry.getValue();
+
+                this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importFrom) + "\\b", importName);
+                this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importName) + "\\b", importFrom);
+
+                String importFromPackage = importFrom.substring(0, importFrom.lastIndexOf("."));
+                this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importFromPackage + "." + importFromPackage) + "\\b", importFrom);
+
+            }
 
         }
 
