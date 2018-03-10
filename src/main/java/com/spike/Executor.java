@@ -34,8 +34,8 @@ public class Executor {
 
         if (type.equals("test-templates")) {
             type = "templates";
-            args = new String[]{null, "templates_input/watch", "templates_output/templates.js", "templates_output/watchers.js", "new", "PROJECT:GOOGLE,ENV:PROD"};
-            //args = new String[]{null, "templates_input/plain", "templates_output/templates.js", "none", "old", "PROJECT:GOOGLE,ENV:PROD"};
+            //args = new String[]{null, "templates_input/watch", "templates_output/templates.js", "templates_output/watchers.js", "new", "PROJECT:GOOGLE,ENV:PROD"};
+            args = new String[]{null, "templates_input/new", "templates_output/templates.js", "templates_output/watchers.js", "new", "PROJECT:GOOGLE,ENV:PROD"};
         } else if (type.equals("test-transpiler")) {
             type = "transpiler";
             args = new String[]{null, "scripts_input/spike-framework.spike", "scripts_output/compiled.js", "spike", "PROJECT:DEMO,ENV:PROD"};

@@ -40,7 +40,7 @@ public class SpikeFile {
 
         this.compiled = compiledBuilder.toString();
         this.collectDependencies();
-        this.compileConstructorUsages();
+        //this.compileConstructorUsages();
         this.compileSuperUsages();
         this.collectTotalNamespaces();
         this.compileGlobalVariables();
@@ -63,37 +63,51 @@ public class SpikeFile {
     }
 
     private void collectTotalNamespaces() {
-        this.compiled = "spike.core.Assembler.resetNamespaces(" + TOTAL_NAMESPACES + ", '"+this.packages.get(0).packageName+"');" + this.compiled;
+        this.compiled = "spike.core.Assembler.resetNamespaces(" + TOTAL_NAMESPACES + ", '" + this.packages.get(0).packageName + "');" + this.compiled;
     }
 
     private void compileConstructorUsages() {
 
-        Pattern p = Pattern.compile("(new*\\s+[^\\)]*)");
+        Pattern p = Pattern.compile("(new*\\s+[^\\;]*)");
         Matcher m = p.matcher(this.compiled);
         while (m.find()) {
 
             String matchedConstructor = m.group();
-            String baseConstructor = matchedConstructor.substring(matchedConstructor.indexOf("new") + 3, matchedConstructor.indexOf("(")).trim();
-            String arguments = matchedConstructor.substring(matchedConstructor.indexOf("(") + 1, matchedConstructor.length()).trim();
-            String argumentsCleaned = this.getConstructorUsageArguments(arguments);
 
-            int argumentsCount = argumentsCleaned.length() == 0 ? 0 : argumentsCleaned.split(",").length;
+            if (matchedConstructor.contains("new")) {
 
-            if (this.constructorsMap.get(baseConstructor) != null) {
+                String baseConstructor = matchedConstructor.substring(matchedConstructor.indexOf("new") + 3, matchedConstructor.indexOf("(")).trim();
+                String arguments = matchedConstructor.substring(matchedConstructor.indexOf("(") + 1, matchedConstructor.length()).trim();
+                String argumentsCleaned = this.getConstructorUsageArguments(arguments);
 
-                String foundConstructor = this.constructorsMap.get(baseConstructor).get(argumentsCount);
+                int argumentsCount = argumentsCleaned.length() == 0 ? 0 : argumentsCleaned.split(",").length;
 
-                if (foundConstructor == null) {
-                    try {
-                        throw new Exception("No matching constructor found : " + matchedConstructor);
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                if (this.constructorsMap.get(baseConstructor) != null) {
+
+                    List<String> constructorsList = this.constructorsMap.get(baseConstructor);
+
+                    String foundConstructor = null;
+
+                    for(String constructor : constructorsList){
+                        if(constructor.endsWith("_"+argumentsCount)){
+                            foundConstructor = constructor;
+                        }
                     }
-                } else {
-                    this.compiled = this.compiled.replace(matchedConstructor, "new " + baseConstructor + "([" + arguments+"]");
+
+                    if (foundConstructor == null) {
+                        try {
+                            throw new Exception("No matching constructor found : " + matchedConstructor);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+
+                        System.out.println("foundConstructor : "+foundConstructor+" matchedConstructor : "+matchedConstructor);
+
+                        this.compiled = this.compiled.replace(matchedConstructor, "new " + baseConstructor + "([" + arguments + "]");
+                    }
                 }
             }
-
 
         }
 
@@ -113,13 +127,13 @@ public class SpikeFile {
 
             int argumentsCount = argumentsCleaned.length() == 0 ? 0 : argumentsCleaned.split(",").length;
 
-            this.compiled = this.compiled.replace(matchedConstructor,"this.super.constructor_" + argumentsCount + ".apply(this,[" + arguments+"]");
+            this.compiled = this.compiled.replace(matchedConstructor, "this.super.constructor_" + argumentsCount + ".apply(this,[" + arguments + "]");
 
         }
 
     }
 
-    private String getConstructorUsageArguments(String arguments){
+    private String getConstructorUsageArguments(String arguments) {
 
         arguments = this.removeFromParenthesis(arguments, "{}");
         arguments = this.removeFromParenthesis(arguments, "[]");
@@ -128,12 +142,12 @@ public class SpikeFile {
     }
 
 
-    private String removeFromParenthesis(String str, String parenthesis){
-        if(parenthesis.contains("[]")){
+    private String removeFromParenthesis(String str, String parenthesis) {
+        if (parenthesis.contains("[]")) {
             return str.replaceAll("\\s*\\[[^\\]]*\\]\\s*", " ");
-        }else if(parenthesis.contains("{}")){
+        } else if (parenthesis.contains("{}")) {
             return str.replaceAll("\\s*\\{[^\\}]*\\}\\s*", " ");
-        }else{
+        } else {
             return str.replaceAll("\\s*\\([^\\)]*\\)\\s*", " ");
         }
     }
@@ -142,9 +156,9 @@ public class SpikeFile {
 
         HashMap<String, List<String>> extendsClassesMap = new HashMap<>();
 
-        for(ExtendingModel extendingModel : this.extendingMap){
+        for (ExtendingModel extendingModel : this.extendingMap) {
 
-            if(extendsClassesMap.get(extendingModel.extendsTo) == null){
+            if (extendsClassesMap.get(extendingModel.extendsTo) == null) {
                 extendsClassesMap.put(extendingModel.extendsTo, new ArrayList<String>());
             }
 
@@ -160,9 +174,6 @@ public class SpikeFile {
 
     private void compileGlobalVariables() throws Exception {
 
-        System.out.println("enters");
-        System.out.println(this.compiled.contains("@if"));
-
         List<String> conditionsToReplace = new ArrayList<>();
 
         Pattern p = Pattern.compile("(?s)(?<=@if).*?(?=@endif)");
@@ -171,40 +182,33 @@ public class SpikeFile {
 
             String matchedCondition = m.group();
 
-            System.out.println("matchedCondition : "+matchedCondition);
-
             String[] split = matchedCondition.split("\n");
             String condition = split[0];
 
-            System.out.println("condition : "+condition);
-
             conditionsToReplace.add(condition);
-            condition = condition.replaceAll("ENV", "'"+TemplateCompiler.ENV+"'").replaceAll("PROJECT", "'"+TemplateCompiler.PROJECT+"'");
+            condition = condition.replaceAll("ENV", "'" + TemplateCompiler.ENV + "'").replaceAll("PROJECT", "'" + TemplateCompiler.PROJECT + "'");
 
             ScriptEngineManager factory = new ScriptEngineManager();
             ScriptEngine engine = factory.getEngineByName("JavaScript");
             try {
-                engine.eval("var result = false; if("+condition+"){ result = true;} ");
+                engine.eval("var result = false; if(" + condition + "){ result = true;} ");
                 Boolean result = (Boolean) engine.get("result");
 
-                System.out.println("condition : "+condition);
-                System.out.println("result : "+result);
-
-                if(!result){
+                if (!result) {
                     this.compiled = this.compiled.replace(matchedCondition, "");
                 }
 
             } catch (ScriptException e) {
                 e.printStackTrace();
-                throw new Exception("Spike Transpiler: Cannot eval condition "+condition);
+                throw new Exception("Spike Transpiler: Cannot eval condition " + condition);
             }
 
 
         }
 
-        this.compiled = this.compiled.replaceAll("@if","").replaceAll("@endif","");
+        this.compiled = this.compiled.replaceAll("@if", "").replaceAll("@endif", "");
 
-        for(String condition : conditionsToReplace){
+        for (String condition : conditionsToReplace) {
             this.compiled = this.compiled.replace(condition, "");
         }
 

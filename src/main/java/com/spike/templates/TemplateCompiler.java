@@ -45,17 +45,41 @@ public class TemplateCompiler {
     public static HashMap<String, Processor> commands = new HashMap<>();
     public static HashMap<String, Processor> watchCommands = new HashMap<>();
 
+    public static String[] allowedEvents = new String[]{
+        "click",
+        "change",
+        "keyup",
+        "keydown",
+        "keypress",
+        "blur",
+        "focus",
+        "dblclick",
+        "die",
+        "hover",
+        "keydown",
+        "mousemove",
+        "mouseover",
+        "mouseenter",
+        "mousedown",
+        "mouseleave",
+        "mouseout",
+        "submit",
+        "trigger",
+        "toggle",
+        "load",
+        "unload"
+    };
+
     static {
 
         EventProcessor eventProcessor = new EventProcessor();
 
-        /**
+        /*
          * Replacers
          */
         commands.put(U.s("project"), new ProjectIfProcessor());
         commands.put(U.s("not-project"), new ProjectNotIfProcessor());
         commands.put(U.s("env"), new EnvIfProcessor());
-
         commands.put(U.s("print"), new PrintProcessor());
         commands.put(U.s("translation"), new TranslationProcessor());
         commands.put(U.s("placeholder"), new TranslationProcessor());
@@ -68,28 +92,6 @@ public class TemplateCompiler {
         commands.put(U.s("for"), new ForProcessor());
         commands.put(U.s("foreach"), new ForEachProcessor());
         commands.put(U.s("while"), new WhileProcessor());
-        commands.put(U.s("click"), eventProcessor);
-        commands.put(U.s("change"), eventProcessor);
-        commands.put(U.s("keyup"), eventProcessor);
-        commands.put(U.s("keydown"), eventProcessor);
-        commands.put(U.s("keypress"), eventProcessor);
-        commands.put(U.s("blur"), eventProcessor);
-        commands.put(U.s("focus"), eventProcessor);
-        commands.put(U.s("dblclick"), eventProcessor);
-        commands.put(U.s("die"), eventProcessor);
-        commands.put(U.s("hover"), eventProcessor);
-        commands.put(U.s("keydown"), eventProcessor);
-        commands.put(U.s("mousemove"), eventProcessor);
-        commands.put(U.s("mouseover"), eventProcessor);
-        commands.put(U.s("mouseenter"), eventProcessor);
-        commands.put(U.s("mousedown"), eventProcessor);
-        commands.put(U.s("mouseleave"), eventProcessor);
-        commands.put(U.s("mouseout"), eventProcessor);
-        commands.put(U.s("submit"), eventProcessor);
-        commands.put(U.s("trigger"), eventProcessor);
-        commands.put(U.s("toggle"), eventProcessor);
-        commands.put(U.s("load"), eventProcessor);
-        commands.put(U.s("unload"), eventProcessor);
         commands.put(U.s("template"), new TemplateProcessor());
         commands.put(U.s("include"), new IncludeProcessor());
         commands.put(U.s("element"), new ElementProcessor());
@@ -97,12 +99,20 @@ public class TemplateCompiler {
         commands.put(U.s("href"), new HrefProcessor());
         commands.put(U.s("log"), new LogProcessor());
         commands.put(U.s("watch"), new WatchIdProcessor());
+        commands.put(U.s("bind"), new BindProcessor());
+
+        /*
+         * Events
+         */
+        for(String event : allowedEvents){
+            commands.put(U.s(event), eventProcessor);
+        }
 
         /*
          * Watchers
          */
         watchCommands.put(U.s("watch"), new WatchProcessor());
-        watchCommands.put(U.s("bind"), new BindProcessor());
+
 
     }
 
@@ -114,9 +124,9 @@ public class TemplateCompiler {
         removeComments(doc);
 
         Elements elements = doc.body().getAllElements();
-        for(Element element : elements){
+        for (Element element : elements) {
 
-            if (element.attr("id").isEmpty()) {
+            if (!element.tagName().toLowerCase().equals("spike") && element.attr("id").isEmpty()) {
                 generalId++;
                 element.attr("id", "id-" + generalId);
             }
@@ -164,8 +174,8 @@ public class TemplateCompiler {
             for (Map.Entry<String, Element> watcher : WatchProcessor.watchers.entrySet()) {
 
                 String watcherOutput = watcher.getValue().outerHtml();
-              //  watcherOutput = this.replaceEscapes(watcherOutput);
-               // watcherOutput = ProcessorUtils.replaceBrackets(watcherOutput);
+                //  watcherOutput = this.replaceEscapes(watcherOutput);
+                // watcherOutput = ProcessorUtils.replaceBrackets(watcherOutput);
 
                 StringBuilder stringBuilder2 = new StringBuilder(watcherOutput.length());
                 for (String line : watcherOutput.split("\n")) {
@@ -179,13 +189,12 @@ public class TemplateCompiler {
                 watcherOutput = ProcessorUtils.replaceBrackets(watcherOutput);
                 watcherOutput = this.processRemovableAttributes(watcherOutput);
 
-                System.out.println(watcherOutput);
-
                 output = output.replace("'@@" + watcher.getKey() + "@@'", watcherOutput);
 
             }
 
-            output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_") + "']=function(scope){var __w = []; var __a = ['','']; var t='';" + this.replaceEscapes(output) + " return __w;};";
+            output = output.replaceAll("<spike>", "").replaceAll("</spike>", "");
+            output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope){var __w = []; " + this.replaceEscapes(output) + " return __w;};";
         } else {
             output = "";
         }
@@ -194,11 +203,13 @@ public class TemplateCompiler {
 
     }
 
+    static int generalCounter = 0;
+
     private String processJSHintsForWatcher(String output, String watcherName, Boolean omitHtml) {
 
 
         StringBuilder stringBuilder = new StringBuilder(output.length());
-        stringBuilder.append("__a[0] = '"+watcherName+"';");
+        stringBuilder.append("var __a" + generalCounter + " = ['','']; __a" + generalCounter + "[0] = '" + watcherName + "'; __a" + generalCounter + "[1] = '';");
 
         for (String line : output.split("\n")) {
 
@@ -215,7 +226,7 @@ public class TemplateCompiler {
                         line = line + "'";
                     }
 
-                    stringBuilder.append(("__a[1] +='" + line + ";").replace("+=''+", "+="));
+                    stringBuilder.append(("__a" + generalCounter + "[1] +='" + line + ";").replace("+=''+", "+="));
 
                 }
 
@@ -223,7 +234,9 @@ public class TemplateCompiler {
 
         }
 
-        stringBuilder.append("__w.push(__a);");
+        stringBuilder.append("__w.push(__a" + generalCounter + ");");
+
+        generalCounter++;
 
         return stringBuilder.toString();
 
@@ -324,7 +337,7 @@ public class TemplateCompiler {
         if (TemplateCompiler.OLD_VERSION) {
             output = "; window['_spike_templates']['" + getFileName(templateFile) + "']=function(model){var t='';" + output + " return t;};";
         } else {
-            output = "spike.core.Templates.templates['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_") + "']=function(scope){var t='';" + output + " return t;};";
+            output = "spike.core.Templates.templates['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope){var t='';" + output + " return t;};";
         }
 
         return output;

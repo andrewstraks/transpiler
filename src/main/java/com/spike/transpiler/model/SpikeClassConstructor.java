@@ -8,6 +8,7 @@ public class SpikeClassConstructor {
 
     public SpikeClass spikeClass = null;
 
+    public boolean isWrapConstructor = false;
     public boolean isDefaultConstructor = false;
     public String constructorFullName = null;
     public String functionName = null;
@@ -33,6 +34,10 @@ public class SpikeClassConstructor {
 
         if (this.argumentsCount == 0) {
             this.isDefaultConstructor = true;
+        }
+
+        if (this.argumentsCount == 1) {
+            this.isWrapConstructor = true;
         }
 
     }

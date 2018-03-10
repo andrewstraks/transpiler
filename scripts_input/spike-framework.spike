@@ -5,8 +5,9 @@ import SpikeConfig from spike.core.Config;
 static class Config extends SpikeConfig {
 
     @if ENV == 'DEV'
-    domainUrl: 'https://ac3-test.crocobet.com/ac-api/',
+    domainUrl: 'https://test.iforbet.pl/ac-api/',
     @endif
+
 
     @if ENV == 'PROD'
     domainUrl: '/ac-api/',
@@ -30,13 +31,32 @@ import Log from spike.core.Log;
 import EventsInterface from spike.core.EventsInterface;
 import Router from spike.core.Router;
 import Auth from app.service.customer.Auth;
+import DictionariesManager from app.service.dictionaries.DictionariesManager;
+import Broadcaster from spike.core.Broadcaster;
 
 class Events extends EventsInterface {
 
+    onAuth: function(){
+
+        var isLogged = Auth.isLogged();
+
+        if(isLogged === true){
+            DictionariesManager.loadDictionaries();
+        }
+
+    },
+
+    onReady: function(){
+        Log.log('App onReady event');
+
+        Auth.getSession();
+        Broadcaster.register('onAuth');
+        Broadcaster.listen('onAuth', this.onAuth);
+
+    },
+
     onRender: function(){
         Log.log('App onRender event');
-
-        Auth.loginFromAC1();
 
         var viewData = Router.getViewData();
 
@@ -86,19 +106,29 @@ class Routing extends RoutingInterface {
     create: function(router){
 
         router.path('/', {
-            controller: 'app.controller.home.Home',
+            controller: 'app.controller.general.home.Home',
             routingParams: {
                 onlyForLogged: true
             }
         });
 
         router.path('/login', {
-            controller: 'app.controller.login.Login'
+            controller: 'app.controller.general.login.Login'
         });
+
+        router.path('/maintenance', {
+            controller: 'app.controller.general.maintenance.Maintenance'
+        });
+
+        router.path('/not-found', {
+            controller: 'app.controller.general.pageNotFound.PageNotFound'
+        });
+
+        router.other('/not-found');
 
     }
 
-}package app.controller.home;
+}package app.controller.general.home;
 
 import Controller from spike.core.Controller;
 import Log from spike.core.Log;
@@ -109,20 +139,21 @@ class Home extends Controller {
 
     }
 
-}package app.controller.login;
+}package app.controller.general.login;
 
 import Controller from spike.core.Controller;
 import Log from spike.core.Log;
 import Rest from spike.core.Rest;
 import Session from app.enums.api.Session;
 import Router from spike.core.Router;
+import Auth from app.service.customer.Auth;
 
 class Login extends Controller {
 
     model: {
         loginName: '',
         password: '',
-        error: true
+        error: false
     },
 
     checkErrors: function(){
@@ -132,13 +163,13 @@ class Login extends Controller {
     login: function(e){
         e.preventDefault();
 
-        if($this.model.error === true){
+        if($this.model.error === false){
 
-            Rest.post(Session.get.session, {
+            Auth.login({
                 loginName: $this.model.loginName,
                 password: $this.model.password
-            })
-             .then(function () {
+             })
+             .then(function (data) {
                  Router.redirect('/');
              })
              .catch(function () {
@@ -146,6 +177,35 @@ class Login extends Controller {
              });
 
         }
+
+    }
+
+}package app.controller.general.maintenance;
+
+import Controller from spike.core.Controller;
+import Log from spike.core.Log;
+
+import DictionariesManager from app.service.dictionaries.DictionariesManager;
+
+class Maintenance extends Controller {
+
+    Maintenance: function () {
+
+
+        $this.dictionaries = DictionariesManager.dictionaries;
+
+        console.log($this.dictionaries);
+
+    }
+
+}package app.controller.general.pageNotFound;
+
+import Controller from spike.core.Controller;
+import Log from spike.core.Log;
+
+class PageNotFound extends Controller {
+
+    PageNotFound: function () {
 
     }
 
@@ -177,24 +237,28 @@ import Config from app.Config;
 
 enum Dictionaries {
 
-    adminRoles: Config.apiUrl() + 'dictionaries/admin/roles',
-    offerTypes: Config.apiUrl() + 'dictionaries/offer-definition/types',
-    privilegeStatuses: Config.apiUrl() + 'dictionaries/privilege/statuses',
-    queryStatuses: Config.apiUrl() + 'dictionaries/query/statuses',
-    betSlipCombinationStatuses: Config.apiUrl() + 'dictionaries/bet-slip/combination/statuses',
-    betSlipRegMethods: Config.apiUrl() + 'dictionaries/bet-slip/reg-methods',
+    get: {
 
-    eventsTypes: Config.apiUrl() + 'dictionaries/events/types',
-    transactionsTypes: Config.apiUrl() + 'dictionaries/transaction/types',
-    transactionsTypeSwitches: Config.apiUrl() + 'dictionaries/transaction/type-switches',
+        adminRoles: Config.apiUrl() + 'dictionaries/admin/roles',
+        offerTypes: Config.apiUrl() + 'dictionaries/offer-definition/types',
+        privilegeStatuses: Config.apiUrl() + 'dictionaries/privilege/statuses',
+        queryStatuses: Config.apiUrl() + 'dictionaries/query/statuses',
+        betSlipCombinationStatuses: Config.apiUrl() + 'dictionaries/bet-slip/combination/statuses',
+        betSlipRegMethods: Config.apiUrl() + 'dictionaries/bet-slip/reg-methods',
 
-    offerDefinitionStatuses: Config.apiUrl() + 'dictionaries/offer-definition/statuses',
-    offerAssignConditions: Config.apiUrl() + 'dictionaries/offer-definition/assign-conditions/{offerType}',
-    offerWithdrawLockTypes: Config.apiUrl() + 'dictionaries/offer-definition/withdraw-lock-types',
-    offerCachbackCalculationTypes: Config.apiUrl() + 'dictionaries/offer-definition/cachback-calculation-types/{offerType}',
-    offerCachbackProgressiveCachbackTypes: Config.apiUrl() + 'dictionaries/offer-definition/progressive-cachback-types',
+        eventsTypes: Config.apiUrl() + 'dictionaries/events/types',
+        transactionsTypes: Config.apiUrl() + 'dictionaries/transaction/types',
+        transactionsTypeSwitches: Config.apiUrl() + 'dictionaries/transaction/type-switches',
 
-    cmsCommentsStatuses: Config.apiUrl() + 'cms/comments/publication-statuses'
+        offerDefinitionStatuses: Config.apiUrl() + 'dictionaries/offer-definition/statuses',
+        offerAssignConditions: Config.apiUrl() + 'dictionaries/offer-definition/assign-conditions/{offerType}',
+        offerWithdrawLockTypes: Config.apiUrl() + 'dictionaries/offer-definition/withdraw-lock-types',
+        offerCachbackCalculationTypes: Config.apiUrl() + 'dictionaries/offer-definition/cachback-calculation-types/{offerType}',
+        offerCachbackProgressiveCachbackTypes: Config.apiUrl() + 'dictionaries/offer-definition/progressive-cachback-types',
+
+        cmsCommentsStatuses: Config.apiUrl() + 'cms/comments/publication-statuses'
+
+    }
 
 }package app.enums.api;
 
@@ -202,17 +266,23 @@ import Config from app.Config;
 
 enum Privileges {
 
-    urlIds: Config.apiUrl() + 'support/privileges/rest',
+    get: {
+        urlIds: Config.apiUrl() + 'support/privileges/rest',
+        roles: Config.apiUrl() + 'support/privileges/rest/roles',
+        rolesByUrlId: Config.apiUrl() + 'support/privileges/rest/roles/{urlId}',
+        users: Config.apiUrl() + 'support/privileges/rest/users',
+        usersByUrlId: Config.apiUrl() + 'support/privileges/rest/users/{urlId}',
+    },
 
-    roles: Config.apiUrl() + 'support/privileges/rest/roles',
-    rolesByUrlId: Config.apiUrl() + 'support/privileges/rest/roles/{urlId}',
-    createRole: Config.apiUrl() + 'support/privileges/rest/roles',
-    updateRole: Config.apiUrl() + 'support/privileges/rest/roles/{urlId}',
+    put: {
+         createRole: Config.apiUrl() + 'support/privileges/rest/roles',
+         createAdminRole: Config.apiUrl() + 'support/privileges/rest/users',
+    },
 
-    users: Config.apiUrl() + 'support/privileges/rest/users',
-    usersByUrlId: Config.apiUrl() + 'support/privileges/rest/users/{urlId}',
-    createAdminRole: Config.apiUrl() + 'support/privileges/rest/users',
-    updateAdminRole: Config.apiUrl() + 'support/privileges/rest/users/{urlId}',
+    post: {
+      updateRole: Config.apiUrl() + 'support/privileges/rest/roles/{urlId}',
+      updateAdminRole: Config.apiUrl() + 'support/privileges/rest/users/{urlId}',
+    }
 
 }package app.enums.api;
 
@@ -220,9 +290,14 @@ import Config from app.Config;
 
 enum Queries {
 
-    get: Config.apiUrl() + 'queries/{hash}',
-    remove: Config.apiUrl() + 'queries/{hash}',
-    getAll: Config.apiUrl() + 'queries'
+    get: {
+        get: Config.apiUrl() + 'queries/{hash}',
+        getAll: Config.apiUrl() + 'queries'
+    },
+
+    delete: {
+        remove: Config.apiUrl() + 'queries/{hash}'
+    }
 
 }package app.enums.api;
 
@@ -247,7 +322,44 @@ import Config from app.Config;
 
 enum Statistics {
 
-    exposureEstimate: Config.apiUrl() + 'statistics/exposure-estimate'
+    get: {
+        exposureEstimate: Config.apiUrl() + 'statistics/exposure-estimate'
+    }
+
+}package app.model.customer;
+
+class LoginData {
+
+    LoginData: function(adminId, allowedViews, firstName, lastName, loginName, serverTimeMillis, loginTime){
+        this.adminId = adminId;
+        this.allowedViews = allowedViews;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.loginName = loginName;
+        this.serverTimeMillis = serverTimeMillis;
+        this.loginTime = loginTime;
+    },
+
+    @number
+    adminId: null,
+
+    @array
+    allowedViews: [],
+
+    @string
+    firstName: null,
+
+    @string
+    lastName: null,
+
+    @string
+    loginName: null,
+
+    @number
+    serverTimeMillis: null,
+
+    @number
+    loginTime: null
 
 }package app.service.customer;
 
@@ -255,6 +367,8 @@ import Log from spike.core.Log;
 import Router from spike.core.Router;
 import Session from app.enums.api.Session;
 import Rest from spike.core.Rest;
+import LoginData from app.model.customer.LoginData;
+import Broadcaster from spike.core.Broadcaster;
 
 static class Auth {
 
@@ -262,6 +376,48 @@ static class Auth {
 
     isLogged: function(){
         return !!this.customerData;
+    },
+
+    saveSessionCache: function(){
+
+        var sessionData = Storage.get('__session_data');
+        if(!sessionData){
+            Storage.set('__session_data', $this.customerData);
+        }
+
+    },
+
+    loginSuccess: function(response){
+
+        $this.customerData = new LoginData(
+            response.adminId,
+            response.allowedViews,
+            response.firstName,
+            response.lastName,
+            response.loginName,
+            response.serverTimeMillis,
+            new Date().getTime()
+        );
+
+        $this.saveSessionCache();
+        Broadcaster.broadcast('onAuth');
+
+
+    },
+
+    getSession: function(){
+
+        var sessionData = Storage.get('__session_data');
+        if(sessionData && new Date().getTime() - sessionData.loginTime < 300000){
+            $this.loginSuccess(sessionData);
+        }else{
+            Rest.get(Session.get.session).then($this.loginSuccess);
+        }
+
+    },
+
+    login: function(loginRequest){
+      return Rest.post(Session.post.login, loginRequest).then($this.loginSuccess);
     },
 
     loginFromAC1: function(){
@@ -285,5 +441,259 @@ static class Auth {
 
     }
 
+
+}package app.service.dictionaries;
+
+import Log from spike.core.Log;
+import Rest from spike.core.Rest;
+import MultiRequest from spike.core.MultiRequest;
+
+class DictionariesLoader {
+
+    ready: false,
+    dictionariesList: [],
+
+    DictionariesLoader: function () {
+    },
+
+    load: function(){
+
+        var loadersList = [];
+
+        for(var dictionaryName in $this.dictionariesList){
+
+            if($this.dictionariesList[dictionaryName] === undefined){
+                throw new Error($this.getClass()+' Dictionary path not declared');
+            }
+
+          loadersList.push(Rest.get($this.dictionariesList[dictionaryName], {
+            alias: dictionaryName
+          }));
+
+        }
+
+        return new MultiRequest(loadersList).always(function(responses){
+
+            for(var i = 0; i < responses.length; i++){
+
+                $this[responses[i].alias] = responses[i].responseJSON ? responses[i].responseJSON : null;
+
+            }
+
+        });
+
+    }
+
+}package app.service.dictionaries;
+
+import Log from spike.core.Log;
+import GeneralDictionaries from app.service.dictionaries.loaders.GeneralDictionaries;
+import CmsDictionaries from app.service.dictionaries.loaders.CmsDictionaries;
+import OffersDictionaries from app.service.dictionaries.loaders.OffersDictionaries;
+import MultiRequest from spike.core.MultiRequest;
+import Config from app.Config;
+import Storage from app.service.storage.Storage;
+
+static class DictionariesManager {
+
+    dictionariesLoaded: false,
+
+    dictionaries: {
+        generalDictionaries: null,
+        cmsDictionaries: null,
+        offersDictionaries: null
+    },
+
+    saveDictionaries: function(){
+
+        for(var dictionaryName in $this.dictionaries){
+            Storage.set('__dictionary_'+dictionaryName, $this.dictionaries[dictionaryName]);
+        }
+
+    },
+
+    loadDictionariesFromCache: function(){
+
+        var counter = 0;
+        for(var dictionaryName in $this.dictionaries){
+
+            var dictionaries = Storage.get('__dictionary_'+dictionaryName);
+            if(dictionaries == null){
+                break;
+            }else{
+                $this.dictionaries[dictionaryName] = dictionaries;
+                counter++;
+            }
+
+        }
+
+        if(counter === Object.keys($this.dictionaries).length){
+            $this.dictionariesLoaded = true;
+        }
+
+    },
+
+    loadDictionaries: function() {
+
+        $this.dictionaries.generalDictionaries = new GeneralDictionaries();
+        $this.dictionaries.cmsDictionaries = new CmsDictionaries();
+        $this.dictionaries.offersDictionaries = new OffersDictionaries();
+
+        $this.loadDictionariesFromCache();
+
+        if($this.dictionariesLoaded === false){
+
+            var loadersPromises = [
+                 $this.dictionaries.generalDictionaries.load(),
+                 $this.dictionaries.cmsDictionaries.load(),
+                 $this.dictionaries.offersDictionaries.load()
+            ];
+
+            new MultiRequest(loadersPromises).always(function(responses){
+                $this.saveDictionaries();
+                $this.dictionariesLoaded = true;
+            });
+
+        }
+
+
+    },
+
+}package app.service.dictionaries.loaders;
+
+import Log from spike.core.Log;
+import Dictionaries from app.enums.api.Dictionaries;
+import DictionariesLoader from app.service.dictionaries.DictionariesLoader;
+
+class CmsDictionaries extends DictionariesLoader {
+
+    @object
+    cmsCommentsStatuses: null,
+
+    dictionariesList: {
+        cmsCommentsStatuses: Dictionaries.get.cmsCommentsStatuses
+    }
+
+}package app.service.dictionaries.loaders;
+
+import Log from spike.core.Log;
+import Dictionaries from app.enums.api.Dictionaries;
+import DictionariesLoader from app.service.dictionaries.DictionariesLoader;
+
+class GeneralDictionaries extends DictionariesLoader {
+
+  @object
+  adminRoles: null,
+
+  @object
+  privilegeStatuses: null,
+
+  @object
+  queryStatuses: null,
+
+  @object
+  betSlipCombinationStatuses: null,
+
+  @object
+  betSlipRegMethods: null,
+
+  @object
+  eventsTypes: null,
+
+  @object
+  transactionsTypes: null,
+
+  @object
+  transactionsTypeSwitches: null,
+
+  dictionariesList: {
+    adminRoles: Dictionaries.get.adminRoles,
+    privilegeStatuses: Dictionaries.get.privilegeStatuses,
+    queryStatuses: Dictionaries.get.queryStatuses,
+    betSlipCombinationStatuses: Dictionaries.get.betSlipCombinationStatuses,
+    betSlipRegMethods: Dictionaries.get.betSlipRegMethods,
+    eventsTypes: Dictionaries.get.eventsTypes,
+    transactionsTypes: Dictionaries.get.transactionsTypes,
+    transactionsTypeSwitches: Dictionaries.get.transactionsTypeSwitches
+  }
+
+}package app.service.dictionaries.loaders;
+
+import Log from spike.core.Log;
+import Dictionaries from app.enums.api.Dictionaries;
+import DictionariesLoader from app.service.dictionaries.DictionariesLoader;
+
+class OffersDictionaries extends DictionariesLoader {
+
+    @object
+    offerDefinitionStatuses: null,
+
+    @object
+    offerTypes: null,
+
+    @object
+    offerAssignConditions: null,
+
+    @object
+    offerWithdrawLockTypes: null,
+
+    @object
+    offerCachbackCalculationTypes: null,
+
+    @object
+    offerCachbackProgressiveCachbackTypes: null,
+
+    dictionariesList: {
+        offerDefinitionStatuses: Dictionaries.get.offerDefinitionStatuses,
+        offerTypes: Dictionaries.get.offerTypes,
+        offerAssignConditions: Dictionaries.get.offerAssignConditions,
+        offerWithdrawLockTypes: Dictionaries.get.offerWithdrawLockTypes,
+        offerCachbackCalculationTypes: Dictionaries.get.offerCachbackCalculationTypes,
+        offerCachbackProgressiveCachbackTypes: Dictionaries.get.offerCachbackProgressiveCachbackTypes,
+    }
+
+}package app.service.storage;
+
+import Util from spike.core.Util;
+
+static class Storage {
+
+  set: function(paramName, paramObject){
+
+    if(paramObject && (paramObject instanceof Array || typeof paramObject === 'object')){
+      paramObject = JSON.stringify(paramObject);
+    }
+
+    localStorage.setItem(paramName, paramObject);
+
+  },
+
+  get: function(paramName){
+
+    var value = localStorage.getItem(paramName);
+
+    if(!Util.isEmpty(value)){
+
+      value = value.trim();
+
+      if(value[0] == '{' || value[0] == '['){
+        value = JSON.parse(value);
+      }else if(value == 'true'){
+        value = true;
+      }else if(value == 'false'){
+        value = false;
+      }
+
+      return value;
+
+    }
+
+    return null;
+
+  },
+
+  remove: function(paramName){
+    localStorage.removeItem(paramName);
+  }
 
 }

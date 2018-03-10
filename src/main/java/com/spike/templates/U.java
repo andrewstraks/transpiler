@@ -13,6 +13,10 @@ public class U {
         return TemplateCompiler.PREFIX+string+ TemplateCompiler.SUFFIX;
     }
 
+    public static String e(String string){
+        return "spike-event-"+string;
+    }
+
     public static String ss(String string){
         return TemplateCompiler.BRACKET_LEFT+string+ TemplateCompiler.BRACKET_RIGHT;
     }

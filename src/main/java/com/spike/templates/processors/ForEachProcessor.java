@@ -75,6 +75,7 @@ public class ForEachProcessor implements Processor {
         TemplateParts templateParts = this.getTemplateParts(element.attr(spikeAttribute));
 
         element.removeAttr(spikeAttribute);
+
         element.before(U.js(templateParts.prefix));
         element.after(U.js(templateParts.suffix));
 

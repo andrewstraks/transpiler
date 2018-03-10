@@ -42,6 +42,7 @@ public class SpikeClass {
         this.collectFunctionNodes();
         this.collectExtendsFullName();
         this.createDefaultConstructor();
+        this.createWrapConstructor();
         this.createClassFunctions();
 
         this.classPackage.spikeFile.extendingMap.add(new ExtendingModel(this.extendsFullName, this.classFullName));
@@ -124,9 +125,9 @@ public class SpikeClass {
                     squareBracketsLeft = 0;
                     squareBracketsRight = 0;
 
-                    if(line.contains("@if") || line.contains("@endif")){
+                    if (line.contains("@if") || line.contains("@endif")) {
                         this.fields.add(new SpikeClassField(this, line));
-                    }else if (line.contains(":") && (line.contains("[") || line.contains("{")) && !line.contains("function")) {
+                    } else if (line.contains(":") && (line.contains("[") || line.contains("{")) && !line.contains("function")) {
                         nodeCollecting = true;
                         nodeBody = new StringBuilder();
                         propCollecting = true;
@@ -137,13 +138,13 @@ public class SpikeClass {
 
                     } else if (line.contains("function") && line.contains("abstract")) {
                         this.functions.add(new SpikeClassFunction(this, line));
-                    }  else if (line.contains(":") && line.contains("function")) {
+                    } else if (line.contains(":") && line.contains("function")) {
                         nodeCollecting = true;
                         nodeBody = new StringBuilder();
                         functionCollecting = true;
-                    }  else if (line.contains("abstract") ) {
+                    } else if (line.contains("abstract")) {
                         this.fields.add(new SpikeClassField(this, line));
-                    }else if (line.contains(":") ) {
+                    } else if (line.contains(":")) {
                         this.fields.add(new SpikeClassField(this, line));
                     }
 
@@ -235,6 +236,18 @@ public class SpikeClass {
     }
 
 
+    private boolean hasWrapConstructor() {
+
+        for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
+            if (spikeClassConstructor.isWrapConstructor) {
+                return true;
+            }
+        }
+
+        return false;
+
+    }
+
     private boolean hasDefaultConstructor() {
 
         for (SpikeClassConstructor spikeClassConstructor : this.constructors) {
@@ -247,12 +260,11 @@ public class SpikeClass {
 
     }
 
-    private String createConstructor(){
+    private String createConstructor() {
 
         StringBuilder fieldsBuilder = new StringBuilder();
         for (SpikeClassField spikeClassField : this.fields) {
-            spikeClassField.compile();
-            fieldsBuilder.append(spikeClassField.compiled);
+            fieldsBuilder.append(spikeClassField.compileForConstructor());
         }
 
 
@@ -261,13 +273,25 @@ public class SpikeClass {
         constructorBuilder
                 .append(this.classFullName)
                 .append("=function(args){")
+
+                .append("var __args = [];")
+                .append("if(args && arguments.length == 1){")
+                .append("    if(args instanceof Array){")
+                .append("        __args = args.length == 0 ? arguments : args;")
+                .append("    }else{")
+                .append("        __args = [args];")
+                .append("    }")
+                .append("}else{")
+                .append("    __args = arguments;")
+                .append("}")
+
                 .append(fieldsBuilder.toString())
-                .append("if(this['constructor_'+args.length] !== undefined){")
-                .append("this['constructor_'+args.length].apply(this, args);")
+                .append("if(this['constructor_'+__args.length] !== undefined){")
+                .append("this['constructor_'+__args.length].apply(this, __args);")
                 .append("}else{")
                 .append("throw new Error('Spike: No matching constructor found ")
                 .append(this.classFullName)
-                .append(" with arguments count: '+args.length);}};");
+                .append(" with arguments count: '+__args.length);}};");
 
         constructorBuilder
                 .append(this.classFullName)
@@ -294,6 +318,15 @@ public class SpikeClass {
 
     }
 
+    private void createWrapConstructor() {
+
+        if (!this.hasWrapConstructor()) {
+            //   this.constructors.add(new SpikeClassConstructor(this, this.className + ":function(obj){ for(var prop in obj){ if(this[prop] !== undefined){this[prop] = obj[prop]; } } }"));
+        }
+
+    }
+
+
     public boolean isPrivate() {
         return this.modificators.contains("private");
     }
@@ -312,7 +345,7 @@ public class SpikeClass {
         StringBuilder compiledBuilder = new StringBuilder();
 
 
-        if(!this.isStatic()){
+        if (!this.isStatic()) {
             compiledBuilder.append(this.createConstructor());
         }
 
@@ -321,10 +354,10 @@ public class SpikeClass {
             compiledBuilder.append(spikeClassConstructor.compiled);
         }
 
-//        for (SpikeClassField spikeClassField : this.fields) {
-//            spikeClassField.compile();
-//            compiledBuilder.append(spikeClassField.compiled);
-//        }
+        for (SpikeClassField spikeClassField : this.fields) {
+            spikeClassField.compile();
+            compiledBuilder.append(spikeClassField.compiled);
+        }
 
         for (SpikeClassFunction spikeClassFunction : this.functions) {
             spikeClassFunction.compile();
@@ -347,15 +380,6 @@ public class SpikeClass {
 
             if (!spikeClassConstructor.isDefaultConstructor) {
 
-//                    compiledBuilder
-//                            .append("spike.core.Assembler.extend(")
-//                            .append(extendsClassFullName)
-//                            .append(".prototype")
-//                            .append(",")
-//                            .append(dependency)
-//                            .append(".prototype")
-//                            .append(");");
-//
                 extendingBuilder
                         .append("spike.core.Assembler.extend(")
                         .append(this.classFullName)

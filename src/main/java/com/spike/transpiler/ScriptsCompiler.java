@@ -17,6 +17,7 @@ public class ScriptsCompiler {
 
         Serializer.initSerializer();
         fileBody = removeComments(fileBody);
+        fileBody = removeTypeAnnotations(fileBody);
 
         if (hasClass(fileBody)) {
 
@@ -37,6 +38,16 @@ public class ScriptsCompiler {
 
 
         return null;
+
+    }
+
+    private String removeTypeAnnotations(String fileBody) {
+
+        return fileBody.replaceAll("@string", "")
+                .replaceAll("@number", "")
+                .replaceAll("@object", "")
+                .replaceAll("@map", "")
+                .replaceAll("@array", "");
 
     }
 

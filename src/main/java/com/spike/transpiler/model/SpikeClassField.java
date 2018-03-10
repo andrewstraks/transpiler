@@ -62,10 +62,10 @@ public class SpikeClassField {
 
             StringBuilder compiledBuilder = new StringBuilder();
 
-            compiledBuilder
-                    .append(this.spikeClass.classFullName)
-                    .append(".prototype.")
-                    .append(fieldBody);
+          compiledBuilder
+                  .append(this.spikeClass.classFullName)
+                  .append(".prototype.")
+                  .append(fieldBody);
 
             if (!fieldBody.endsWith(";")) {
                 compiledBuilder.append(";");
@@ -76,6 +76,33 @@ public class SpikeClassField {
         }else{
           this.compiled = this.body+"\n";
       }
+
+    }
+
+    public String compileForConstructor() {
+
+
+      if(!this.isGlobalCondition()){
+
+            String fieldBody = "this."+this.body.substring(0, this.body.indexOf(":")) + "=" + this.body.substring(this.body.indexOf(":") + 1, this.body.length());
+
+            if (fieldBody.trim().endsWith(",")) {
+                fieldBody = fieldBody.substring(0, fieldBody.lastIndexOf(","));
+            }
+
+            StringBuilder compiledBuilder = new StringBuilder();
+
+            compiledBuilder.append(fieldBody);
+
+            if (!fieldBody.endsWith(";")) {
+                compiledBuilder.append(";");
+            }
+
+           return compiledBuilder.toString();
+
+        }
+
+        return "";
 
     }
 

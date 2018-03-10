@@ -23,7 +23,9 @@ public class WatchIdProcessor implements Processor {
         String watchName = "watcher-"+watchId;
         watchId++;
 
-        element.attr(TemplateCompiler.PREFIX+"watch", watchName);
+        if(element.attr(TemplateCompiler.PREFIX+"watch").isEmpty()){
+            element.attr(TemplateCompiler.PREFIX+"watch", watchName);
+        }
 
         if (element.id().isEmpty()) {
             watchId++;
