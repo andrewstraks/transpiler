@@ -12,6 +12,10 @@ public class BindProcessor implements Processor {
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
 
+        if (element.tagName().equals("spike")) {
+            throw new Exception("Spike Compiler: 'bind' not allowed on @spike tags");
+        }
+
         String bindModel = element.attr(spikeAttribute);
 
         if (bindModel.isEmpty()) {

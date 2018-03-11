@@ -17,7 +17,7 @@ public class ScriptsCompiler {
 
         Serializer.initSerializer();
         fileBody = removeComments(fileBody);
-        fileBody = removeTypeAnnotations(fileBody);
+        fileBody = removeDecorators(fileBody);
 
         if (hasClass(fileBody)) {
 
@@ -41,7 +41,7 @@ public class ScriptsCompiler {
 
     }
 
-    private String removeTypeAnnotations(String fileBody) {
+    private String removeDecorators(String fileBody) {
 
         return fileBody.replaceAll("@string", "")
                 .replaceAll("@number", "")

@@ -15,7 +15,7 @@ public class LogProcessor implements Processor {
         if (element.tagName().equals("spike")) {
 
             String jsScript = element.attr(spikeAttribute);
-            jsScript = "spike.core.Log.log("+jsScript+");";
+            jsScript = "spike.core.Log.templateLog("+jsScript+");";
 
             element.replaceWith(new TextNode(U.js(jsScript), ""));
 

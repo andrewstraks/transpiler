@@ -12,6 +12,10 @@ public class ProjectNotIfProcessor implements Processor {
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
 
+        if (!element.tagName().equals("spike")) {
+            throw new Exception("Spike Compiler: 'not-project' are only allowed on @spike tags");
+        }
+
         if(element.attr(spikeAttribute).toLowerCase().contains(TemplateCompiler.PROJECT.toLowerCase())){
             element.remove();
         }else{

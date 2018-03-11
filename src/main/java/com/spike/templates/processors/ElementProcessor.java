@@ -18,14 +18,14 @@ public class ElementProcessor implements Processor {
             String includeParams = element.attr(U.s("params"));
 
             if(includeParams.contains(":")){
-                element.replaceWith(new TextNode(U.ss(TemplateCompiler.INCLUDE_ELEMENT+"(new "+includePartial+"([scope, { "+includeParams+" }]))"), ""));
+                element.replaceWith(new TextNode(U.ss(TemplateCompiler.INCLUDE_ELEMENT+"(new "+includePartial+"(scope, { "+includeParams+" }))"), ""));
             }else{
 
                 if(includeParams.isEmpty()){
                     includeParams = "{}";
                 }
 
-                element.replaceWith(new TextNode(U.ss(TemplateCompiler.INCLUDE_ELEMENT+"(new "+includePartial+"([scope, "+includeParams+"]))"), ""));
+                element.replaceWith(new TextNode(U.ss(TemplateCompiler.INCLUDE_ELEMENT+"(new "+includePartial+"(scope, "+includeParams+"))"), ""));
             }
 
 

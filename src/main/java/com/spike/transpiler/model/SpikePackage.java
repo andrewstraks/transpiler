@@ -101,7 +101,7 @@ public class SpikePackage {
                 nodeBody.append(line).append("\n");
                 nodeCollecting = false;
 
-                if (collectClass) {
+                if (collectClass && nodeBody.toString().replace("private", "").replace("static", "").trim().startsWith("class")) {
                     this.classes.add(new SpikeClass(this, nodeBody.toString(), imports));
                 } else {
                     this.enums.add(new SpikeEnum(this, nodeBody.toString(), imports));
@@ -125,7 +125,12 @@ public class SpikePackage {
         for (SpikeClass spikeClass : this.classes) {
 
             if (spikeClass.isPrivate()) {
-                this.replacePrivateUsage(spikeClass.privateClassName, spikeClass.className);
+
+                if(spikeClass.isStatic()){
+                    this.replacePrivateUsageInStaticClass(spikeClass.privateClassName, spikeClass.className);
+                }else{
+                    this.replacePrivateUsageInClass(spikeClass.privateClassName, spikeClass.className);
+                }
             }
 
         }
@@ -133,14 +138,33 @@ public class SpikePackage {
         for (SpikeEnum spikeEnum : this.enums) {
 
             if (spikeEnum.isPrivate()) {
-                this.replacePrivateUsage(spikeEnum.privateClassName, spikeEnum.enumName);
+                this.replacePrivateUsageInEnum(spikeEnum.privateClassName, spikeEnum.enumName);
             }
 
         }
 
     }
 
-    private void replacePrivateUsage(String privateClassName, String className) {
+    private void replacePrivateUsageInClass(String privateClassName, String className) {
+
+        this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(this.packageName+"."+className) + "\\b", privateClassName);
+        this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(this.packageName+"."+privateClassName) + "\\b", privateClassName);
+        this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(privateClassName) + "\\b", this.packageName + "." + privateClassName);
+        this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote("new "+className) + "\\b", "new "+this.packageName + "." + privateClassName);
+        this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(".prototype."+className) + "\\b", ".prototype."+privateClassName);
+
+    }
+
+    private void replacePrivateUsageInStaticClass(String privateClassName, String className) {
+
+        System.out.println(className);
+        System.out.println(privateClassName);
+
+        this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(className) + "\\b", this.packageName + "." + privateClassName);
+
+    }
+
+    private void replacePrivateUsageInEnum(String privateClassName, String className) {
         this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(className) + "\\b", this.packageName + "." + privateClassName);
     }
 

@@ -86,7 +86,6 @@ public class SpikeClassConstructor {
 
             StringBuilder compiledBuilder = new StringBuilder();
 
-
             compiledBuilder
                     .append(this.spikeClass.classPackage.packageName)
                     .append(".")

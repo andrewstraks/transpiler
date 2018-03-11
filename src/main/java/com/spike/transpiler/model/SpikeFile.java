@@ -40,7 +40,6 @@ public class SpikeFile {
 
         this.compiled = compiledBuilder.toString();
         this.collectDependencies();
-        //this.compileConstructorUsages();
         this.compileSuperUsages();
         this.collectTotalNamespaces();
         this.compileGlobalVariables();
@@ -66,53 +65,6 @@ public class SpikeFile {
         this.compiled = "spike.core.Assembler.resetNamespaces(" + TOTAL_NAMESPACES + ", '" + this.packages.get(0).packageName + "');" + this.compiled;
     }
 
-    private void compileConstructorUsages() {
-
-        Pattern p = Pattern.compile("(new*\\s+[^\\;]*)");
-        Matcher m = p.matcher(this.compiled);
-        while (m.find()) {
-
-            String matchedConstructor = m.group();
-
-            if (matchedConstructor.contains("new")) {
-
-                String baseConstructor = matchedConstructor.substring(matchedConstructor.indexOf("new") + 3, matchedConstructor.indexOf("(")).trim();
-                String arguments = matchedConstructor.substring(matchedConstructor.indexOf("(") + 1, matchedConstructor.length()).trim();
-                String argumentsCleaned = this.getConstructorUsageArguments(arguments);
-
-                int argumentsCount = argumentsCleaned.length() == 0 ? 0 : argumentsCleaned.split(",").length;
-
-                if (this.constructorsMap.get(baseConstructor) != null) {
-
-                    List<String> constructorsList = this.constructorsMap.get(baseConstructor);
-
-                    String foundConstructor = null;
-
-                    for(String constructor : constructorsList){
-                        if(constructor.endsWith("_"+argumentsCount)){
-                            foundConstructor = constructor;
-                        }
-                    }
-
-                    if (foundConstructor == null) {
-                        try {
-                            throw new Exception("No matching constructor found : " + matchedConstructor);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-
-                        System.out.println("foundConstructor : "+foundConstructor+" matchedConstructor : "+matchedConstructor);
-
-                        this.compiled = this.compiled.replace(matchedConstructor, "new " + baseConstructor + "([" + arguments + "]");
-                    }
-                }
-            }
-
-        }
-
-    }
-
     private void compileSuperUsages() {
 
         Pattern p = Pattern.compile("(this\\.super\\([^\\)]*)");
@@ -121,7 +73,7 @@ public class SpikeFile {
 
             String matchedConstructor = m.group();
 
-            String baseConstructor = matchedConstructor.substring(matchedConstructor.indexOf("new") + 3, matchedConstructor.indexOf("(")).trim();
+            //String baseConstructor = matchedConstructor.substring(matchedConstructor.indexOf("new") + 3, matchedConstructor.indexOf("(")).trim();
             String arguments = matchedConstructor.substring(matchedConstructor.indexOf("(") + 1, matchedConstructor.length()).trim();
             String argumentsCleaned = this.getConstructorUsageArguments(arguments);
 

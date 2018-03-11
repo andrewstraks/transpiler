@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public class TemplateCompiler {
 
     public static String MESSAGES_CLASS = "";
-    public static final String TEMPLATE_SPIKE = "@template";
+    public static final String TEMPLATE_SPIKE = "spike.core.Templates.includeTemplate";
     public static final String INCLUDE_ELEMENT = "scope.include";
     public static final String INCLUDE_SPIKE = "app.partial.include";
     public static final String JS_HINT_LINE = "#js__line#";
@@ -184,14 +184,17 @@ public class TemplateCompiler {
                     stringBuilder2.append(line + "\n");
                 }
 
+
                 watcherOutput = stringBuilder2.toString();
-                watcherOutput = this.processJSHintsForWatcher(watcherOutput, watcher.getKey(), false);
                 watcherOutput = ProcessorUtils.replaceBrackets(watcherOutput);
+                watcherOutput = this.processJSHintsForWatcher(watcherOutput, watcher.getKey(), false);
                 watcherOutput = this.processRemovableAttributes(watcherOutput);
 
                 output = output.replace("'@@" + watcher.getKey() + "@@'", watcherOutput);
 
             }
+
+            System.out.println(output);
 
             output = output.replaceAll("<spike>", "").replaceAll("</spike>", "");
             output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope){var __w = []; " + this.replaceEscapes(output) + " return __w;};";
@@ -206,7 +209,6 @@ public class TemplateCompiler {
     static int generalCounter = 0;
 
     private String processJSHintsForWatcher(String output, String watcherName, Boolean omitHtml) {
-
 
         StringBuilder stringBuilder = new StringBuilder(output.length());
         stringBuilder.append("var __a" + generalCounter + " = ['','']; __a" + generalCounter + "[0] = '" + watcherName + "'; __a" + generalCounter + "[1] = '';");

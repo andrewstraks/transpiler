@@ -1,5 +1,27 @@
-import Auth from app.service.customer.Auth;
+import Message from spike.core.Message;
+import ListItem from app.elements.list.ListItem;
 
-<div class="menuGlobalElement" sp-watch="menu">
+<div class="homeController">
+
+    <spike sp-js>
+
+        scope.items = [
+        { name: 'Jack' },
+        { name: 'Bob' }
+        ];
+
+    </spike>
+
+    <div sp-watch>
+
+        <button type="button" sp-click="scope.change()">change</button>
+
+        <spike sp-for="item in scope.items">
+            {{ item.name }}
+            <!--<spike sp-element="ListItem" sp-params="item"></spike>-->
+        </spike>
+
+    </div>
 
 </div>
+

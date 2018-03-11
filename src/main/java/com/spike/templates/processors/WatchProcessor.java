@@ -16,6 +16,10 @@ public class WatchProcessor implements Processor {
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
 
+        if (element.tagName().equals("spike")) {
+            throw new Exception("Spike Compiler: 'watch' are not allowed on @spike tags");
+        }
+
         if(element.html().contains(TemplateCompiler.PREFIX+"watch")){
             throw new Exception("Spike transpiler: Watcher cannot contains another watchers");
         }

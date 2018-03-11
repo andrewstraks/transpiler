@@ -13,13 +13,20 @@ public class HrefProcessor implements Processor {
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
 
+        if (element.tagName().equals("spike")) {
+            throw new Exception("Spike Compiler: 'href' are not allowed on @spike tags");
+        }
+
+        String hrefValue = element.attr(spikeAttribute);
+
         if(element.id().isEmpty()){
             hrefId++;
             element.attr("id", "spike-href-"+hrefId);
         }
 
-        element.attr("href", element.attr("spike-href"));
-        element.removeAttr("spike-href");
+        element.attr("href", hrefValue);
+        element.attr("spike-href","");
+        element.removeAttr(spikeAttribute);
 
     }
 

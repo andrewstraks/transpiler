@@ -16,6 +16,8 @@ public class ForProcessor implements Processor {
         public String suffix = "";
     }
 
+    static int indexId = 0;
+
     private TemplateParts getTemplateParts(String repeat) {
 
         TemplateParts templateParts = new TemplateParts();
@@ -33,10 +35,15 @@ public class ForProcessor implements Processor {
             String[] repeatElements = repeat.split(" in ");
 
             if (repeatElements[0].contains(",")) {
-                templateParts.indexName = repeatElements[0].split(",")[0];
-                templateParts.varName = repeatElements[0].split(",")[1];
+                templateParts.indexName = repeatElements[0].split(",")[1];
+                templateParts.varName = repeatElements[0].split(",")[0];
             } else {
-                templateParts.indexName = repeatElements[0];
+                templateParts.varName = repeatElements[0];
+            }
+
+            if(templateParts.indexName == null){
+                templateParts.indexName = "index"+indexId;
+                indexId++;
             }
 
             templateParts.listName = repeatElements[1];

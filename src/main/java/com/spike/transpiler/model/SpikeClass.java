@@ -366,7 +366,6 @@ public class SpikeClass {
 
         this.compiled = compiledBuilder.toString();
 
-
         this.collectConstructorsExtendingDeclaration();
         this.createAssemblerDeclaration();
 

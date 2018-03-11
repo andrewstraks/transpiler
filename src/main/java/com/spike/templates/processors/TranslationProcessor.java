@@ -9,7 +9,11 @@ import org.jsoup.nodes.Element;
 public class TranslationProcessor implements Processor {
 
     @Override
-    public void process(Element element, String spikeAttribute) {
+    public void process(Element element, String spikeAttribute) throws Exception {
+
+        if (element.tagName().equals("spike")) {
+            throw new Exception("Spike Compiler: 'translation or placeholder' are not allowed on @spike tags");
+        }
 
         String translation = element.attr(spikeAttribute);
         String params = element.attr(TemplateCompiler.PARAMS);
