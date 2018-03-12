@@ -277,7 +277,7 @@ public class SpikeClass {
                 .append("var __args = [];")
                 .append("if(args && arguments.length == 1){")
                 .append("    if(args instanceof Array){")
-                .append("        __args = args.length == 0 ? arguments : args;")
+                .append("        __args = args.length == 0 ? arguments : [args];")
                 .append("    }else{")
                 .append("        __args = [args];")
                 .append("    }")
