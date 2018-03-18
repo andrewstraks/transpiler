@@ -48,6 +48,10 @@ public class SpikeClass {
         this.classPackage.spikeFile.extendingMap.add(new ExtendingModel(this.extendsFullName, this.classFullName));
     }
 
+    private boolean isInterface(){
+        return this.body.startsWith("interface");
+    }
+
     private void collectClassFullName() {
         this.classFullName = this.classPackage.packageName + "." + this.className;
     }
@@ -69,18 +73,40 @@ public class SpikeClass {
     }
 
     private void collectModificator() {
-        this.modificators = new ArrayList<>(Arrays.asList(this.body.substring(0, this.body.indexOf("class")).trim().split(" ")));
-        if (!this.modificators.contains("private")) {
-            this.modificators.add("public");
+
+        if(this.isInterface()){
+            this.modificators = new ArrayList<>();
+        }else{
+
+            this.modificators = new ArrayList<>(Arrays.asList(this.body.substring(0, this.body.indexOf("class")).trim().split(" ")));
+            if (!this.modificators.contains("private")) {
+                this.modificators.add("public");
+            }
+
         }
+
     }
 
     private void collectClassName() {
-        this.className = this.body.substring(this.body.indexOf("class") + 5, this.body.indexOf("{")).trim();
 
-        if (this.className.contains("extends")) {
-            this.className = this.className.substring(0, this.className.indexOf("extends")).trim();
+        if(this.isInterface()){
+
+            this.className = this.body.substring(this.body.indexOf("interface") + 5, this.body.indexOf("{")).trim();
+
+            if (this.className.contains("interface")) {
+                this.className = this.className.substring(0, this.className.indexOf("interface")).trim();
+            }
+
+        }else{
+
+            this.className = this.body.substring(this.body.indexOf("class") + 5, this.body.indexOf("{")).trim();
+
+            if (this.className.contains("extends")) {
+                this.className = this.className.substring(0, this.className.indexOf("extends")).trim();
+            }
+
         }
+
     }
 
     private void collectExtendsName() {

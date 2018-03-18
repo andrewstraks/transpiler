@@ -71,6 +71,7 @@ public class SpikePackage {
                     case "static":
                     case "class":
                     case "enum":
+                    case "interface":
 
                         if (keyword.equals("enum")) {
                             collectClass = false;
@@ -84,7 +85,9 @@ public class SpikePackage {
 
                             if (nodeBodyStr.replace("private", "").replace("static", "").trim().startsWith("class")) {
                                 this.classes.add(new SpikeClass(this, nodeBody.toString(), imports));
-                            } else if(nodeBodyStr.replace("private", "").replace("static", "").trim().startsWith("enum")) {
+                            } else if (nodeBodyStr.startsWith("interface")) {
+                                this.classes.add(new SpikeClass(this, nodeBody.toString(), imports));
+                            }else if(nodeBodyStr.replace("private", "").replace("static", "").trim().startsWith("enum")) {
                                 this.enums.add(new SpikeEnum(this, nodeBody.toString(), imports));
                             }
 
@@ -102,6 +105,8 @@ public class SpikePackage {
                 nodeCollecting = false;
 
                 if (collectClass && nodeBody.toString().replace("private", "").replace("static", "").trim().startsWith("class")) {
+                    this.classes.add(new SpikeClass(this, nodeBody.toString(), imports));
+                } else if (collectClass && nodeBody.toString().trim().startsWith("interface")) {
                     this.classes.add(new SpikeClass(this, nodeBody.toString(), imports));
                 } else {
                     this.enums.add(new SpikeEnum(this, nodeBody.toString(), imports));
