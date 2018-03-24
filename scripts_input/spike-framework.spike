@@ -108,6 +108,13 @@ class Car {
 
 }package app.model;
 
+interface Employee {
+
+    abstract status;
+    abstract function getSalary;
+
+}package app.model;
+
 class Developer {
 
     status: null,
