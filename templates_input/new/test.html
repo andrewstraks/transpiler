@@ -12,16 +12,9 @@ import ListItem from app.elements.list.ListItem;
 
     </spike>
 
-    <div sp-watch>
-
-        <button type="button" sp-click="scope.change()">change</button>
-
-        <spike sp-for="item in scope.items">
-            {{ item.name }}
-            <!--<spike sp-element="ListItem" sp-params="item"></spike>-->
-        </spike>
-
-    </div>
+    <spike sp-element="app.elements.test.Test" sp-trigger="whenTest">
+        <spike sp-template="app.elements.common.spinner"></spike>
+    </spike>
 
 </div>
 

@@ -10,21 +10,47 @@ import org.jsoup.nodes.TextNode;
  */
 public class TemplateProcessor implements Processor {
 
+    public static int TRIGGER_ID = 100000;
+
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
 
-        if(element.tagName().equals("spike")){
+        if (element.tagName().equals("spike")) {
             String templateName = element.attr(spikeAttribute);
+            String params = element.attr(TemplateCompiler.PREFIX + "params").trim();
+            String trigger = element.attr(U.s("trigger"));
 
-            String params = element.attr(TemplateCompiler.PREFIX+"params").trim();
+            if (trigger.isEmpty()) {
 
-            if(params.isEmpty()){
-                params = "scope";
+                if (params.isEmpty()) {
+                    params = "scope";
+                }
+
+                element.replaceWith(new TextNode(U.ss(TemplateCompiler.TEMPLATE_SPIKE + "('" + templateName + "', " + params + ")"), ""));
+
+            } else {
+
+                if (!params.isEmpty()) {
+                    throw new Exception("Spike Compiler: 'sp-params' statement not allowed when sp-trigger in use");
+                }
+
+                String triggerId = trigger + TRIGGER_ID;
+                TRIGGER_ID++;
+
+                String elementHtml = element.html();
+
+                Element newElement = new Element("div");
+                newElement.html(elementHtml);
+                newElement.attr("id", triggerId);
+
+                element.replaceWith(newElement);
+                newElement.after(new TextNode(U.ss(TemplateCompiler.TRIGGER_TEMPLATE + "('" + templateName + "', scope, '" + trigger + "','" + triggerId + "')"), ""));
+
+
             }
 
-            element.replaceWith(new TextNode(U.ss(TemplateCompiler.TEMPLATE_SPIKE+"('"+templateName+"', "+params+")"), ""));
 
-        }else{
+        } else {
             throw new Exception("Spike Compiler: 'template' statement allowed only on @spike tags");
         }
 

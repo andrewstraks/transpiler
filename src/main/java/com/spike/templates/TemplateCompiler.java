@@ -21,6 +21,8 @@ public class TemplateCompiler {
     public static String MESSAGES_CLASS = "";
     public static final String TEMPLATE_SPIKE = "spike.core.Templates.includeTemplate";
     public static final String INCLUDE_ELEMENT = "scope.include";
+    public static final String TRIGGER_ELEMENT = "spike.core.Watchers.addTriggerElement";
+    public static final String TRIGGER_TEMPLATE = "spike.core.Watchers.addTriggerTemplate";
     public static final String INCLUDE_SPIKE = "app.partial.include";
     public static final String JS_HINT_LINE = "#js__line#";
     public static final String JS_HINT_BEGIN = "#js__begin#";
@@ -64,7 +66,6 @@ public class TemplateCompiler {
         "mouseleave",
         "mouseout",
         "submit",
-        "trigger",
         "toggle",
         "load",
         "unload"

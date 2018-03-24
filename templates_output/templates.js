@@ -1,1 +1,12 @@
-spike.core.Assembler.sourcePath='templates_input';spike.core.Templates.templates['templates_input_new_test_html']=function(scope){var t='';t+='<body id=\"id-1\">';t+='<div class="homeController" id="id-2">';scope.items = [ { name: 'Jack' }, { name: 'Bob' } ];t+='<div sp-watch=\"watcher-0\" id=\"id-3\">';t+='<button type="button" id="id-4" spike-unbinded="" spike-event-click="scope.change()">change</button>';for(var index0 = 0; index0 < scope.items.length; index0++){var item = scope.items[index0];t+=''+( item.name )+'';}t+='<\/div>';t+='<\/div>'; return t;};
+spike.core.Assembler.sourcePath = 'templates_input';
+spike.core.Templates.templates['templates_input_new_test_html'] = function (scope) {
+    var t = '';
+    t += '<body id=\"id-1\">';
+    t += '<div class="homeController" id="id-2">';
+    scope.items = [{name: 'Jack'}, {name: 'Bob'}];
+    t += '<div id=\"whenTest0\">';
+    t += '' + (spike.core.Templates.includeTemplate('app.elements.common.spinner', scope)) + '';
+    t += '<\/div>' + (spike.core.Watchers.addTrigger('app.elements.test.Test', scope, 'whenTest', 'whenTest0')) + '';
+    t += '<\/div>';
+    return t;
+};
