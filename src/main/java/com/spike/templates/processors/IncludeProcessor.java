@@ -13,23 +13,18 @@ public class IncludeProcessor implements Processor {
     @Override
     public void process(Element element, String spikeAttribute) throws Exception {
 
-        if(element.tagName().equals("spike")){
+        if (element.tagName().equals("spike")) {
             String includePartial = element.attr(spikeAttribute);
             String includeParams = element.attr(U.s("params"));
 
-            if(includeParams.contains(":")){
-                element.replaceWith(new TextNode(U.ss(TemplateCompiler.INCLUDE_SPIKE+"("+includePartial+", { "+includeParams+" })"), ""));
-            }else{
-
-                if(includeParams.isEmpty()){
-                    includeParams = "{}";
-                }
-
-                element.replaceWith(new TextNode(U.ss(TemplateCompiler.INCLUDE_SPIKE+"("+includePartial+", "+includeParams+")"), ""));
+            if (includeParams.isEmpty()) {
+                includeParams = "{}";
             }
 
+            element.replaceWith(new TextNode(U.ss(TemplateCompiler.INCLUDE_SPIKE + "(" + includePartial + ", " + includeParams + ")"), ""));
 
-        }else{
+
+        } else {
             throw new Exception("Spike Compiler: 'include' statement allowed only on @spike tags");
         }
 

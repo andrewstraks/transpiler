@@ -23,6 +23,7 @@ public class TemplateProcessor implements Processor {
             }
 
             element.replaceWith(new TextNode(U.ss(TemplateCompiler.TEMPLATE_SPIKE+"('"+templateName+"', "+params+")"), ""));
+
         }else{
             throw new Exception("Spike Compiler: 'template' statement allowed only on @spike tags");
         }
