@@ -26,7 +26,7 @@ public class TemplateProcessor implements Processor {
                     params = "scope";
                 }
 
-                element.replaceWith(new TextNode(U.ss(TemplateCompiler.TEMPLATE_SPIKE + "('" + templateName + "', " + params + ")"), ""));
+                element.replaceWith(new TextNode(U.ss(TemplateCompiler.TEMPLATE_SPIKE + "('" + templateName + "', " + params + ", $this)"), ""));
 
             } else {
 
@@ -37,14 +37,13 @@ public class TemplateProcessor implements Processor {
                 String triggerId = trigger + TRIGGER_ID;
                 TRIGGER_ID++;
 
-                String elementHtml = element.html();
-
                 Element newElement = new Element("div");
-                newElement.html(elementHtml);
+                newElement.html(element.html());
                 newElement.attr("id", triggerId);
+                newElement.attr("class", element.attr("class"));
 
                 element.replaceWith(newElement);
-                newElement.after(new TextNode(U.ss(TemplateCompiler.TRIGGER_TEMPLATE + "('" + templateName + "', scope, '" + trigger + "','" + triggerId + "')"), ""));
+                newElement.after(new TextNode(U.ss(TemplateCompiler.TRIGGER_TEMPLATE + "('" + templateName + "', '" + trigger + "','" + triggerId + "')"), ""));
 
 
             }

@@ -2,7 +2,6 @@ package com.spike.transpiler.model;
 
 import com.spike.templates.TemplateCompiler;
 import com.spike.transpiler.dependencies.DependencyConstructor;
-import com.spike.transpiler.serialization.Serializer;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -26,7 +25,7 @@ public class SpikeFile {
 
     public SpikeFile(String body) {
         this.body = body.trim();
-        this.constructorsMap = Serializer.deserializeConstructors();
+        this.constructorsMap = new HashMap<>();
         this.createPackages();
     }
 
@@ -41,6 +40,7 @@ public class SpikeFile {
         this.compiled = compiledBuilder.toString();
         this.collectDependencies();
         this.compileSuperUsages();
+       // this.compileSuperConstructorUsages();
         this.collectTotalNamespaces();
         this.compileGlobalVariables();
     }
@@ -66,6 +66,11 @@ public class SpikeFile {
     }
 
     private void compileSuperUsages() {
+        this.compiled = this.compiled.replaceAll("(this\\.super\\.*)", "this.super().");
+        this.compiled = this.compiled.replaceAll("\\.\\)", ")");
+    }
+
+    private void compileSuperConstructorUsages() {
 
         Pattern p = Pattern.compile("(this\\.super\\([^\\)]*)");
         Matcher m = p.matcher(this.compiled);

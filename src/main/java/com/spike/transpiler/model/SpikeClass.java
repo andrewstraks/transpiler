@@ -303,7 +303,7 @@ public class SpikeClass {
                 .append("var __args = [];")
                 .append("if(args && arguments.length == 1){")
                 .append("    if(args instanceof Array){")
-                .append("        __args = args.length == 0 ? arguments : [args];")
+                .append("        __args = args.length == 0 ? arguments : args;")
                 .append("    }else{")
                 .append("        __args = [args];")
                 .append("    }")
@@ -468,8 +468,10 @@ public class SpikeClass {
 
     private void createClassFunctions() {
 
-        this.functions.add(new SpikeClassFunction(this, "getSuper:function(){ return '" + (this.extendsName != null ? this.extendsFullName : this.classFullName) + "'; };"));
-        this.functions.add(new SpikeClassFunction(this, "getClass:function(){ return '" + this.classFullName + "'; };"));
+        String superClassName = (this.extendsName != null ? this.extendsFullName : this.classFullName);
+
+        this.functions.add(new SpikeClassFunction(this, "getSuper:function(){ return '"+superClassName+"'; };"));
+        this.functions.add(new SpikeClassFunction(this, "getClass:function(){ return '"+this.classFullName+"'; };"));
         this.fields.add(new SpikeClassField(this, "isClass: true,"));
 
     }

@@ -21,8 +21,8 @@ public class TemplateCompiler {
     public static String MESSAGES_CLASS = "";
     public static final String TEMPLATE_SPIKE = "spike.core.Templates.includeTemplate";
     public static final String INCLUDE_ELEMENT = "scope.include";
-    public static final String TRIGGER_ELEMENT = "spike.core.Watchers.addTriggerElement";
-    public static final String TRIGGER_TEMPLATE = "spike.core.Watchers.addTriggerTemplate";
+    public static final String TRIGGER_ELEMENT = "$this.addTriggerElement";
+    public static final String TRIGGER_TEMPLATE = "$this.addTriggerTemplate";
     public static final String INCLUDE_SPIKE = "app.partial.include";
     public static final String JS_HINT_LINE = "#js__line#";
     public static final String JS_HINT_BEGIN = "#js__begin#";
@@ -101,6 +101,7 @@ public class TemplateCompiler {
         commands.put(U.s("log"), new LogProcessor());
         commands.put(U.s("watch"), new WatchIdProcessor());
         commands.put(U.s("bind"), new BindProcessor());
+        commands.put("name", new NameProcessor());
 
         /*
          * Events
@@ -198,7 +199,7 @@ public class TemplateCompiler {
             System.out.println(output);
 
             output = output.replaceAll("<spike>", "").replaceAll("</spike>", "");
-            output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope){var __w = []; " + this.replaceEscapes(output) + " return __w;};";
+            output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope, $this){var __w = []; " + this.replaceEscapes(output) + " return __w;};";
         } else {
             output = "";
         }
@@ -340,7 +341,7 @@ public class TemplateCompiler {
         if (TemplateCompiler.OLD_VERSION) {
             output = "; window['_spike_templates']['" + getFileName(templateFile) + "']=function(model){var t='';" + output + " return t;};";
         } else {
-            output = "spike.core.Templates.templates['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope){var t='';" + output + " return t;};";
+            output = "spike.core.Templates.templates['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope, $this){var t='';" + output + " return t;};";
         }
 
         return output;
