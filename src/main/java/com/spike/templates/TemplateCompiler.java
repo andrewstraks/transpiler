@@ -199,7 +199,7 @@ public class TemplateCompiler {
             System.out.println(output);
 
             output = output.replaceAll("<spike>", "").replaceAll("</spike>", "");
-            output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope, $this){var __w = []; " + this.replaceEscapes(output) + " return __w;};";
+            output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_") + "']=function(scope, $this){var __w = []; " + this.replaceEscapes(output) + " return __w;};";
         } else {
             output = "";
         }
@@ -341,7 +341,7 @@ public class TemplateCompiler {
         if (TemplateCompiler.OLD_VERSION) {
             output = "; window['_spike_templates']['" + getFileName(templateFile) + "']=function(model){var t='';" + output + " return t;};";
         } else {
-            output = "spike.core.Templates.templates['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_").toLowerCase() + "']=function(scope, $this){var t='';" + output + " return t;};";
+            output = "spike.core.Templates.templates['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_") + "']=function(scope, $this){var t='';" + output + " return t;};";
         }
 
         return output;
