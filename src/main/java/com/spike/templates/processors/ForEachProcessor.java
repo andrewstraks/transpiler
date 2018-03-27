@@ -41,10 +41,6 @@ public class ForEachProcessor implements Processor {
             if (split.length == 3) {
                 templateParts.indexName = split[2];
             }
-//            else if(split.length == ){
-//                templateParts.indexName = INDEX + NEXT_INDEX;
-//                NEXT_INDEX++;
-//            }
 
         } else {
             templateParts.varName = repeatElements[0];

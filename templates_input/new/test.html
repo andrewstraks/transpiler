@@ -1,25 +1,9 @@
-import Message from spike.core.Message;
-import ListItem from app.elements.list.ListItem;
+<div>
 
-<div class="homeController">
-
-    <spike sp-js>
-
-        scope.items = [
-        { name: 'Jack' },
-        { name: 'Bob' }
-        ];
-
-    </spike>
-
-    <spike sp-element="app.elements.test.Test" sp-trigger="whenTest">
-        <spike sp-template="app.elements.common.spinner"></spike>
-    </spike>
-
-    <spike sp-template="app.elements.common.spinner" sp-trigger="whenSpinner"></spike>
-
-    <input type="text" name="username" />
-    <input type="password" name="password" />
+    <select>
+        <spike sp-foreach="item in scope.items">
+            <option value="{{item}}">{{item}}</option>
+        </spike>
+    </select>
 
 </div>
-

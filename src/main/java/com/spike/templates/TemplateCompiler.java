@@ -128,7 +128,10 @@ public class TemplateCompiler {
         Elements elements = doc.body().getAllElements();
         for (Element element : elements) {
 
-            if (!element.tagName().toLowerCase().equals("spike") && element.attr("id").isEmpty()) {
+            if (!element.tagName().toLowerCase().equals("spike")
+                    && !element.tagName().toLowerCase().equals("body")
+                    && !element.tagName().toLowerCase().equals("html")
+                    && element.attr("id").isEmpty()) {
                 generalId++;
                 element.attr("id", "id-" + generalId);
             }
