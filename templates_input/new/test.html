@@ -1,9 +1,47 @@
-<div>
+import Common from app.service.helpers.Common;
 
-    <select>
-        <spike sp-foreach="item in scope.items">
-            <option value="{{item}}">{{item}}</option>
+<div class="tableListTemplate" sp-watch="tableList" sp-watch-manual>
+    <spike sp-if="scope.data" >
+        <spike sp-for="element, elementIndex in scope.data">
+            <div class="table-row">
+                <spike sp-forEach="option, optionKey in scope.options.columns">
+                    <div class="table-column" style="width: {{option.width}}%">
+                        <spike sp-switch="option.type">
+                            <spike sp-case="'button'" sp-break>
+                                <button data-key="{{element[option.key]}}" onclick="({{option.action}})(this)">{{optionKey}}</button>
+                            </spike>
+                            <spike sp-case="'date'" sp-break>
+                                {{element[optionKey] ? Common.formatDate(element[optionKey], option.format, false) : '&nbsp;'}}
+                            </spike>
+                            <spike sp-case="'select'" sp-break>
+                                <!-- <select>
+                                <spike sp-forEach="argument, argumentKey in option.arguments">
+                                    <option value="{{argumentKey}}">{{argument}}</option>
+                                </spike>
+                            </select> -->
+                            </spike>
+                            <spike sp-case="'checkbox'" sp-break>
+
+                            </spike>
+                            <spike sp-case="'href'" sp-break>
+                                <a href="{{option.link +'/'+ element[option.key]}}" target="{{option.target}}">{{optionKey}}</a>
+                            </spike>
+                            <spike sp-case="'filter'" sp-break>
+
+                            </spike>
+                            <spike sp-default>
+                                {{element[optionKey] ? element[optionKey] : '&nbsp;'}}
+                            </spike>
+                        </spike>
+                    </div>
+                </spike>
+            </div>
         </spike>
-    </select>
-
+        <div class="pagination">
+            <div class="first">first</div>
+            <div class="prev">prev</div>
+            <div class="next">next</div>
+            <div class="last">last</div>
+        </div>
+    </spike>
 </div>

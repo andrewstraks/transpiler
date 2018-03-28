@@ -199,7 +199,10 @@ public class TemplateCompiler {
 
             }
 
-            System.out.println(output);
+            for(int i = 0; i < generalCounter; i++){
+                output = output.replaceAll(Pattern.quote("__a"+i+"[1] +='<spike>';"), "");
+            }
+
 
             output = output.replaceAll("<spike>", "").replaceAll("</spike>", "");
             output = "spike.core.Watchers.watchers['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_") + "']=function(scope, $this){var __w = []; " + this.replaceEscapes(output) + " return __w;};";
@@ -346,6 +349,7 @@ public class TemplateCompiler {
         } else {
             output = "spike.core.Templates.templates['" + templateFile.getPath().replaceAll("\\\\", "_").replace(".", "_") + "']=function(scope, $this){var t='';" + output + " return t;};";
         }
+
 
         return output;
 

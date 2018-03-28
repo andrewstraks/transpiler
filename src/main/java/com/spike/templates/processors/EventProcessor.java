@@ -34,7 +34,7 @@ public class EventProcessor implements Processor {
 
             element.attr("spike-unbinded", "");
             element.attr("spike-event-" + event, eventBody);
-            element.attr("spike-event-" + event + "-link", "\'+linkId+\'");
+            element.attr("spike-event-" + event + "-link", U.ss("linkId"));
 
             if (element.id().isEmpty()) {
                 eventId++;
@@ -45,7 +45,7 @@ public class EventProcessor implements Processor {
 
     }
 
-    private String processEventBodyVariables(String eventFunctionBody) {
+    public static String processEventBodyVariables(String eventFunctionBody) {
 
         List<String> arguments = new ArrayList<>();
         arguments.add("scope");
@@ -62,9 +62,6 @@ public class EventProcessor implements Processor {
                     if (!arguments.contains(arg.trim()) && !arg.trim().equals("this") && !arg.contains(".") && !arg.contains("event")) {
                         arguments.add(arg.trim());
                     }
-//                    else if(arg.trim().equals("this")){
-//                        arguments.add("__this");
-//                    }
 
                 }
 

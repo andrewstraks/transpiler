@@ -41,6 +41,7 @@ public class ElementProcessor implements Processor {
                 newElement.html(element.html());
                 newElement.attr("id", triggerId);
                 newElement.attr("class", element.attr("class"));
+               // newElement.attr("sp-keep-id","");
 
                 element.replaceWith(newElement);
                 newElement.after(new TextNode(U.ss(TemplateCompiler.TRIGGER_ELEMENT + "('" + includePartial + "', '"+trigger+"','"+triggerId+"')"), ""));

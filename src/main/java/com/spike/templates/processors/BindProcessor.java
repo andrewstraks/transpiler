@@ -34,13 +34,18 @@ public class BindProcessor implements Processor {
 
         if (element.tagName().toLowerCase().equals("input")) {
             element.attr(U.e("keyup"), eventBody);
+            element.attr("spike-event-keyup-link", U.ss("linkId"));
         } else if (element.tagName().toLowerCase().equals("select")) {
             element.attr(U.e("change"), eventBody);
+            element.attr("spike-event-change-link", U.ss("linkId"));
         }
 
         if (element.attr("spike-unbinded").isEmpty()) {
             element.attr("spike-unbinded", "");
         }
+
+        String prefix = EventProcessor.processEventBodyVariables(eventBody);
+        element.before(U.js(prefix));
 
         element.removeAttr(spikeAttribute);
 
