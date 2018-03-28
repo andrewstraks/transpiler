@@ -39,8 +39,8 @@ public class SpikeFile {
 
         this.compiled = compiledBuilder.toString();
         this.collectDependencies();
+        this.compileSuperConstructorUsages();
         this.compileSuperUsages();
-       // this.compileSuperConstructorUsages();
         this.collectTotalNamespaces();
         this.compileGlobalVariables();
     }

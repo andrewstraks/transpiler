@@ -5,6 +5,7 @@ import com.spike.templates.U;
 import org.apache.commons.lang.StringUtils;
 import org.jsoup.nodes.Element;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +15,7 @@ import java.util.List;
 public class EventProcessor implements Processor {
 
     static private int eventId = 0;
+    static public int primitives = 0;
 
     @Override
     public void process(Element element, String event) throws Exception {
@@ -71,9 +73,17 @@ public class EventProcessor implements Processor {
 
         StringBuilder linkFunctionBuilder = new StringBuilder();
 
+        List<String> cleanArguments = new ArrayList<>();
         for (String argument : arguments) {
-            linkFunctionBuilder.append("var ").append(argument).append("=(").append(argument).append("=== undefined ? undefined :").append(argument).append(");");
+
+            if(!isPrimitive(argument)){
+                linkFunctionBuilder.append("var ").append(argument).append("=(").append(argument).append("=== undefined ? undefined :").append(argument).append(");");
+                cleanArguments.add(argument);
+            }
+
         }
+
+        arguments = cleanArguments;
 
         linkFunctionBuilder.append("var linkId = spike.core.Util.hash();");
         linkFunctionBuilder.append("spike.core.Events.__linkReferences[linkId] = {};");
@@ -94,6 +104,24 @@ public class EventProcessor implements Processor {
         linkFunctionBuilder.append("];");
 
         return linkFunctionBuilder.toString().replace(",]", "]").replace(",)", ")");
+    }
+
+    public static boolean isPrimitive(String argument){
+
+        if(argument.startsWith("'")){
+            return true;
+        }
+
+        try {
+
+            new BigDecimal(argument);
+            return true;
+
+        }catch (Exception e){
+        }
+
+        return false;
+
     }
 
 }

@@ -194,7 +194,9 @@ public class SpikePackage {
                 this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importName) + "\\b", importFrom);
 
                 String importFromPackage = importFrom.substring(0, importFrom.lastIndexOf("."));
+
                 this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(importFromPackage + "." + importFromPackage) + "\\b", importFrom);
+                this.compiled = this.compiled.replaceAll(Pattern.quote(".."),".");
 
             }
 

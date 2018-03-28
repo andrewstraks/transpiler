@@ -3917,6 +3917,7 @@ class Element {
     },
 
     Element: function(parentElement){
+     this.super();
      this.Element(parentElement, null);
     },
 
