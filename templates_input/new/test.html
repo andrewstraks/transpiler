@@ -1,6 +1,9 @@
-<div class="homeController">
+<div class="loginController">
 
-    <button type="button" sp-click="scope.showModal(event, x, 'Modal title')">Show modal</button>
+    <div class="form-group" sp-for="role in scope.roles" sp-click="scope.selectRole(role)">
+        <input id="role-{{role.id}}" sp-keep-id name="role-{{role.id}}" class="form-control" type="radio" hidden/>
+        <label for="role-{{role.id}}">{{role.name}}</label>
+    </div>
 
 </div>
 

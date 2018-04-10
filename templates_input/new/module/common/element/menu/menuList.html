@@ -1,0 +1,48 @@
+import Auth from app.service.auth.Auth;
+
+<div class="menuListTemplate" >
+
+    <spike sp-if="scope.menuTree">
+
+        <div class="item" sp-for="item in scope.menuTree">
+
+            <spike sp-if="item.statMode">
+
+            </spike>
+            <spike sp-else>
+
+                <div class="item-content">
+                    <img src="{{ item.icon }}"/>
+                    <span>{{ item.label }}</span>
+                </div>
+                <div class="submenu" sp-if="item.sublist">
+
+                    <div class="subitem" sp-for="subitem in item.sublist">
+
+                        <div class="item-content">
+                            <img src="{{ subitem.icon }}"/>
+                            <span>{{ subitem.label }}</span>
+                        </div>
+                        <div class="submenu2" sp-if="subitem.sublist">
+
+                            <div class="subitem2" sp-for="subitem2 in subitem.sublist">
+                                <div class="item-content">
+                                    <img src="{{ subitem2.icon }}"/>
+                                    <span>{{ subitem2.label }}</span>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </spike>
+
+        </div>
+
+    </spike>
+
+</div>

@@ -1,0 +1,30 @@
+<div class="tableFilterTemplate" sp-watch>
+    <spike sp-for="filter in scope.options.filters">
+        <spike sp-switch="filter.type">
+            <spike sp-case="'buttons'">
+                <spike sp-for="button in filter.buttons">
+                    <button class="{{button.clazz}}" sp-click="scope.delegateEvent(button, this)">{{button.label}}</button>
+                </spike>
+                <spike sp-break></spike>
+            </spike>
+            <spike sp-case="'select'">
+                <label>{{filter.label}}</label>
+                <select sp-change="scope.delegateEvent(filter, this)">
+                    <option spike sp-forEach="argument, argumentKey in filter.arguments" value="{{argumentKey}}">{{argument}}</option>
+                </select>
+                <spike sp-break></spike>
+            </spike>
+            <spike sp-case="'checkbox'">
+                <input type="checkbox"><input>
+                <spike sp-break></spike>
+            </spike>
+            <spike sp-case="'href'">
+                <spike sp-break></spike>
+            </spike>
+            <spike sp-case="'filter'">
+                {{filter.filter(element)}}
+                <spike sp-break></spike>
+            </spike>
+        </spike>
+    </spike>
+</div>

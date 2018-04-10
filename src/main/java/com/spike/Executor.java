@@ -2,9 +2,9 @@ package com.spike;
 
 import com.spike.cli.CliCreator;
 import com.spike.imports.NewImportCompiler;
+import com.spike.templates.compilers.CommonCompiler;
 import com.spike.transpiler.ScriptsCompiler;
 import com.spike.transpiler.ScriptsIO;
-import com.spike.templates.TemplateCompiler;
 import com.spike.templates.TemplatesIO;
 
 import java.io.File;
@@ -25,7 +25,6 @@ public class Executor {
     static TemplatesIO templatesIO = new TemplatesIO();
 
     static ScriptsCompiler scriptsCompiler = new ScriptsCompiler();
-    static TemplateCompiler templatesCompiler = new TemplateCompiler();
     static NewImportCompiler importsCompiler = new NewImportCompiler();
 
     public static void main(String[] args) throws Exception {
@@ -66,11 +65,11 @@ public class Executor {
 
                     String[] split = param.split(":");
                     if(split[0].equals("PROJECT")){
-                        TemplateCompiler.PROJECT = split[1];
+                        CommonCompiler.PROJECT = split[1];
                     }
 
                     if(split[0].equals("ENV")){
-                        TemplateCompiler.ENV = split[1];
+                        CommonCompiler.ENV = split[1];
                     }
 
                 }
@@ -84,16 +83,7 @@ public class Executor {
 
         } else if (type.equals("templates")) {
 
-            TemplateCompiler.MESSAGES_CLASS = "spike.core.Message.get";
-
-            if(args.length > 4){
-
-                if(args[4].equals("old")) {
-                    TemplateCompiler.OLD_VERSION = true;
-                    TemplateCompiler.MESSAGES_CLASS = "app.message.get";
-                }
-
-            }
+            CommonCompiler.MESSAGES_CLASS = "spike.core.Message.get";
 
             if(args.length == 6){
 
@@ -103,11 +93,11 @@ public class Executor {
 
                     String[] split = param.split(":");
                     if(split[0].equals("PROJECT")){
-                        TemplateCompiler.PROJECT = split[1];
+                        CommonCompiler.PROJECT = split[1];
                     }
 
                     if(split[0].equals("ENV")){
-                        TemplateCompiler.ENV = split[1];
+                        CommonCompiler.ENV = split[1];
                     }
 
                 }
@@ -117,23 +107,22 @@ public class Executor {
             List<File> files = TemplatesIO.getFileList(args[1]);
             List<String> functionBodies = new ArrayList<>();
             List<String> watchersBodies = new ArrayList<>();
+            List<String> domBodies = new ArrayList<>();
 
             long start = System.currentTimeMillis();
 
             for (File file : files) {
-                String[] templates = templatesCompiler.parseSpikeTemplate(file, args[1], importsCompiler.compileImports(file, false));
+                String[] templates = CommonCompiler.parseSpikeTemplate(file, args[1], importsCompiler.compileImports(file, false));
                 functionBodies.add(templates[0]);
                 watchersBodies.add(templates[1]);
+                domBodies.add("<script type=\"text/html\" id=\""+templates[3]+"\">\n"+templates[2]+"\n</script>\n\n");
             }
 
             Console.log("Templates takes: " + (System.currentTimeMillis() - start) + "ms");
 
             templatesIO.saveConcatedFiles(functionBodies, args[2]);
-
-            if(!TemplateCompiler.OLD_VERSION){
-                templatesIO.saveConcatedFiles(watchersBodies, args[3]);
-            }
-
+            templatesIO.saveConcatedFiles(watchersBodies, args[3]);
+            templatesIO.saveConcatedFiles(domBodies, args[2].substring(0, args[2].lastIndexOf("/"))+"/dom.html");
 
         } else if (type.equals("cli")) {
             cli(args);

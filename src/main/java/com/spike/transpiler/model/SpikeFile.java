@@ -1,6 +1,6 @@
 package com.spike.transpiler.model;
 
-import com.spike.templates.TemplateCompiler;
+import com.spike.templates.compilers.CommonCompiler;
 import com.spike.transpiler.dependencies.DependencyConstructor;
 
 import javax.script.ScriptEngine;
@@ -143,13 +143,13 @@ public class SpikeFile {
             String condition = split[0];
 
             conditionsToReplace.add(condition);
-            condition = condition.replaceAll("ENV", "'" + TemplateCompiler.ENV + "'").replaceAll("PROJECT", "'" + TemplateCompiler.PROJECT + "'");
+            condition = condition.replaceAll("ENV", "'" + CommonCompiler.ENV + "'").replaceAll("PROJECT", "'" + CommonCompiler.PROJECT + "'");
 
             ScriptEngineManager factory = new ScriptEngineManager();
             ScriptEngine engine = factory.getEngineByName("JavaScript");
             try {
-                engine.eval("var result = false; if(" + condition + "){ result = true;} ");
-                Boolean result = (Boolean) engine.get("result");
+                engine.eval("var resulters = false; if(" + condition + "){ resulters = true;} ");
+                Boolean result = (Boolean) engine.get("resulters");
 
                 if (!result) {
                     this.compiled = this.compiled.replace(matchedCondition, "");

@@ -88,10 +88,6 @@ public class TemplatesIO {
 
         String body = StringUtils.join(functionBodiesList, "");
 
-        if(TemplateCompiler.OLD_VERSION){
-            body = "window['_spike_templates'] = {};"+body;
-        }
-
         FileUtils.writeStringToFile(distFile, body, "UTF-8");
 
     }

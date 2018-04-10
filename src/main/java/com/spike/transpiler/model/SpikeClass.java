@@ -48,7 +48,7 @@ public class SpikeClass {
         this.classPackage.spikeFile.extendingMap.add(new ExtendingModel(this.extendsFullName, this.classFullName));
     }
 
-    private boolean isInterface(){
+    private boolean isInterface() {
         return this.body.startsWith("interface");
     }
 
@@ -74,9 +74,9 @@ public class SpikeClass {
 
     private void collectModificator() {
 
-        if(this.isInterface()){
+        if (this.isInterface()) {
             this.modificators = new ArrayList<>();
-        }else{
+        } else {
 
             this.modificators = new ArrayList<>(Arrays.asList(this.body.substring(0, this.body.indexOf("class")).trim().split(" ")));
             if (!this.modificators.contains("private")) {
@@ -89,7 +89,7 @@ public class SpikeClass {
 
     private void collectClassName() {
 
-        if(this.isInterface()){
+        if (this.isInterface()) {
 
             this.className = this.body.substring(this.body.indexOf("interface") + 5, this.body.indexOf("{")).trim();
 
@@ -97,7 +97,7 @@ public class SpikeClass {
                 this.className = this.className.substring(0, this.className.indexOf("interface")).trim();
             }
 
-        }else{
+        } else {
 
             this.className = this.body.substring(this.body.indexOf("class") + 5, this.body.indexOf("{")).trim();
 
@@ -180,6 +180,14 @@ public class SpikeClass {
 
                     if (functionCollecting) {
 
+                        System.out.println("functionCollecting : " + line);
+
+//                        Boolean goAway = false;
+//                        if (line.contains("{") && line.contains("}")) {
+//                            System.out.println(line);
+//                            goAway = true;
+//                        }
+
                         if (line.contains("{")) {
                             bracketsLeft++;
                         }
@@ -188,7 +196,9 @@ public class SpikeClass {
                             bracketsRight++;
                         }
 
+
                         if (bracketsLeft == bracketsRight) {
+
                             functionCollecting = false;
                             nodeCollecting = false;
                             nodeBody.append(line).append("\n");
@@ -197,6 +207,11 @@ public class SpikeClass {
                             if (nodeBodyStr.trim().startsWith(this.className)) {
                                 this.constructors.add(new SpikeClassConstructor(this, nodeBodyStr));
                             } else {
+
+                                if (nodeBodyStr.contains("changeStatusToDraft")) {
+                                    System.out.println("here");
+                                }
+
                                 this.functions.add(new SpikeClassFunction(this, nodeBodyStr));
                             }
 
@@ -474,8 +489,9 @@ public class SpikeClass {
 
         String superClassName = (this.extendsName != null ? this.extendsFullName : this.classFullName);
 
-        this.functions.add(new SpikeClassFunction(this, "getSuper:function(){ return '"+superClassName+"'; };"));
-        this.functions.add(new SpikeClassFunction(this, "getClass:function(){ return '"+this.classFullName+"'; };"));
+        this.functions.add(new SpikeClassFunction(this, " getSuper: function(){ return '" + superClassName + "'; }, "));
+        this.functions.add(new SpikeClassFunction(this, " getClass: function(){ return '" + this.classFullName + "'; }, "));
+
         this.fields.add(new SpikeClassField(this, "isClass: true,"));
 
     }

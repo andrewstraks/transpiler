@@ -1,0 +1,13 @@
+import $menuList from app.module.common.element.menu.menuList;
+
+<div class="menuGlobalElement">
+
+    <div class="search">
+        <form autocomplete="off" sp-submit="scope.search(event)">
+            <input type="text" sp-bind="scope.searchText"/>
+        </form>
+    </div>
+
+    <spike sp-template="$menuList" sp-trigger="menuList"></spike>
+
+</div>
