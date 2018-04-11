@@ -2,9 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>$Title$</title>
 </head>
 <body>
-$END$
+
+<script>
+
+    var Test = function(){
+
+      var $this = {};
+
+      $this.test = function(){
+        return 'OK';
+      };
+
+      $this.ok = '200';
+
+      return $this;
+
+    };
+
+    var Test2 = function () {
+      this.ok = '200';
+    };
+    Test2.prototype.test = function(){
+      return 'OK';
+    };
+
+    function test1(){
+
+      var arr = [];
+      for(var i = 0; i < 10000; i++){
+        arr.push(Test());
+      }
+
+      console.log(arr);
+
+    }
+
+    function test2(){
+
+      var arr = [];
+      for(var i = 0; i < 10000; i++){
+        arr.push(new Test2());
+      }
+
+      console.log(arr);
+
+    }
+
+    setTimeout(test1, 5000);
+    setTimeout(test2, 10000);
+
+</script>
+
 </body>
 </html>

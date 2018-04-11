@@ -1027,51 +1027,53 @@
 <script type="text/html" id="templates_input_new_module_common_element_table_tableFilter_html">
 <spike-replacement replacement-id="88" type="WatchProcessor" id="element-2"></spike-replacement> 
 <div class="tableFilterTemplate" sp-watch id="id-516"> 
- <spike-replacement replacement-id="89" type="ForProcessor"></spike-replacement> 
+ <spike-replacement replacement-id="89" type="TemplateProcessor"></spike-replacement> 
+ <div id="asdas100009" class=""></div> 
+ <spike-replacement replacement-id="90" type="ForProcessor"></spike-replacement> 
  <spike> 
-  <spike-replacement replacement-id="91" type="SwitchProcessor"></spike-replacement> 
+  <spike-replacement replacement-id="92" type="SwitchProcessor"></spike-replacement> 
   <spike> 
-   <spike-replacement replacement-id="93" type="CaseProcessor"></spike-replacement> 
+   <spike-replacement replacement-id="94" type="CaseProcessor"></spike-replacement> 
    <spike> 
-    <spike-replacement replacement-id="94" type="ForProcessor"></spike-replacement> 
+    <spike-replacement replacement-id="95" type="ForProcessor"></spike-replacement> 
     <spike> 
-     <spike-replacement replacement-id="96" type="EventProcessor"></spike-replacement> 
+     <spike-replacement replacement-id="97" type="EventProcessor"></spike-replacement> 
      <button class="{{button.clazz}}" id="id-517" spike-unbinded="" spike-event-click="scope.delegateEvent(button, this)" spike-event-click-link="{{linkId}}">{{button.label}}</button> 
     </spike> 
-    <spike-replacement replacement-id="95" type="ForProcessor"></spike-replacement> 
+    <spike-replacement replacement-id="96" type="ForProcessor"></spike-replacement> 
     <spike></spike> 
-    <spike-replacement replacement-id="97" type="BreakProcessor"></spike-replacement> 
+    <spike-replacement replacement-id="98" type="BreakProcessor"></spike-replacement> 
    </spike> 
-   <spike-replacement replacement-id="98" type="CaseProcessor"></spike-replacement> 
+   <spike-replacement replacement-id="99" type="CaseProcessor"></spike-replacement> 
    <spike> 
     <label id="id-518">{{filter.label}}</label> 
-    <spike-replacement replacement-id="99" type="EventProcessor"></spike-replacement> 
+    <spike-replacement replacement-id="100" type="EventProcessor"></spike-replacement> 
     <select id="id-519" spike-unbinded="" spike-event-change="scope.delegateEvent(filter, this)" spike-event-change-link="{{linkId}}"> <option spike value="{{argumentKey}}" id="id-520">{{argument}}</option>  </select> 
     <spike></spike> 
-    <spike-replacement replacement-id="102" type="BreakProcessor"></spike-replacement> 
+    <spike-replacement replacement-id="103" type="BreakProcessor"></spike-replacement> 
    </spike> 
-   <spike-replacement replacement-id="103" type="CaseProcessor"></spike-replacement> 
+   <spike-replacement replacement-id="104" type="CaseProcessor"></spike-replacement> 
    <spike> 
     <input type="checkbox" id="id-521"> 
     <input id="id-522"> 
     <spike></spike> 
-    <spike-replacement replacement-id="104" type="BreakProcessor"></spike-replacement> 
+    <spike-replacement replacement-id="105" type="BreakProcessor"></spike-replacement> 
    </spike> 
-   <spike-replacement replacement-id="105" type="CaseProcessor"></spike-replacement> 
+   <spike-replacement replacement-id="106" type="CaseProcessor"></spike-replacement> 
    <spike> 
     <spike></spike> 
-    <spike-replacement replacement-id="106" type="BreakProcessor"></spike-replacement> 
+    <spike-replacement replacement-id="107" type="BreakProcessor"></spike-replacement> 
    </spike> 
-   <spike-replacement replacement-id="107" type="CaseProcessor"></spike-replacement> 
+   <spike-replacement replacement-id="108" type="CaseProcessor"></spike-replacement> 
    <spike>
      {{filter.filter(element)}} 
     <spike></spike> 
-    <spike-replacement replacement-id="108" type="BreakProcessor"></spike-replacement> 
+    <spike-replacement replacement-id="109" type="BreakProcessor"></spike-replacement> 
    </spike> 
   </spike> 
-  <spike-replacement replacement-id="92" type="SwitchProcessor"></spike-replacement> 
+  <spike-replacement replacement-id="93" type="SwitchProcessor"></spike-replacement> 
  </spike> 
- <spike-replacement replacement-id="90" type="ForProcessor"></spike-replacement> 
+ <spike-replacement replacement-id="91" type="ForProcessor"></spike-replacement> 
 </div>
 </script>
 
@@ -1225,7 +1227,7 @@
       <label for="role-customname" id="id-612">Custom name</label> 
      </div> 
      <div class="form-group form-group-bg" id="id-613"> 
-      <spike-replacement replacement-id="109" type="BindProcessor"></spike-replacement> 
+      <spike-replacement replacement-id="110" type="BindProcessor"></spike-replacement> 
       <input type="text" placeholder="Role name" id="id-614" spike-event-keyup="scope.newRoleName=event.target.value;" spike-event-keyup-link="{{linkId}}" spike-unbinded=""> 
       <button type="button" class="btn btn-primary" id="id-615">Add role</button> 
      </div> 
@@ -1245,13 +1247,13 @@
        </div> 
        <div class="form-group" id="id-623"> 
         <label class="btn btn-primary" id="id-624">copy privilages from</label> 
-        <spike-replacement replacement-id="110" type="TemplateProcessor"></spike-replacement> 
-        <div id="rolesSelect100009" class=""></div> 
+        <spike-replacement replacement-id="111" type="TemplateProcessor"></spike-replacement> 
+        <div id="rolesSelect100010" class=""></div> 
        </div> 
       </div> 
       <div class="col-xs-6 text-xs-right" id="id-625"> 
        <div class="block" id="id-626"> 
-        <spike-replacement replacement-id="111" type="EventProcessor"></spike-replacement> 
+        <spike-replacement replacement-id="112" type="EventProcessor"></spike-replacement> 
         <button class="btn btn-primary" type="button" id="id-627" spike-unbinded="" spike-event-click="scope.openGeneralExcludes()" spike-event-click-link="{{linkId}}">General Excludes</button> 
        </div> 
       </div> 
@@ -1493,14 +1495,14 @@
 
 <script type="text/html" id="templates_input_new_module_privileges_controller_privileges_viewsList_html">
 <ul class="superpowers powers-lev1" id="id-851"> 
- <spike-replacement replacement-id="112,113" type="EventProcessor,ForProcessor"></spike-replacement> 
+ <spike-replacement replacement-id="113,114" type="EventProcessor,ForProcessor"></spike-replacement> 
  <li id="id-852" spike-unbinded="" spike-event-click="scope.toggleList(this)" spike-event-click-link="{{linkId}}"> 
   <div class="power" id="id-853"> 
    <span class="power-name" id="id-854">{{view.label}}</span> 
   </div> 
-  <spike-replacement replacement-id="115" type="IfProcessor"></spike-replacement> 
+  <spike-replacement replacement-id="116" type="IfProcessor"></spike-replacement> 
   <ul class="powers-lev2" id="id-855"> 
-   <spike-replacement replacement-id="117,118" type="EventProcessor,ForProcessor"></spike-replacement> 
+   <spike-replacement replacement-id="118,119" type="EventProcessor,ForProcessor"></spike-replacement> 
    <li id="id-856" spike-unbinded="" spike-event-click="scope.toggleList(this)" spike-event-click-link="{{linkId}}"> 
     <div class="power" id="id-857"> 
      <label title="Permission to see and edit" id="id-858"><i class="fa fa-pencil-square-o" id="id-859"></i><input type="checkbox" class="cansee" id="id-860"></label> 
@@ -1508,7 +1510,7 @@
      <span class="power-name" id="id-864">Menage events</span> 
      <label title="More settings" id="id-865"><i class="fa fa-cog" id="id-866"></i><input type="checkbox" class="canconfig" id="id-867"></label> 
     </div> </li> 
-   <spike-replacement replacement-id="119" type="ForProcessor"></spike-replacement> 
+   <spike-replacement replacement-id="120" type="ForProcessor"></spike-replacement> 
    <li id="id-868"> 
     <div class="power" id="id-869"> 
      <label id="id-870"><i class="fa fa-pencil-square-o" id="id-871"></i><input type="checkbox" class="cansee" id="id-872"></label> 
@@ -1554,8 +1556,8 @@
       </ul> </li> 
     </ul> </li> 
   </ul> 
-  <spike-replacement replacement-id="116" type="IfProcessor"></spike-replacement> </li> 
- <spike-replacement replacement-id="114" type="ForProcessor"></spike-replacement> 
+  <spike-replacement replacement-id="117" type="IfProcessor"></spike-replacement> </li> 
+ <spike-replacement replacement-id="115" type="ForProcessor"></spike-replacement> 
 </ul>
 </script>
 
@@ -1563,11 +1565,11 @@
 <div class="loginController" id="id-931"> 
  <div class="box" id="id-932"> 
   <div class="logo" id="id-933"></div> 
-  <spike-replacement replacement-id="120,121" type="EventProcessor,WatchProcessor"></spike-replacement> 
+  <spike-replacement replacement-id="121,122" type="EventProcessor,WatchProcessor"></spike-replacement> 
   <form autocomplete="off" sp-watch id="id-934" spike-unbinded="" spike-event-submit="scope.login(event)" spike-event-submit-link="{{linkId}}"> 
-   <spike-replacement replacement-id="122" type="BindProcessor"></spike-replacement> 
-   <input type="text" name="loginName" placeholder="{{ spike.core.Message.get('login_placeholder') }}" id="id-935" spike-event-keyup="scope.model.loginName=event.target.value;" spike-event-keyup-link="{{linkId}}" spike-unbinded="" sp-name="loginName"> 
    <spike-replacement replacement-id="123" type="BindProcessor"></spike-replacement> 
+   <input type="text" name="loginName" placeholder="{{ spike.core.Message.get('login_placeholder') }}" id="id-935" spike-event-keyup="scope.model.loginName=event.target.value;" spike-event-keyup-link="{{linkId}}" spike-unbinded="" sp-name="loginName"> 
+   <spike-replacement replacement-id="124" type="BindProcessor"></spike-replacement> 
    <input type="password" name="password" placeholder="{{ spike.core.Message.get('password_placeholder') }}" id="id-936" spike-event-keyup="scope.model.password=event.target.value;" spike-event-keyup-link="{{linkId}}" spike-unbinded="" sp-name="password"> 
    <button type="submit" class="default" id="id-937">{{spike.core.Message.get('login_button')}}</button> 
    <p class="error {{ scope.model.error === true ? 'show' : 'hide' }}" id="id-938">{{spike.core.Message.get('login_error')}}</p> 

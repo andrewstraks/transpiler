@@ -17,7 +17,12 @@ public class WatchersConcatJsifier extends Jsifier {
             if (line.length() > 0) {
 
                 if (line.contains(CommonCompiler.JS_HINT_LINE)) {
-                    stringBuilder.append(line.replace(CommonCompiler.JS_HINT_LINE, ""));
+
+//                    if(line.contains(CommonCompiler.TRIGGER_TEMPLATE) || line.contains(CommonCompiler.TRIGGER_ELEMENT)){
+//                        stringBuilder.append(line.replace(CommonCompiler.JS_HINT_LINE, ""));
+//                    }else{
+                        stringBuilder.append(line.replace(CommonCompiler.JS_HINT_LINE, "")).append("\n");
+                   // }
                 }
 
             }

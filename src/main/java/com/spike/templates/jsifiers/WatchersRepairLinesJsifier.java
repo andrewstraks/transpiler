@@ -20,7 +20,7 @@ public class WatchersRepairLinesJsifier extends Jsifier {
                     line = "t+='"+line+"';";
                 }
 
-                stringBuilder.append(line);
+                stringBuilder.append(line).append("\n");
 
             }
 
