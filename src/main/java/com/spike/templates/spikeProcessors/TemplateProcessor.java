@@ -26,7 +26,7 @@ public class TemplateProcessor extends SpikeProcessor {
                     params = "scope";
                 }
 
-                this.replaceWith(element, U.ss(CommonCompiler.TEMPLATE_SPIKE + "('" + templateName + "', " + params + ", parent)"));
+                this.replaceWith(element, U.ss(CommonCompiler.TEMPLATE_SPIKE + "('" + templateName + "', " + params + ")"));
 
             } else {
 

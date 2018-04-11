@@ -24,22 +24,46 @@ public class BindProcessor extends SpikeProcessor {
         }
 
         String eventBody = "";
+        String baseAssignValue = "=event.target.value;";
+        String eventType = "";
 
-        if (element.tagName().toLowerCase().equals("input") && !element.attr(U.e("keyup")).isEmpty()) {
-            eventBody = element.attr(U.e("keyup"));
-        } else if (element.tagName().toLowerCase().equals("select") && !element.attr(U.e("change")).isEmpty()) {
-            eventBody = element.attr(U.e("keyup"));
+        switch (element.tagName().toLowerCase()) {
+            case "input":
+            case "textarea":
+                eventType = "keyup";
+                baseAssignValue = "=event.target.value;";
+
+                switch (element.attr("type")){
+                    case "checkbox":
+                        eventType = "change";
+                        baseAssignValue = "=event.target.checked;";
+                        break;
+                    case "radio":
+                        eventType = "change";
+                        baseAssignValue = "=spike.core.Util.getRadioValue(event.target);";
+                        break;
+                }
+
+                break;
+            case "select":
+            case "datalist":
+                eventType = "change";
+                baseAssignValue = "=event.target.value;";
+                break;
+            case "form":
+                eventType = "change";
+                baseAssignValue = "=spike.core.Util.serializeForm.bind(event.target.parentNode)();";
+                break;
         }
 
-        eventBody = bindModel + "=event.target.value;" + eventBody;
-
-        if (element.tagName().toLowerCase().equals("input")) {
-            element.attr(U.e("keyup"), eventBody);
-            element.attr("spike-event-keyup-link", U.ss("linkId"));
-        } else if (element.tagName().toLowerCase().equals("select")) {
-            element.attr(U.e("change"), eventBody);
-            element.attr("spike-event-change-link", U.ss("linkId"));
+        if (!element.attr(U.e(eventType)).isEmpty()) {
+            eventBody = element.attr(U.e(eventType));
         }
+
+        eventBody = bindModel + baseAssignValue + eventBody;
+
+        element.attr(U.e(eventType), eventBody);
+        element.attr("spike-event-"+eventType+"-link", U.ss("linkId"));
 
         if (element.attr("spike-unbinded").isEmpty()) {
             element.attr("spike-unbinded", "");

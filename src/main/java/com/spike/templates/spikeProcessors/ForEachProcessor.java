@@ -56,12 +56,18 @@ public class ForEachProcessor extends SpikeProcessor {
         templateParts.prefix += "for(var " + templateParts.propName + " in " + templateParts.listName + "){";
 
         templateParts.prefix += "if("+templateParts.listName+".hasOwnProperty("+templateParts.propName+")){";
+
         templateParts.prefix += " var " + templateParts.varName + " = " + templateParts.listName + "[" + templateParts.propName + "];";
+
+        templateParts.prefix += "(function("+templateParts.varName+") {";
 
         if (templateParts.indexName != null) {
             templateParts.suffix = " " + templateParts.indexName + "++;";
         }
-        templateParts.suffix = "}}";
+        templateParts.suffix += "}("+templateParts.varName+"));";
+        templateParts.suffix += "}";
+        templateParts.suffix += "}";
+
         return templateParts;
 
     }

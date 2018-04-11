@@ -7,3 +7,17 @@
 
 </div>
 
+
+<div class="testBindingController">
+
+    <input type="text" sp-bind="scope.name"/>
+
+    <select sp-bind="scope.age">
+        <option sp-for="age in scope.ageList" value="{{age}}">{{age}}</option>
+    </select>
+
+    <div sp-foreach="objectType in scope.objectList">
+        <input type="text" sp-bind="objectType.type"/>
+    </div>
+
+</div>

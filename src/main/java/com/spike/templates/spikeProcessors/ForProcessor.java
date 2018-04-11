@@ -53,7 +53,11 @@ public class ForProcessor extends SpikeProcessor {
             if(templateParts.varName != null){
                 templateParts.prefix += "var "+templateParts.varName+" = "+templateParts.listName+"["+templateParts.indexName+"];";
             }
-            templateParts.suffix = "}";
+
+            templateParts.prefix += "(function("+templateParts.varName+") {";
+
+            templateParts.suffix += "}("+templateParts.varName+"));";
+            templateParts.suffix += "}";
 
         }
 
