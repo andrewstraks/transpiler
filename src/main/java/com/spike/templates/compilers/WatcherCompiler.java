@@ -65,8 +65,6 @@ public class WatcherCompiler  {
             output = new ReplaceEscapesJsifier().jsify(output);
             output = new OptimizeJsJsifier().jsify(output);
 
-            System.out.println(output);
-
             output = new WatcherFunctionJsifier().jsify(output, templatePath);
 
         }else{

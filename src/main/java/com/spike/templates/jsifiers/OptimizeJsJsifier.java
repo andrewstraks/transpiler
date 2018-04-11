@@ -12,10 +12,9 @@ public class OptimizeJsJsifier extends Jsifier {
     @Override
     public String jsify(String output) throws Exception {
 
-//        for (int i = 0; i < CommonCompiler.generalCounter; i++) {
-//            System.out.println("i : "+i);
-//            output = output.replaceAll(Pattern.quote("__a"+i+"[1] += '';"), "");
-//        }
+        for (int i = 0; i < CommonCompiler.generalCounter; i++) {
+            output = output.replaceAll(Pattern.quote("__a"+i+"[1]+='';"), "");
+        }
 
         return output;
 

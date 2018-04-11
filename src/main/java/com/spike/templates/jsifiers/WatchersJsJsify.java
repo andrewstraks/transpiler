@@ -34,7 +34,7 @@ public class WatchersJsJsify extends Jsifier {
                     }
 
                     if(line.trim().length() > 0){
-                        stringBuilder.append(("__a" + CommonCompiler.generalCounter + "[1] +='" + line + ";").replace("+=''+", "+="));
+                        stringBuilder.append(("__a" + CommonCompiler.generalCounter + "[1]+='" + line + ";").replace("+=''+", "+="));
                     }
 
                 }
