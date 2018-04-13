@@ -11,6 +11,11 @@ public abstract class Jsifier {
         return null;
     }
 
+    public String jsify(String output, Boolean isOnlyWatch) throws Exception {
+        return null;
+    }
+
+
     public String jsify(String output, String templatePath, String watcherOutput) throws Exception {
         return null;
     }

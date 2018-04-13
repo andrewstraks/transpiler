@@ -180,7 +180,6 @@ public class SpikeClass {
 
                     if (functionCollecting) {
 
-                        System.out.println("functionCollecting : " + line);
 
 //                        Boolean goAway = false;
 //                        if (line.contains("{") && line.contains("}")) {
@@ -208,9 +207,9 @@ public class SpikeClass {
                                 this.constructors.add(new SpikeClassConstructor(this, nodeBodyStr));
                             } else {
 
-                                if (nodeBodyStr.contains("changeStatusToDraft")) {
-                                    System.out.println("here");
-                                }
+//                                if (nodeBodyStr.contains("changeStatusToDraft")) {
+//                                    System.out.println("here");
+//                                }
 
                                 this.functions.add(new SpikeClassFunction(this, nodeBodyStr));
                             }
@@ -492,7 +491,7 @@ public class SpikeClass {
         this.functions.add(new SpikeClassFunction(this, " getSuper: function(){ return '" + superClassName + "'; }, "));
         this.functions.add(new SpikeClassFunction(this, " getClass: function(){ return '" + this.classFullName + "'; }, "));
 
-        this.fields.add(new SpikeClassField(this, "isClass: true,"));
+//        this.fields.add(new SpikeClassField(this, "isClass: true,"));
 
     }
 

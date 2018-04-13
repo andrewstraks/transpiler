@@ -23,7 +23,7 @@ public class ReplacementResulter extends Resulter {
 
 //            System.out.println("id: "+id);
 //            System.out.println("type: "+type);
-//            System.out.println("snippet "+snippet.substring(0,10));
+//            System.out.println("snippet "+snippet);
 
             if(isWatcher && (type.equals("EventProcessor") || type.equals("BindProcessor"))){
                 nodeBody.append("");

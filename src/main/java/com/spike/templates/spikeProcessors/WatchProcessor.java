@@ -32,6 +32,7 @@ public class WatchProcessor extends SpikeProcessor {
         }
 
         String prefix = U.js(CommonCompiler.WATCHER_PREFIX+watcherName+CommonCompiler.WATCHER_SUFFIX);
+
         this.insertBefore(element, prefix);
 
         watchers.put(watcherName, element);

@@ -25,6 +25,8 @@ public class WatchIdProcessor extends SpikeProcessor {
             element.attr(CommonCompiler.PREFIX+"watch", watchName);
         }
 
+        System.out.println("watchName watchId: "+watchName);
+
         if (element.id().isEmpty()) {
             watchId++;
             element.attr("id", watchName);

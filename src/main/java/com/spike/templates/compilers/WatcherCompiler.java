@@ -46,7 +46,7 @@ public class WatcherCompiler  {
             output = new EscapeJsJsifier().jsify(output);
             output = new WatchersConcatJsifier().jsify(output);
             output = new ReplaceBracketsJsifier().jsify(output);
-            output = new WatchersRepairLinesJsifier().jsify(output);
+            output = new WatchersRepairLinesJsifier().jsify(output, false);
 
             for (Map.Entry<String, Element> watcher : WatchProcessor.watchers.entrySet()) {
 
@@ -55,7 +55,7 @@ public class WatcherCompiler  {
                 watcherOutput = new EscapeJsJsifier().jsify(watcherOutput);
                 watcherOutput = new ReplaceBracketsJsifier().jsify(watcherOutput);
                 watcherOutput = new WatchersJsJsify().jsify(watcherOutput, watcher.getKey());
-                watcherOutput = new WatchersRepairLinesJsifier().jsify(watcherOutput);
+                watcherOutput = new WatchersRepairLinesJsifier().jsify(watcherOutput, true);
 
                 output = new WatcherReplaceJsify().jsify(output, watcher.getKey(), watcherOutput);
 
@@ -64,6 +64,7 @@ public class WatcherCompiler  {
             output = new SpikeTagJsifier().jsify(output);
             output = new ReplaceEscapesJsifier().jsify(output);
             output = new OptimizeJsJsifier().jsify(output);
+            output = new WatchersOptimizeJsJsifier().jsify(output);
 
             output = new WatcherFunctionJsifier().jsify(output, templatePath);
 

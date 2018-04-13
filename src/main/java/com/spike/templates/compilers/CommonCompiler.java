@@ -1,19 +1,20 @@
 package com.spike.templates.compilers;
 
 import com.spike.templates.U;
+import com.spike.templates.processors.Processor;
 import com.spike.templates.processors.SpikeProcessor;
 import com.spike.templates.processors.TagProcessor;
 import com.spike.templates.spikeProcessors.*;
 import com.spike.templates.tagProcessors.PreProcessor;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by ds931004 on 05.04.2018.
@@ -36,11 +37,12 @@ public class CommonCompiler {
     public static final String PARAMS = U.s("params");
     public static final String WATCHER_PREFIX = "#watcher_begin#";
     public static final String WATCHER_SUFFIX = "#watcher_begin#";
+    public static final String IDENTITY_ATTRIBUTE = "sp-id";
 
     public static String PROJECT = "";
     public static String ENV = "";
 
-    public static HashMap<String, SpikeProcessor> spikeCommands = new HashMap<>();
+    public static HashMap<String, Object> spikeCommands = new HashMap<>();
     public static HashMap<String, TagProcessor> tagCommands = new HashMap<>();
 
     public static String[] allowedEvents = new String[]{
@@ -66,6 +68,8 @@ public class CommonCompiler {
             "load",
             "unload"
     };
+
+    static AttributeProcessor attributeProcessor = new AttributeProcessor();
 
     static {
 
@@ -96,11 +100,10 @@ public class CommonCompiler {
         spikeCommands.put(U.s("case"), new CaseProcessor());
         spikeCommands.put(U.s("break"), new BreakProcessor());
         spikeCommands.put(U.s("default"), new DefaultProcessor());
-        spikeCommands.put(U.s("watch"), new WatchIdProcessor());
         spikeCommands.put(U.s("project"), new ProjectIfProcessor());
         spikeCommands.put(U.s("not-project"), new ProjectNotIfProcessor());
         spikeCommands.put(U.s("env"), new EnvIfProcessor());
-        spikeCommands.put(U.s("watch"), new WatchProcessor());
+        spikeCommands.put(U.s("watch"), new Processor[] { new WatchIdProcessor(), new WatchProcessor() });
 
         tagCommands.put("pre", new PreProcessor());
 
@@ -169,12 +172,36 @@ public class CommonCompiler {
         Elements allElements = doc.body().getAllElements();
         for(Element element : allElements){
 
-            for (Map.Entry<String, SpikeProcessor> entry : spikeCommands.entrySet()) {
+            for (Map.Entry<String, Object> entry : spikeCommands.entrySet()) {
                 String spikeAttribute = entry.getKey();
-                SpikeProcessor processor = entry.getValue();
 
-                if(element.hasAttr(spikeAttribute)){
-                    processor.process(element, spikeAttribute);
+                List<SpikeProcessor> processors = new ArrayList<>();
+                Object processor = entry.getValue();
+
+                if(processor instanceof Processor){
+                    processors.add((SpikeProcessor) processor);
+                }else{
+
+                    Processor[] processorArray = (Processor[]) processor;
+                    for(Processor processor1 : processorArray){
+                        processors.add((SpikeProcessor) processor1);
+                    }
+                }
+
+                for(SpikeProcessor spikeProcessor : processors){
+
+                    if(element.hasAttr(spikeAttribute)){
+                        spikeProcessor.process(element, spikeAttribute);
+                    }
+
+                }
+
+            }
+
+            for(Attribute attribute : element.attributes().clone()){
+
+                if(attribute.getKey().startsWith(U.s("attribute"))){
+                    attributeProcessor.process(element, attribute.getKey());
                 }
 
             }

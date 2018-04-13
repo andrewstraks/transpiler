@@ -162,9 +162,6 @@ public class SpikePackage {
 
     private void replacePrivateUsageInStaticClass(String privateClassName, String className) {
 
-        System.out.println(className);
-        System.out.println(privateClassName);
-
         this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(className) + "\\b", this.packageName + "." + privateClassName);
 
     }

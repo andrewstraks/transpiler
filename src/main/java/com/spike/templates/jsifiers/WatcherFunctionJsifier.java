@@ -19,7 +19,7 @@ public class WatcherFunctionJsifier extends Jsifier {
 
         builder.append("spike.core.Watchers.watchers['");
         builder.append(templatePath);
-        builder.append("']=function(scope, $this){var __w = []; ");
+        builder.append("']=function(scope, $this){var t = ''; var __w = []; ");
         builder.append(output);
         builder.append(" return __w;};");
 

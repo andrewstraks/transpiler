@@ -32,7 +32,7 @@ public class WatchersJsJsify extends Jsifier {
             line = line.trim();
             if (line.length() > 0) {
 
-                if(line.contains(CommonCompiler.JS_HINT_LINE) && (line.contains(CommonCompiler.TRIGGER_ELEMENT) || line.contains(CommonCompiler.TRIGGER_TEMPLATE))){
+                if(line.contains(CommonCompiler.JS_HINT_LINE) && (line.contains(CommonCompiler.INCLUDE_ELEMENT) || line.contains(CommonCompiler.TEMPLATE_SPIKE) || line.contains(CommonCompiler.TRIGGER_ELEMENT) || line.contains(CommonCompiler.TRIGGER_TEMPLATE))){
                     line = line.replace(CommonCompiler.JS_HINT_LINE, "");
                 }
 
@@ -47,7 +47,12 @@ public class WatchersJsJsify extends Jsifier {
                     }
 
                     if (line.trim().length() > 0) {
-                        stringBuilder.append(("__a" + CommonCompiler.generalCounter + "[1]+='" + line + ";").replace("+=''+", "+=")).append("\n");
+                        String newLine = ("__a" + CommonCompiler.generalCounter + "[1]+='" + line + ";").replace("+=''+", "+=");
+
+                       // System.out.println(line);
+                      //  System.out.println(newLine);
+
+                        stringBuilder.append(newLine).append("\n");
                     }
 
                 }

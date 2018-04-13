@@ -16,7 +16,8 @@ public class WatcherReplaceJsify extends Jsifier {
 
     @Override
     public String jsify(String output, String watcherName, String watcherOutput) throws Exception {
-        return output.replaceAll(Pattern.quote(CommonCompiler.WATCHER_PREFIX+watcherName+CommonCompiler.WATCHER_SUFFIX), watcherOutput);
+        System.out.println("watcherName : "+watcherName);
+        return output.replace(CommonCompiler.WATCHER_PREFIX+watcherName+CommonCompiler.WATCHER_SUFFIX, watcherOutput);
     }
 
 }

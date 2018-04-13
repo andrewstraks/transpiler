@@ -29,6 +29,15 @@ public class ProcessorUtils {
 
     }
 
+    public static String removeBrackets(String line){
+
+        line = line.replaceAll(Pattern.quote(CommonCompiler.BRACKET_LEFT), "");
+        line = line.replaceAll(Pattern.quote(CommonCompiler.BRACKET_RIGHT), "");
+
+        return line;
+
+    }
+
     public static String replaceJS(String line){
         line = line.replace(CommonCompiler.JS_HINT_BEGIN, "\n"+ CommonCompiler.JS_HINT_LINE);
         line = line.replace(CommonCompiler.JS_HINT_END, "\n");

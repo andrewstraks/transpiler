@@ -1,23 +1,120 @@
-<div class="loginController">
 
-    <div class="form-group" sp-for="role in scope.roles" sp-click="scope.selectRole(role)">
-        <input id="role-{{role.id}}" sp-keep-id name="role-{{role.id}}" class="form-control" type="radio" hidden/>
-        <label for="role-{{role.id}}">{{role.name}}</label>
+<div class="addRoleModal modal modal-large">
+    <div class="modal-header col-xs-12 between-xs">Add role</div>
+    <div class="modal-aside col-xs-3">
+        <div class="modal-aside-content row" >
+            <div class="modal-headline">Roles:</div>
+            <form sp-watch>
+
+                <spike sp-template="$rolesList"></spike>
+
+                <div class="form-group">
+                    <input type="text" sp-bind="scope.newRoleName" />
+                    <button type="button" class="btn btn-primary btn-block" sp-click="scope.addRole()">Add role</button>
+                </div>
+
+            </form>
+        </div>
     </div>
-
-</div>
-
-
-<div class="testBindingController">
-
-    <input type="text" sp-bind="scope.name"/>
-
-    <select sp-bind="scope.age">
-        <option sp-for="age in scope.ageList" value="{{age}}">{{age}}</option>
-    </select>
-
-    <div sp-foreach="objectType in scope.objectList">
-        <input type="text" sp-bind="objectType.type"/>
+    <div class="modal-content col-xs-9 {{ scope.currentRole ? '' : 'hide' }}" sp-watch>
+        <form sp-if="scope.currentRole">
+            <div class="col-xs-12">
+                <div class="modal-content-headline">Role name</div>
+                <div class="row">
+                    <div class="col-xs-6">
+                        <div class="form-group">
+                            <input type="text" class="form-control input-block" value="{{scope.currentRole.name}}">
+                        </div>
+                        <div class="form-group">
+                            <label class="btn btn-primary">copy privilages from</label>
+                            <spike sp-template="$rolesSelect"></spike>
+                        </div>
+                    </div>
+                    <div class="col-xs-6 text-xs-right">
+                        <div class="block">
+                            <button class="btn btn-primary" type="button" sp-click="scope.openGeneralExcludes()" disabled>General Excludes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-12">
+                <div class="row">
+                    <div class="col-xs-6">
+                        <div class="modal-content-headline">Users in role</div>
+                        <div class="box box-small">
+                            <div class="box-header">Users in role</div>
+                        </div>
+                    </div>
+                    <div class="col-xs-6">
+                        <div class="modal-content-headline">Search user</div>
+                        <div class="box box-small">
+                            <form>
+                                <div class="row box-toolbar">
+                                    <div class="col-xs-6">
+                                        <div class="form-group">
+                                            <label for="search-by-name">Search by name</label>
+                                            <div class="form-group">
+                                                <input type="text" class="form-control" id="search-by-name" />
+                                                <button class="btn btn-primary btn-icon" type="submit"><i class="fa fa-search"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-6">
+                                        <div class="form-group">
+                                            <label for="search-by-id">Search by ID</label>
+                                            <div class="form-group">
+                                                <input type="text" class="form-control" id="search-by-id" />
+                                                <button class="btn btn-primary btn-icon" type="submit">
+                                                    <i class="fa fa-search"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="box-header">
+                                    <div class="col-xs-6 text-xs-left"><div class="block">Name</div></div>
+                                    <div class="col-xs-6 text-xs-right"><div class="block">ID</div></div>
+                                </div>
+                                <ul class="search-users-list">
+                                    <li><label for="search-user-id1">
+                                        <input type="checkbox" class="form-control" id="search-user-id1">
+                                        <span class="search-username">UserName</span>
+                                        <span class="search-userid text-xs-right">10</span>
+                                    </label>
+                                    </li>
+                                    <li><label for="search-user-id2">
+                                        <input type="checkbox" class="form-control" id="search-user-id2">
+                                        <span class="search-username">UserName</span>
+                                        <span class="search-userid text-xs-right">20</span>
+                                    </label>
+                                    </li>
+                                    <li><label for="search-user-id3">
+                                        <input type="checkbox" class="form-control" id="search-user-id3">
+                                        <span class="search-username">UserName</span>
+                                        <span class="search-userid text-xs-right">30</span>
+                                    </label>
+                                    </li>
+                                    <li><label for="search-user-id4">
+                                        <input type="checkbox" class="form-control" id="search-user-id4">
+                                        <span class="search-username">UserName</span>
+                                        <span class="search-userid text-xs-right">40</span>
+                                    </label>
+                                    </li>
+                                    <li><label for="search-user-id5">
+                                        <input type="checkbox" class="form-control" id="search-user-id5">
+                                        <span class="search-username">UserName</span>
+                                        <span class="search-userid text-xs-right">50</span>
+                                    </label>
+                                    </li>
+                                </ul>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-12">
+                [text]
+            </div>
+        </form>
     </div>
-
 </div>
