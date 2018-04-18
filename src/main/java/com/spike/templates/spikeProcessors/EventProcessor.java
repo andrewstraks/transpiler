@@ -41,10 +41,10 @@ public class EventProcessor extends SpikeProcessor {
             element.attr("spike-event-" + event, eventBody);
             element.attr("spike-event-" + event + "-link", U.ss("linkId"));
 
-            if (element.id().isEmpty()) {
-                eventId++;
-                element.attr("id", "spike-event-" + eventId);
-            }
+//            if (element.id().isEmpty()) {
+//                eventId++;
+//                element.attr(CommonCompiler.IDENTITY_ATTRIBUTE, "spike-event-" + eventId);
+//            }
 
         }
 

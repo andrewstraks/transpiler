@@ -23,6 +23,8 @@ public class AttributeProcessor extends SpikeProcessor {
         attributeValue = ProcessorUtils.removeBrackets(attributeValue);
         String condition = "(("+attributeValue+") ? '"+distAttribute+"' : '')";
 
+        System.out.println(condition);
+
         element.removeAttr(spikeAttribute);
 
         element.attr("spike-expression", U.ss(condition));

@@ -39,7 +39,7 @@ public class ElementProcessor extends SpikeProcessor {
 
                 Element newElement = new Element("div");
                 newElement.html(element.html());
-                newElement.attr("id", triggerId);
+                newElement.attr(CommonCompiler.HANDLE_ATTRIBUTE, triggerId);
                 newElement.attr("class", element.attr("class"));
                 element.replaceWith(newElement);
 
@@ -50,6 +50,10 @@ public class ElementProcessor extends SpikeProcessor {
         } else {
             throw new Exception("Spike Compiler: 'include' statement allowed only on @spike tags");
         }
+
+    }
+
+    public void copyAttributes(Element element){
 
     }
 

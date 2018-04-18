@@ -38,6 +38,7 @@ public class CommonCompiler {
     public static final String WATCHER_PREFIX = "#watcher_begin#";
     public static final String WATCHER_SUFFIX = "#watcher_begin#";
     public static final String IDENTITY_ATTRIBUTE = "sp-id";
+    public static final String HANDLE_ATTRIBUTE = "sp-handle";
 
     public static String PROJECT = "";
     public static String ENV = "";
@@ -82,6 +83,7 @@ public class CommonCompiler {
         spikeCommands.put(U.s("bind"), new BindProcessor());
         spikeCommands.put("name", new NameProcessor());
         spikeCommands.put(U.s("print"), new PrintProcessor());
+        spikeCommands.put(U.s("style"), new StyleProcessor());
         spikeCommands.put(U.s("translation"), new TranslationProcessor());
         spikeCommands.put(U.s("placeholder"), new TranslationProcessor());
         spikeCommands.put(U.s("template"), new TemplateProcessor());
@@ -125,18 +127,18 @@ public class CommonCompiler {
         Document doc = Jsoup.parseBodyFragment(template);
         CommonCompiler.removeComments(doc);
 
-        Elements elements = doc.body().getAllElements();
-        for (Element element : elements) {
-
-            if (!element.tagName().toLowerCase().equals("spike")
-                    && !element.tagName().toLowerCase().equals("body")
-                    && !element.tagName().toLowerCase().equals("html")
-                    && element.attr("id").isEmpty()) {
-                generalId++;
-                element.attr("id", "id-" + generalId);
-            }
-
-        }
+//        Elements elements = doc.body().getAllElements();
+//        for (Element element : elements) {
+//
+//            if (!element.tagName().toLowerCase().equals("spike")
+//                    && !element.tagName().toLowerCase().equals("body")
+//                    && !element.tagName().toLowerCase().equals("html")
+//                    && element.attr(CommonCompiler.IDENTITY_ATTRIBUTE).isEmpty()) {
+//                generalId++;
+//                element.attr(IDENTITY_ATTRIBUTE, "id-" + generalId);
+//            }
+//
+//        }
 
         CommonCompiler.compileTagsProcessors(doc);
         CommonCompiler.compileSpikeProcessors(doc);
@@ -209,9 +211,9 @@ public class CommonCompiler {
         }
 
         Element fistElement = doc.body().children().first();
-        if (fistElement.attr("id").isEmpty()) {
+        if (fistElement.attr(CommonCompiler.IDENTITY_ATTRIBUTE).isEmpty()) {
             elementId++;
-            fistElement.attr("id", "element-" + elementId);
+            fistElement.attr(CommonCompiler.IDENTITY_ATTRIBUTE, "element-" + elementId);
         }
 
     }

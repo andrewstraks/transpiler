@@ -2,6 +2,9 @@ package com.spike.templates.jsifiers;
 
 import com.spike.templates.compilers.CommonCompiler;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Created by ds931004 on 06.04.2018.
  */
@@ -47,11 +50,18 @@ public class ConcatJsifier extends Jsifier {
 
     public static String processLineExpression(String line) {
 
-        String outputLine = line.substring(0, line.indexOf("spike-expression"));
-        String outputLine2 = line.substring(line.indexOf("spike-expression")+19, line.length());
-        outputLine2 = outputLine2.substring(0, outputLine2.indexOf("\"")+1);
+        String regexString = Pattern.quote("spike-expression=\"") + "(.*?)" + Pattern.quote("\"");
 
-        line = outputLine+" "+outputLine2.substring(0, outputLine2.length()-2) + " "+ line.substring(line.lastIndexOf(outputLine2)+outputLine2.length(), line.length());
+        Pattern pattern = Pattern.compile(regexString);
+        Matcher matcher = pattern.matcher(line);
+
+        while (matcher.find()) {
+            String textInBetween = matcher.group(1); // Since (.*?) is capturing group 1
+
+            String textToReplace = "spike-expression=\""+textInBetween+"\"";
+            line = line.replace(textToReplace, textInBetween);
+
+        }
 
         return line;
     }

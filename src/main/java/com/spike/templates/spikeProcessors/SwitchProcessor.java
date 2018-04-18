@@ -17,8 +17,8 @@ public class SwitchProcessor extends SpikeProcessor {
 
         if (element.tagName().equals("spike")) {
 
-            this.insertBefore(element, U.js(prefix));
-            this.insertAfter(element, U.js(suffix));
+            this.insertBefore(element, U.js(prefix), true);
+            this.insertAfter(element, U.js(suffix), true);
 
             element.removeAttr(spikeAttribute);
 

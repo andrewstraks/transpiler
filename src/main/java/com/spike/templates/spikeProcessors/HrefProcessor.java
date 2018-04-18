@@ -1,5 +1,6 @@
 package com.spike.templates.spikeProcessors;
 
+import com.spike.templates.compilers.CommonCompiler;
 import com.spike.templates.processors.SpikeProcessor;
 import org.jsoup.nodes.Element;
 
@@ -21,7 +22,7 @@ public class HrefProcessor extends SpikeProcessor {
 
         if(element.id().isEmpty()){
             hrefId++;
-            element.attr("id", "spike-href-"+hrefId);
+            element.attr(CommonCompiler.IDENTITY_ATTRIBUTE, "spike-href-"+hrefId);
         }
 
         element.attr("href", hrefValue);

@@ -16,10 +16,6 @@ public class WatchersConcatJsifier extends Jsifier {
             line = line.trim();
             if (line.length() > 0) {
 
-                if(line.contains("spike-expression")){
-                    line = ConcatJsifier.processLineExpression(line);
-                }
-
                 if (line.contains(CommonCompiler.JS_HINT_LINE)) {
 
 //                    if(line.contains(CommonCompiler.TRIGGER_TEMPLATE) || line.contains(CommonCompiler.TRIGGER_ELEMENT)){

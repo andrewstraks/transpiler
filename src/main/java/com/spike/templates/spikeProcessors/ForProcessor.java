@@ -72,8 +72,8 @@ public class ForProcessor extends SpikeProcessor {
 
         element.removeAttr(spikeAttribute);
 
-        this.insertBefore(element, U.js(templateParts.prefix));
-        this.insertAfter(element, U.js(templateParts.suffix));
+        this.insertBefore(element, U.js(templateParts.prefix), true);
+        this.insertAfter(element, U.js(templateParts.suffix), true);
 
     }
 

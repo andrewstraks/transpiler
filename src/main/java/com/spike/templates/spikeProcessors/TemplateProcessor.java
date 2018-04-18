@@ -39,7 +39,7 @@ public class TemplateProcessor extends SpikeProcessor {
 
                 Element newElement = new Element("div");
                 newElement.html(element.html());
-                newElement.attr("id", triggerId);
+                newElement.attr(CommonCompiler.HANDLE_ATTRIBUTE, triggerId);
                 newElement.attr("class", element.attr("class"));
                 //newElement.attr("sp-keep-id","");
 

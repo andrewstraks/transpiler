@@ -1,7 +1,5 @@
 package com.spike.templates.jsifiers;
 
-import com.spike.templates.compilers.CommonCompiler;
-
 /**
  * Created by ds931004 on 06.04.2018.
  */
@@ -19,7 +17,7 @@ public class WatcherFunctionJsifier extends Jsifier {
 
         builder.append("spike.core.Watchers.watchers['");
         builder.append(templatePath);
-        builder.append("']=function(scope, $this){var t = ''; var __w = []; ");
+        builder.append("']=function(scope){ var t = ''; var __w = []; ");
         builder.append(output);
         builder.append(" return __w;};");
 

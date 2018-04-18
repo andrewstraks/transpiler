@@ -32,6 +32,10 @@ public class WatchersJsJsify extends Jsifier {
             line = line.trim();
             if (line.length() > 0) {
 
+                if(line.contains("spike-expression")){
+                    line = ConcatJsifier.processLineExpression(line);
+                }
+
                 if(line.contains(CommonCompiler.JS_HINT_LINE) && (line.contains(CommonCompiler.INCLUDE_ELEMENT) || line.contains(CommonCompiler.TEMPLATE_SPIKE) || line.contains(CommonCompiler.TRIGGER_ELEMENT) || line.contains(CommonCompiler.TRIGGER_TEMPLATE))){
                     line = line.replace(CommonCompiler.JS_HINT_LINE, "");
                 }
