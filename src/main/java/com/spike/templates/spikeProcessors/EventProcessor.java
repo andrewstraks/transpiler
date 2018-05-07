@@ -37,9 +37,12 @@ public class EventProcessor extends SpikeProcessor {
 
             event = event.replace(CommonCompiler.PREFIX, "").replace(CommonCompiler.SUFFIX, "");
 
-            element.attr("spike-unbinded", "");
+            eventBody = ProcessorUtils.escapeSingleQuotes(eventBody);
+
+            element.attr("spike-event", "");
             element.attr("spike-event-" + event, eventBody);
             element.attr("spike-event-" + event + "-link", U.ss("linkId"));
+
 
 //            if (element.id().isEmpty()) {
 //                eventId++;
@@ -55,14 +58,10 @@ public class EventProcessor extends SpikeProcessor {
        StringBuilder linkFunctionBuilder = new StringBuilder();
 
         linkFunctionBuilder
-                .append("function closure")
-                .append(closureId)
-                .append("(event){")
+                .append("var linkId = spike.core.Events.linkEvent(")
+                .append("function(event){")
                 .append(eventFunctionBody)
-                .append("};")
-                .append("var linkId = spike.core.Events.linkEvent(closure")
-                .append(closureId)
-                .append(");");
+                .append("});");
 
         closureId++;
         return linkFunctionBuilder.toString();

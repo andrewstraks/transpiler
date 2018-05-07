@@ -20,7 +20,7 @@ public class HrefProcessor extends SpikeProcessor {
 
         String hrefValue = element.attr(spikeAttribute);
 
-        if(element.id().isEmpty()){
+        if(element.attr(CommonCompiler.IDENTITY_ATTRIBUTE) == null || element.attr(CommonCompiler.IDENTITY_ATTRIBUTE).isEmpty()){
             hrefId++;
             element.attr(CommonCompiler.IDENTITY_ATTRIBUTE, "spike-href-"+hrefId);
         }

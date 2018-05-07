@@ -1,24 +1,13 @@
-<div sp-watch>
+<div class="filterElement">
 
-    <div class="form-group">
-        <button type="button" class="btn btn-primary" sp-click="scope.copyPrivileges()">copy privilages from</button>
-        <select class="form-control" sp-bind="scope.selectRoleIdForCopy">
-            <option sp-foreach="role in scope.roles" sp-sort="scope.sortFunction(item1,item2)">{{role.name}}</option>
+    <div class="view-types col-xs-12">
+        <div class="template-name">Template name</div>
+        <select class="form-control" sp-change="scope.changeView()" sp-bind="scope.parentElement.VIEW_TYPE" >
+            <option sp-forEach="argument, argumentKey in scope.parentElement.VIEW_TYPES" sp-attribute-selected="scope.parentElement.VIEW_TYPE === argument" sp-value="{{argumentKey}}">{{argument}}</option>
         </select>
     </div>
 
-    <div class="form-group">
-        <button type="button" class="btn btn-primary" sp-click="scope.copyPrivileges()">copy privilages from</button>
-        <select class="form-control" sp-bind="scope.selectRoleIdForCopy">
-            <option sp-foreach="role in scope.roles" sp-sort="'name'">{{role.name}}</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <button type="button" class="btn btn-primary" sp-click="scope.copyPrivileges()">copy privilages from</button>
-        <select class="form-control" sp-bind="scope.selectRoleIdForCopy">
-            <option sp-foreach="role in scope.roles" sp-sort="item1.role > item2.role ? 1 : 0">{{role.name}}</option>
-        </select>
-    </div>
+    <input type="text" name="loginName" placeholder="{{ Message.get('login_placeholder') }}" sp-bind="scope.model.loginName"/>
+    <input type="password" name="password" placeholder="{{ Message.get('password_placeholder') }}" sp-bind="scope.model.password"/>
 
 </div>

@@ -27,7 +27,7 @@ public class WatchProcessor extends SpikeProcessor {
 
         String watcherName = element.attr(CommonCompiler.PREFIX+"watch");
 
-        if (element.id().isEmpty()) {
+        if (element.attr(CommonCompiler.IDENTITY_ATTRIBUTE) == null || element.attr(CommonCompiler.IDENTITY_ATTRIBUTE).isEmpty()) {
             element.attr(CommonCompiler.IDENTITY_ATTRIBUTE, watcherName);
         }
 

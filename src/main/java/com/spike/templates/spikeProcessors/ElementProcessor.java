@@ -26,7 +26,7 @@ public class ElementProcessor extends SpikeProcessor {
                     includeParams = "{}";
                 }
 
-                this.replaceWith(element, U.ss(CommonCompiler.INCLUDE_ELEMENT + "(new " + includePartial + "(scope, " + includeParams + "))"));
+                this.replaceWith(element, U.ss(CommonCompiler.INCLUDE_ELEMENT + "(new " + includePartial + "(" + includeParams + "))"));
 
             }else{
 

@@ -80,6 +80,8 @@ public class ForEachProcessor extends SpikeProcessor {
             element.removeAttr(U.s("sort"));
         }
 
+        templateParts.prefix += " var isDeclared = false; try { if("+templateParts.listName + ".length !== undefined){ isDeclared = true; } }catch(_e){}";
+        templateParts.prefix += " if(isDeclared) { ";
         templateParts.prefix += "for(var " + templateParts.propName + " in " + templateParts.listName + "){";
 
         templateParts.prefix += "if(" + templateParts.listName + ".hasOwnProperty(" + templateParts.propName + ")){";
@@ -92,6 +94,7 @@ public class ForEachProcessor extends SpikeProcessor {
             templateParts.suffix = " " + templateParts.indexName + "++;";
         }
         templateParts.suffix += "}(" + templateParts.varName + ", " + templateParts.propName + "));";
+        templateParts.suffix += "}";
         templateParts.suffix += "}";
         templateParts.suffix += "}";
 

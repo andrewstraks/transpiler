@@ -1,24 +1,14 @@
 <script type="text/html" id="templates_input_new_test_html">
-<spike-replacement replacement-id="1" type="WatchProcessor" sp-id="element-1"></spike-replacement> 
-<div sp-watch="watcher-0" sp-id="watcher-0"> 
- <div class="form-group"> 
-  <spike-replacement replacement-id="2" type="EventProcessor"></spike-replacement> 
-  <button type="button" class="btn btn-primary" spike-unbinded="" spike-event-click="scope.copyPrivileges()" spike-event-click-link="{{linkId}}" sp-id="spike-event-1">copy privilages from</button> 
-  <spike-replacement replacement-id="3" type="BindProcessor"></spike-replacement> 
-  <select class="form-control" spike-event-change="scope.selectRoleIdForCopy=event.target.value;" spike-event-change-link="{{linkId}}" spike-unbinded=""> <option>{{role.name}}</option>  </select> 
+<spike-replacement replacement-id="1" type="WatchProcessor"></spike-replacement> 
+<div class="filterElement" sp-watch="watcher-0" sp-id="watcher-0"> 
+ <div class="view-types col-xs-12"> 
+  <div class="template-name">
+    Template name 
+  </div> 
+  <select class="form-control" spike-unbinded="" spike-event-change="scope.parentElement.VIEW_TYPE=event.target.value;scope.changeView()" spike-event-change-link="{{spike.core.Events.linkEvent(0,function(event){scope.parentElement.VIEW_TYPE=event.target.value;scope.changeView()})}}"> <option sp-value="{{argumentKey}}" spike-expression="{{((scope.parentElement.VIEW_TYPE === argument) ? 'selected' : '')}}">{{argument}}</option>  </select> 
  </div> 
- <div class="form-group"> 
-  <spike-replacement replacement-id="6" type="EventProcessor"></spike-replacement> 
-  <button type="button" class="btn btn-primary" spike-unbinded="" spike-event-click="scope.copyPrivileges()" spike-event-click-link="{{linkId}}" sp-id="spike-event-2">copy privilages from</button> 
-  <spike-replacement replacement-id="7" type="BindProcessor"></spike-replacement> 
-  <select class="form-control" spike-event-change="scope.selectRoleIdForCopy=event.target.value;" spike-event-change-link="{{linkId}}" spike-unbinded=""> <option>{{role.name}}</option>  </select> 
- </div> 
- <div class="form-group"> 
-  <spike-replacement replacement-id="10" type="EventProcessor"></spike-replacement> 
-  <button type="button" class="btn btn-primary" spike-unbinded="" spike-event-click="scope.copyPrivileges()" spike-event-click-link="{{linkId}}" sp-id="spike-event-3">copy privilages from</button> 
-  <spike-replacement replacement-id="11" type="BindProcessor"></spike-replacement> 
-  <select class="form-control" spike-event-change="scope.selectRoleIdForCopy=event.target.value;" spike-event-change-link="{{linkId}}" spike-unbinded=""> <option>{{role.name}}</option>  </select> 
- </div> 
+ <input type="text" name="loginName" placeholder="{{ Message.get('login_placeholder') }}" spike-event-keyup="scope.model.loginName=event.target.value;" spike-event-keyup-link="{{spike.core.Events.linkEvent(1,function(event){scope.model.loginName=event.target.value;})}}" spike-unbinded="" sp-name="loginName"> 
+ <input type="password" name="password" placeholder="{{ Message.get('password_placeholder') }}" spike-event-keyup="scope.model.password=event.target.value;" spike-event-keyup-link="{{spike.core.Events.linkEvent(2,function(event){scope.model.password=event.target.value;})}}" spike-unbinded="" sp-name="password"> 
 </div>
 </script>
 

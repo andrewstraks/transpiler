@@ -4,6 +4,8 @@ import com.spike.templates.U;
 import com.spike.templates.processors.SpikeProcessor;
 import org.jsoup.nodes.Element;
 
+import java.awt.*;
+
 /**
  * Created by Dawid on 2017-09-06.
  */
@@ -56,20 +58,50 @@ public class BindProcessor extends SpikeProcessor {
                 break;
         }
 
-        if (!element.attr(U.e(eventType)).isEmpty()) {
-            eventBody = element.attr(U.e(eventType));
-        }
+        boolean hasSpAtrtibute = !element.attr("sp-"+eventType).isEmpty();
+        boolean hasSpEventAttribute = !element.attr(U.e(eventType)).isEmpty();
 
-        eventBody = bindModel + baseAssignValue + eventBody;
+        System.out.println("hasSpAtrtibute : "+hasSpAtrtibute);
+        System.out.println("hasSpEventAttribute : "+hasSpEventAttribute);
 
-        element.attr(U.e(eventType), eventBody);
-        element.attr("spike-event-"+eventType+"-link", U.ss("linkId"));
+        if(hasSpAtrtibute){
 
-        if (element.attr("spike-unbinded").isEmpty()) {
-            element.attr("spike-unbinded", "");
+            if (!element.attr("sp-"+eventType).isEmpty()) {
+                eventBody = element.attr("sp-"+eventType);
+            }
+
+            System.out.println("eventBody : "+eventBody);
+
+            eventBody = bindModel + baseAssignValue + eventBody;
+
+            element.attr("sp-"+eventType, eventBody);
+
+        }else if(hasSpEventAttribute){
+
+            if (!element.attr(U.e(eventType)).isEmpty()) {
+                eventBody = element.attr(U.e(eventType));
+            }
+
+            eventBody = bindModel + baseAssignValue + eventBody;
+
+            element.attr(U.e(eventType), eventBody);
+            element.attr("spike-event-"+eventType+"-link", U.ss("linkId"));
+
+        }else{
+
+            eventBody = bindModel + baseAssignValue;
+
+
+            element.attr(U.e(eventType), eventBody);
+            element.attr("spike-event-"+eventType+"-link", U.ss("linkId"));
+
         }
 
         String prefix = EventProcessor.processEventBodyVariables(eventBody);
+
+        element.attr("spike-event", "");
+
+
         this.insertBefore(element, U.js(prefix));
 
         element.removeAttr(spikeAttribute);

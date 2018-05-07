@@ -49,6 +49,9 @@ public class ForProcessor extends SpikeProcessor {
 
             templateParts.listName = repeatElements[1];
 
+
+            templateParts.prefix += "var isDeclared = false; try { if("+templateParts.listName + ".length !== undefined){ isDeclared = true; } }catch(_e){}";
+            templateParts.prefix += "if(isDeclared) { ";
             templateParts.prefix += "for(var " + templateParts.indexName + " = 0; " + templateParts.indexName + " < " + templateParts.listName + ".length; " + templateParts.indexName + "++){";
             if(templateParts.varName != null){
                 templateParts.prefix += "var "+templateParts.varName+" = "+templateParts.listName+"["+templateParts.indexName+"];";
@@ -58,7 +61,7 @@ public class ForProcessor extends SpikeProcessor {
 
             templateParts.suffix += "}("+templateParts.varName+","+templateParts.indexName+"));";
             templateParts.suffix += "}";
-
+            templateParts.suffix += "}";
         }
 
         return templateParts;

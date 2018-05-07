@@ -173,6 +173,13 @@ public class CommonCompiler {
 
         Elements allElements = doc.body().getAllElements();
         for(Element element : allElements){
+            element.removeAttr("sp-watch");
+        }
+
+        Element fistElement = doc.body().children().first();
+        fistElement.attr("sp-watch","");
+
+        for(Element element : allElements){
 
             for (Map.Entry<String, Object> entry : spikeCommands.entrySet()) {
                 String spikeAttribute = entry.getKey();
@@ -210,7 +217,7 @@ public class CommonCompiler {
 
         }
 
-        Element fistElement = doc.body().children().first();
+
         if (fistElement.attr(CommonCompiler.IDENTITY_ATTRIBUTE).isEmpty()) {
             elementId++;
             fistElement.attr(CommonCompiler.IDENTITY_ATTRIBUTE, "element-" + elementId);
