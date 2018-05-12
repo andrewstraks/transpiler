@@ -63,7 +63,7 @@ public class SpikeClassConstructor {
     private void collectConstructorArgumentsUniqueNames() {
 
       //  if (this.argumentsCount > 0) {
-            this.constructorArgumentsUniqueName = this.functionName+".prototype.constructor_" + this.argumentsCount;
+            this.constructorArgumentsUniqueName = this.functionName+".constructor_" + this.argumentsCount;
       //  } else {
      //       this.constructorArgumentsUniqueName = this.functionName;
       //  }
@@ -87,13 +87,17 @@ public class SpikeClassConstructor {
             StringBuilder compiledBuilder = new StringBuilder();
 
             compiledBuilder
-                    .append(this.spikeClass.classPackage.packageName)
-                    .append(".")
-                    .append(this.constructorArgumentsUniqueName)
+                    //.append(this.spikeClass.classPackage.packageName)
+                    //.append(".")
+                    //.append(this.constructorArgumentsUniqueName)
+                    .append("__compilant")
+                    //.append(".")
+                    .append(this.constructorArgumentsUniqueName.replace(this.functionName,""))
                     .append("=function(")
                     .append(this.arguments)
                     .append("){")
-                    .append(this.addThisKeywordReference(constructorBody));
+                    .append(constructorBody);
+                    //.append(this.addThisKeywordReference(constructorBody));
 
             if (!constructorBody.endsWith(";")) {
                 compiledBuilder.append(";");

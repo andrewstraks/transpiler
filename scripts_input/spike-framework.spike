@@ -1,1782 +1,5367 @@
-package app;
+package spike.core;
 
-import SpikeConfig from spike.core.Config;
-
-static class Config extends SpikeConfig {
-
-    @if ENV == 'DEV'
-    domainUrl: 'https://test.codeoadmin.com/ac-api/',
-    @endif
+static class Config {
 
 
-    @if ENV == 'PROD'
-    domainUrl: '/ac-api/',
-    @endif
+      /**
+       * @public
+       *
+       * Defines path to language files
+       */
+      languageFilePath: "/{lang}.json",
 
-    apiUrl: function() { return this.domainUrl + 'rest/' },
-    apiUrlDemo: function() { return 'https://demo.sb-betting.com/ac-api/rest/' },
+      /**
+       * @public
+       *
+       * Defines if router should work in History API mode
+       */
+      html5Mode: false,
 
-    cookies: {
-        session: 'X-AC-SESSION'
-    },
+      /**
+       * @public
+       *
+       * Defines if application runs locally (false) or on mobile device (true)
+       */
+      mobileRun: false,
 
-    languageFilePath: "i18/{lang}.json",
+      /**
+       * @public
+       *
+       * Defines if logs type 'LOG' shoud be printed in console
+       */
+      showLog: true,
 
-    html5Mode: true,
+      /**
+       * @public
+       *
+       * Defines if logs type 'OBJ' shoud be printed in console
+       */
+      showObj: true,
 
-}package app;
+      /**
+       * @public
+       *
+       * Defines if logs type 'DEBUG' shoud be printed in console
+       */
+      showDebug: true,
 
+      /**
+       * @public
+       *
+       * Defines if logs type 'WARN' shoud be printed in console
+       */
+      showWarn: true,
+
+      /**
+       * @public
+       *
+       * Defines if logs type 'OK' shoud be printed in console
+       */
+      showOk: true,
+
+      /**
+       * @public
+       *
+       * Defines controller name which one is rendered as first after application ready
+       */
+      mainController: null,
+
+      /**
+       * @public
+       *
+       * Defines application initial view (before Spike starts application initializing)
+       */
+      initialView: null,
+
+      /**
+       * @public
+       *
+       * Defines application main path (ex. project root/app)
+       */
+      rootPath: 'app',
+
+      /**
+       * @public
+       *
+       * Defines application default language
+       */
+      lang: "en"
+
+}package spike.core;
+
+import Util from spike.core.Util;
 import Log from spike.core.Log;
-import EventsInterface from spike.core.EventsInterface;
-import Router from spike.core.Router;
-import Auth from app.service.auth.Auth;
-import DictionariesManager from app.service.dictionaries.DictionariesManager;
-import Broadcaster from spike.core.Broadcaster;
 
-class Events extends EventsInterface {
+static class Errors {
 
-    onAuth: function(){
+   messages: {
 
-        var isLogged = Auth.isLogged();
+      CACHED_PROMISE_DEPRECADES: '@createCachedPromise has been deprecated. Use @cache param instead',
+      REST_API_NULL_PATHPARAM: 'REST endpoint has undefined or null path params: {0}',
+      APPLICATION_EVENT_CALLBACK_NULL: 'Applicaton event listener {0} is null',
+      APPLICATION_EVENT_NOT_EXIST: 'Application event {0} not exists',
+      APPLICATION_EVENT_ALREADY_EXIST: 'Application event {0} already exists',
+      ROUTING_ENABLED_NOT_DEFINED: 'Routing is enabled but not defined in Config',
+      ROUTE_NAME_NOT_EXIST: 'Route name {0} not exists',
+      ROUTE_NAME_EXIST: 'Route name {0} already exists, must be unique',
+      INTERCEPTOR_ALREADY_REGISTRED: 'Interceptor {0} is already registred',
+      REDIRECT_NO_PATH: 'Try redirect to path but path argument is not defined',
+      TRANSLATION_PARSING: 'Translation parsing error for language {0}',
+      TEMPLATE_NOT_FOUND_ERROR: 'Template named {0} not found',
+      INITIAL_VIEW_ERROR: 'No initial view with name: {0}',
+      WEBSQL_SUPPORT: 'No WebSQL support in this browser',
+      PATH_DEFINITION: 'Path URI and Path object cannot be empty',
+      PATH_ALREADY_EXIST: 'Path {0} is already defined',
+      PATH_PATTERN_ALREADY_EXIST: 'Path {0} is already defined. Pattern {1} is duplicated',
+      MODULE_NOT_EXIST: 'Try rendering not existing module',
+      RESTRICTED_NAME: 'Name {0} is restricted in usage in application',
+      TRANSLATION_MESSAGE_NOT_FOUND: 'Translation for message {0} not found',
+      TRANSLATION_NOT_EXIST: 'No defined language: {0}',
+      TRANSLATION_LOAD_WARN: 'Translation file for language: {0} cannot be downloaded, status: {1}',
+      OUTSIDE_CONTEXT_COMPONENT_NOT_FOUND: 'Component {0} outside "spike-view" is not defined and cannot be rendered',
+      OUTSIDE_CONTEXT_COMPONENT_NOT_GLOBAL: 'Component {0} outside "spike-view" cannot be rendered because is not GLOBAL',
+      OUTSIDE_CONTEXT_COMPONENT_NO_NAME: 'One of global component has not defined name',
 
-        if(isLogged === true){
-            DictionariesManager.loadDictionaries();
-        }
+      SPIKE_APP_NOT_DEFINED: 'No DOM element with {0} or {1} attribute specified',
+      REQUEST_WRONG_PARAMS: 'Request url and type not defined',
+      JSON_PARSE_ERROR: 'JSON parse error during execution {0}',
+
+      TRIGGER_NOT_DEFINED: 'Trigger {0} is not defined for scope {1}'
 
     },
 
-    onReady: function(){
-        Log.log('App onReady event');
+  /**
+   * @public
+   *
+   * Throws @error from Spike framework
+   *
+   * @param errorMessage
+   * @param errorMessageBinding
+   *
+   **/
+  throwError: function (errorMessage, errorMessageBinding) {
 
-        Broadcaster.register('onAuth');
-        Broadcaster.listen('onAuth', this.onAuth);
-        Auth.getSession();
+    var error = 'Spike Framework: ' + Util.bindStringParams(errorMessage, errorMessageBinding);
+    this.errors.push(error);
+    this.printExceptions();
+    throw new Error(error);
 
-    },
+  },
 
-    onRender: function(){
-        Log.log('App onRender event');
+  /**
+   * @public
+   * Storage for all exceptions
+   */
+  errors: [],
 
-        var viewData = Router.getViewData();
+  /**
+   * @public
+   * Prints all exceptions to console
+   */
+  printExceptions: function () {
 
-        if(viewData.routingParams.onlyForLogged && Auth.isLogged() === false){
-            Router.redirect('/login');
-        }
-
+    for (var i = 0; i < this.errors.length; i++) {
+      console.error('Error ' + i + ': ' + this.errors[i]);
     }
 
-}package app;
+  },
+
+  /**
+   * @public
+   *
+   * Throws @error from Spike framework
+   *
+   * @param errorMessage
+   * @param errorMessageBinding
+   *
+   **/
+  throwWarn: function (warnMessage, warnMessageBinding) {
+    Log.warn('Spike Framework: ' + Util.bindStringParams(warnMessage, warnMessageBinding));
+  }
+
+}package spike.core;
 
 import System from spike.core.System;
-import Message from spike.core.Message;
-import Rest from spike.core.Rest;
+import Utils from spike.core.Util;
 import Log from spike.core.Log;
-import Broadcaster from spike.core.Broadcaster;
-import LoaderInterface from spike.core.LoaderInterface;
 
-import Config from app.Config;
-import Routing from app.Routing;
-import Events from app.Events;
+static class Events {
 
-import Xhr from app.Xhr;
-import Modal from app.Modal;
+  /**
+   * List of allowed events which can be binded by Spike Framework and compiled by Spike compiler
+   */
+  allowedEvents: [
+    'click',
+    'change',
+    'keyup',
+    'keydown',
+    'keypress',
+    'blur',
+    'focus',
+    'dblclick',
+    'die',
+    'hover',
+    'keydown',
+//    'mousemove',
+//    'mouseover',
+//    'mouseenter',
+//    'mousedown',
+//    'mouseleave',
+//    'mouseout',
+    'submit',
+    'load',
+    'unload'
+  ],
 
-class Loader extends LoaderInterface {
+  __linkReferences: {},
 
-    loadApplication: function(){
+  bindEvents: function(){
 
-        System.setXhrInterface(new Xhr());
-        System.setRouting(new Routing());
-        System.setEventsInterface(new Events());
-        System.setModalInterface(new Modal());
+    for (var k = 0; k < this.allowedEvents.length; k++) {
 
-        Log.log('Load application done');
+        document.addEventListener(this.allowedEvents[k], function(e){
 
-        Rest.interceptor("Request", function(response, promise){
-            Log.log('Invoke Request interceptor');
+            if(e.target){
+
+                if(e.target.hasAttribute('spike-event')){
+
+                    var eventId = e.target.getAttribute('spike-event-'+e.type+'-link');
+
+                    if(eventId !== null){
+                        $this.__linkReferences[eventId](e);
+                    }
+
+                }
+
+            }
+
         }, true);
-
-        Broadcaster.register('SomeEvent');
 
     }
 
-}
-package app;
+  },
 
-import Log from spike.core.Log;
-import ModalInterface from spike.core.ModalInterface;
+  linkEvent: function(eventFn){
 
-class Modal extends ModalInterface {
+    var linkId = Utils.hash();
+    $this.__linkReferences[linkId] = eventFn;
+    return linkId;
+
+  },
+
+}package spike.core;
+
+class EventsInterface {
+
+        /**
+          * @public
+          * @toImplement
+          *
+          * Executes when framework cannot run without given browser standard
+          *
+          */
+        onIncompatible: function(){
+
+        },
+
+        /**
+          * @public
+          * @toImplement
+          *
+          * Additional @event function executed when Spike
+          * controller or modal is rendered
+          *
+          */
+         onRender: function () {
+
+         },
+
+
+         /**
+          * @public
+          * @toImplement
+          *
+          * Additional @event function executed when Cordova is initializing
+          * Can contain any global events registred via @window.addEventListener
+          * or @document.addEventListener
+          *
+          */
+         domEvents: function () {
+
+         },
+
+
+         /**
+          * @public
+          * @toImplement
+          *
+          * Additional @event function executed when application is in @online state
+          *
+          */
+         onOnline: function () {
+         },
+
+         /**
+          * @public
+          * @toImplement
+          *
+          * Additional @event function executed when application is in @offline state
+          *
+          */
+         onOffline: function () {
+         },
+
+         /**
+          * @public
+          * @toImplement
+          *
+          * Additional @event function executed when @back event happens
+          *
+          * If there aren't rendered modals and current controller has not
+          * overriden @onBack function then application invokes this function
+          *
+          * More info in @app.cordova.onBack function
+          *
+          */
+         onBack: function () {
+         },
+
+         /**
+          * @public
+          * @toImplement
+          *
+          * Additional @event function executed when Cordova application is ready
+          *
+          */
+         onDeviceReady: function () {
+         },
+
+         /**
+          * @public
+          * @toImplement
+          *
+          * Additional @event function executed when Spike application is ready
+          * Invokes before rendering @Config.mainController
+          *
+          */
+         onReady: function () {
+         },
+
+         /**
+            @public
+            @toImplement
+            Invokes when route changes
+         **/
+         onRouteChange: function(){
+
+         }
+
+}package spike.core;
+
+class XhrInterface {
+
+    xhrFields: {
+        withCredentials: false
+    },
+
+    abstract function onBefore;
+    abstract function onComplete;
+    abstract function onCatch;
+
+}package spike.core;
+
+class RoutingInterface {
+
+  create: function(router){
+
+  }
+
+}package spike.core;
+
+class LoaderInterface {
+
+  loadApplication: function(){
+
+  },
+
+  onLoadApplication: function(){
+  }
+
+}package spike.core;
+
+ import Log from spike.core.Log;
+ import System from spike.core.System;
+ import Errors from spike.core.Errors;
+
+class ModalInterface {
+
+    modals: [],
 
     onRender: function (modal) {
-        this.super.onRender(modal);
-
-        modal.rootSelector().addEventListener('click', function(e){
-
-            if(e.target.id === modal.elementId){
-                modal.hide();
-            }
-
-        });
-
+        this.modals.push(modal);
     },
 
     onShow: function (modal) {
-
-        modal.rootSelector().style = '';
-
-        setTimeout(function(){
-            modal.rootSelector().classList.add('fade-in');
-        }, 100);
-
+         modal.rootSelector().style = 'display: block;';
     },
 
     onHide: function (modal) {
-        modal.rootSelector().classList.remove('fade-in');
-
-        setTimeout(function(){
-            modal.hide();
-            modal.rootSelector().style = 'display: none;'
-        }, 100);
-
+         modal.rootSelector().style = 'display: hide;';
     },
 
+    //add classes etc
     onConstruct: function(modalElement){
-        modalElement.classList.add('modal-wrapper');
-
         return modalElement;
     },
 
-}package app;
+    onDestroy: function (modal) {
 
-import RoutingInterface from spike.core.RoutingInterface;
+        for(var i = 0; i < this.modals.length; i++){
 
-class Routing extends RoutingInterface {
-
-    create: function(router){
-
-        router.path('/', {
-            controller: 'app.module.home.controller.home.Home',
-            routingParams: {
-                onlyForLogged: true
+            if(this.modals[i].elementId === modal.elementId){
+                this.modals.splice(i, 1);
             }
-        });
 
-        router.path('/controls', {
-            controller: 'app.module.controls.controller.controls.Controls',
-        });
-
-        router.path('/login', {
-           controller: 'app.module.auth.controller.login.Login',
-        });
-
-        router.path('/privileges', {
-            controller: 'app.module.privileges.controller.privileges.Privileges',
-        });
-
-        router.path('/maintenance', {
-            controller: 'app.module.maintenance.controller.maintenance.Maintenance',
-        });
-
-        router.path('/not-found', {
-            controller: 'app.module.pageNotFound.controller.pageNotFound.PageNotFound',
-        });
-
-        router.path('/cms/:type', {
-            controller: 'app.module.cms.controller.table.Table',
-        });
-
-        router.path('/cms/:type/:id', {
-            controller: 'app.module.cms.controller.manager.Manager',
-        });
-
-        router.other('/not-found');
-    }
-
-}package app;
-
-import XhrInterface from spike.core.XhrInterface;
-import Auth from app.service.auth.Auth;
-
-class Xhr extends XhrInterface {
-
-    onCatch: function(xhr, status, thrownError){
-
-        if(status === 401){
-            Auth.logout();
         }
 
-    }
-
-}package app.enums.api;
-
-import Config from app.Config;
-
-enum Cms {
-
-    get: {
-        getPages: Config.apiUrl() + 'cms/pages',
-        getPageById: Config.apiUrl() + 'cms/pages/{id}',
-        getPageTypes: Config.apiUrl() + 'cms/pages/types',
-        getPublishedPages: Config.apiUrl() + 'cms/pages/published',
-        getPageContentById: Config.apiUrl() + 'cms/pages/{id}/content',
-
-        getComponents: Config.apiUrl() + 'cms/components/all',
-        getComponentById: Config.apiUrl() + 'cms/components/{id}',
-        getComponentByHtmlTag: Config.apiUrl() + 'cms/components/{id}',
-
-        getTemplateById: Config.apiUrl() + 'cms/pages/templates/{id}',
-        getTemplates: Config.apiUrl() + 'cms/pages/templates',
-        getTemplatesSimple: Config.apiUrl() + 'cms/pages/templates/simple',
-
-        getPreviewPage: Config.apiUrl() + 'cms/pages/preview/{id}/content',
-
-        getPageByBrand: Config.apiUrl() + 'cms/pages/custom'
     },
 
-    post: {
-        createPage: Config.apiUrl() + 'cms/pages',
-        changePageTypeToPublish: Config.apiUrl() + 'cms/pages/{id}/publish',
-        changePageTypeToDraft: Config.apiUrl() + 'cms/pages/{id}/draft',
+    removeAll: function () {
 
-        createComponent: Config.apiUrl() + 'cms/components',
+       for(var i = 0; i < this.modals.length; i++){
+           this.modals[i].destroy();
+       }
 
-        createTemplate: Config.apiUrl() + 'cms/pages/templates',
-
-        createPreviewPage: Config.apiUrl() + 'cms/pages/preview',
-
-        uploadFile: Config.apiUrl() + 'cms/upload'
-    },
-
-    put: {
-        updatePageById: Config.apiUrl() + 'cms/pages/{id}',
-
-        updateTemplateById: Config.apiUrl() + 'cms/pages/templates/{id}',
-
-        updateComponentById: Config.apiUrl() + 'cms/components/{id}'
-    },
-
-    delete: {
-        deletePageById: Config.apiUrl() + 'cms/pages/{id}',
-
-        deleteComponentById: Config.apiUrl() + 'cms/components/{id}',
-
-        deleteTemplateById: Config.apiUrl() + 'cms/pages/templates/{id}'
-    }
-};package app.enums.api;
-
-import Config from app.Config;
-
-enum Dictionaries {
-
-    get: {
-
-        adminRoles: Config.apiUrl() + 'dictionaries/admin/roles',
-        offerTypes: Config.apiUrl() + 'dictionaries/offer-definition/types',
-        privilegeStatuses: Config.apiUrl() + 'dictionaries/privilege/statuses',
-        queryStatuses: Config.apiUrl() + 'dictionaries/query/statuses',
-        betSlipCombinationStatuses: Config.apiUrl() + 'dictionaries/bet-slip/combination/statuses',
-        betSlipRegMethods: Config.apiUrl() + 'dictionaries/bet-slip/reg-methods',
-
-        eventsTypes: Config.apiUrl() + 'dictionaries/events/types',
-        transactionsTypes: Config.apiUrl() + 'dictionaries/transaction/types',
-        transactionsTypeSwitches: Config.apiUrl() + 'dictionaries/transaction/type-switches',
-
-        offerDefinitionStatuses: Config.apiUrl() + 'dictionaries/offer-definition/statuses',
-        offerAssignConditions: Config.apiUrl() + 'dictionaries/offer-definition/assign-conditions/{offerType}',
-        offerWithdrawLockTypes: Config.apiUrl() + 'dictionaries/offer-definition/withdraw-lock-types',
-        offerCachbackCalculationTypes: Config.apiUrl() + 'dictionaries/offer-definition/cachback-calculation-types/{offerType}',
-        offerCachbackProgressiveCachbackTypes: Config.apiUrl() + 'dictionaries/offer-definition/progressive-cachback-types',
-
-        cmsCommentsStatuses: Config.apiUrl() + 'cms/comments/publication-statuses'
+       this.modals = [];
 
     }
 
-}package app.enums.api;
+}package spike.core;
 
-import Config from app.Config;
-
-enum Privileges {
-
-    get: {
-        urlIds: Config.apiUrl() + 'support/privileges/rest',
-        roles: Config.apiUrl() + 'support/privileges/rest/roles',
-        rolesByUrlId: Config.apiUrl() + 'support/privileges/rest/roles/{urlId}',
-        users: Config.apiUrl() + 'support/privileges/rest/users',
-        usersByUrlId: Config.apiUrl() + 'support/privileges/rest/users/{urlId}',
-    },
-
-    put: {
-         createRole: Config.apiUrl() + 'support/privileges/rest/roles',
-         createAdminRole: Config.apiUrl() + 'support/privileges/rest/users',
-    },
-
-    post: {
-      updateRole: Config.apiUrl() + 'support/privileges/rest/roles/{urlId}',
-      updateAdminRole: Config.apiUrl() + 'support/privileges/rest/users/{urlId}',
-    }
-
-}package app.enums.api;
-
-import Config from app.Config;
-
-enum PrivilegesApi {
-
-    get: {
-        urlIds: Config.apiUrl() + 'support/privileges/rest',
-        roles: Config.apiUrl() + 'support/privileges/rest/roles',
-        rolesByUrlId: Config.apiUrl() + 'support/privileges/rest/roles/{urlId}',
-        users: Config.apiUrl() + 'support/privileges/rest/users',
-        usersByUrlId: Config.apiUrl() + 'support/privileges/rest/users/{urlId}',
-        adminrole: Config.apiUrlDemo()+'admin-role',
-        views: Config.apiUrlDemo()+'admin-role/views',
-    },
-
-    put: {
-         createRole: Config.apiUrl() + 'support/privileges/rest/roles',
-         createAdminRole: Config.apiUrl() + 'support/privileges/rest/users',
-    },
-
-    post: {
-      updateRole: Config.apiUrl() + 'support/privileges/rest/roles/{urlId}',
-      updateAdminRole: Config.apiUrl() + 'support/privileges/rest/users/{urlId}',
-    }
-
-}package app.enums.api;
-
-import Config from app.Config;
-
-enum Queries {
-
-    get: {
-        get: Config.apiUrl() + 'queries/{hash}',
-        getAll: Config.apiUrl() + 'queries'
-    },
-
-    delete: {
-        remove: Config.apiUrl() + 'queries/{hash}'
-    }
-
-}package app.enums.api;
-
-import Config from app.Config;
-
-enum Session {
-
-    get: {
-     menu: '/i18/menu.json',
-     session: Config.apiUrl() + 'session',
-     logout: Config.apiUrl() + 'session/login',
-     redirectionAC: Config.apiUrl() + 'redirections/ac-api/{path}',
-    },
-
-    post: {
-     login: Config.apiUrl() + 'session/login',
-     loginUsingToken: Config.apiUrl() + 'session/login/token'
-    }
-
-}package app.enums.api;
-
-import Config from app.Config;
-
-enum Statistics {
-
-    get: {
-        exposureEstimate: Config.apiUrl() + 'statistics/exposure-estimate'
-    }
-
-}package app.enums;
-
-import Config from app.Config;
-
-enum TableElementTypes {
-
-
-    BUTTONS: {
-        header: '',
-        buttons: []
-    },
-    BUTTON: {
-        label: '',
-        click: null
-    },
-    DATE: {
-        header: '',
-        format: 'dd-MM-yyyy',
-    },
-    SELECT: {
-        arguments: {},
-
-    },
-    CHECKBOX: {
-
-    },
-    LINK: {
-        href: null,
-        name: '',
-        target: '_self'
-    },
-    FILTER: {
-        filter: null
-    },
-    INPUT: {
-
-    }
-
-}package app.module.auth.controller.login;
-
-import Controller from spike.core.Controller;
-import Log from spike.core.Log;
-import Rest from spike.core.Rest;
-import Session from app.enums.api.Session;
+import System from spike.core.System;
 import Router from spike.core.Router;
-import Auth from app.service.auth.Auth;
+import Log from spike.core.Log;
+import Assembler from spike.core.Assembler;
+import Errors from spike.core.Errors;
+import ModalInterface from spike.core.ModalInterface;
+import EventsInterface from spike.core.EventsInterface;
+import Selectors from spike.core.Selectors;
+import Util from spike.core.Util;
+import Message from spike.core.Message;
+import Watchers from spike.core.Watchers;
+import XhrInterface from spike.core.XhrInterface;
+import Reconcile from spike.core.Reconcile;
+import Events from spike.core.Events;
 
-class Login extends Controller {
+static class System {
 
-    model: {
-        loginName: '',
-        password: '',
-        error: false
-    },
+   config: null,
+   eventsInterface: null,
+   modalInterface: null,
+   xhrInterface: null,
+   routing: null,
 
-    checkErrors: function(){
-        ($this.model.loginName.length === 0 || $this.model.password.length === 0) ? $this.model.error = true : $this.model.error = false;
-    },
+   setConfig: function(configObject){
+    this.config = configObject;
+   },
 
-    login: function(e){
-        e.preventDefault();
+   setRouting: function(routing){
+    this.routing = routing;
+   },
 
-        if($this.model.error === false){
+   setEventsInterface: function(eventsInterface){
+    this.eventsInterface = eventsInterface;
+   },
 
-            Auth.login({
-                loginName: $this.model.loginName,
-                password: $this.model.password
-             })
-             .then(function (data) {
-                 Router.redirect('/');
-             })
-             .catch(function () {
-                 $this.model.error = true;
-             });
+   setXhrInterface: function(xhrInterface){
+    this.xhrInterface = xhrInterface;
+   },
 
+   setModalInterface: function(modalInterface){
+    this.modalInterface = modalInterface;
+   },
+
+   idCounter: 1,
+   assignId: function(){
+    idCounter++;
+    return 'element-'+idCounter;
+   },
+
+  /**
+   * @public
+   *
+   * Stores DOM elements attributes
+   */
+  attributes: {
+    APP: 'spike-app',
+    VIEW: 'spike-view',
+    MODALS: 'spike-modals',
+  },
+
+  /**
+   * @public
+   *
+   * Spike framework version
+   */
+  version: '3.0.0',
+
+  /**
+   * @public
+   *
+   * Stores name of current rendered controller
+   */
+  currentController: null,
+
+  /**
+   * @public
+   *
+   * Stores name of previous rendered controller
+   */
+  previousController: null,
+
+  getCurrentController: function () {
+
+    var endpoint = Router.getCurrentViewData().endpoint;
+
+    if (endpoint) {
+      return endpoint.controller;
+    }
+
+    return this.currentController || this.config.mainController;
+  },
+
+
+  /**
+   * @public
+   *
+   * Invokes @Events.onRender event if exist
+   *
+   **/
+  execOnRenderEvent: function () {
+
+    if (this.eventsInterface.onRender) {
+      this.eventsInterface.onRender();
+    }
+
+  },
+
+
+  /**
+   * @public
+   *
+   * Function renders @modal object passed from @app.modal
+   * Renders @modal with @modalInitialData and executes
+   * @afterRenderCallback after rendering is done
+   *
+   * @param modalObject
+   * @param modalInitialData
+   * @param afterRenderCallback
+   *
+   */
+  renderModal: function (modalObject, modalInitialData, afterRenderCallback) {
+
+    Log.debug('Invoke system.renderModal', []);
+    Log.log('Rendering modal {0}', [modalObject.name]);
+
+    //Checks network status
+    if (modalObject.checkNetwork === true) {
+      app.cordova.checkNetwork();
+    }
+
+    if (modalInitialData === undefined) {
+      modalInitialData = null;
+    }
+
+    //Renders modal
+    modalObject.render(modalInitialData);
+
+    System.execOnRenderEvent();
+
+    if (afterRenderCallback) {
+      afterRenderCallback();
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function renders @controller object passed from @app.controller
+   * Renders @controller with @controllerInitialData and executes
+   * @afterRenderCallback after rendering is done
+   *
+   * @param controllerObject
+   * @param controllerInitialData
+   * @param afterRenderCallback
+   *
+   */
+  renderController: function (controller, afterRenderCallback) {
+    Log.debug('Invoke system.renderController with params', []);
+    Log.log('Rendering controller {0}', [controller.getClass()]);
+
+    //Scrolling to top of page
+    if (controller.scrollTop === true) {
+      window.scrollTo(0,0);
+    }
+
+    //Invalidates all existing modals (even hidden)
+    this.modalInterface.removeAll();
+
+  //  if (controllerObject.checkNetwork === true && Config.mobileRun === true) {
+      //app.cordova.checkNetwork();
+   // }
+
+    //Clears selectors cache
+    //Selectors.clearSelectorsCache();
+
+    if(this.currentRenderedController){
+        this.currentRenderedController.destroy();
+    }
+
+    //Renders controller
+    controller.render();
+
+    this.currentRenderedController = controller;
+
+    System.execOnRenderEvent();
+
+    if (afterRenderCallback) {
+      afterRenderCallback();
+    }
+
+    //Log.ok('Selectors cache usage during app lifecycle: ' + Selectors.cacheUsageCounter);
+
+  },
+
+  /**
+   * @public
+   *
+   * Renders passed @module object with initial data.
+   * If object not exists, then throw error.
+   *
+   * If object type is CONTROLLER then invoke @public renderController
+   * If object type is MODAL then invoke @public renderModal
+   *
+   * @param moduleObject
+   * @param moduleInitialData
+   * @param afterRenderCallback
+   */
+  render: function (moduleClass, moduleInitialModel, afterRenderCallback) {
+
+    if (!moduleClass) {
+      Errors.throwError(Errors.messages.MODULE_NOT_EXIST);
+    }
+
+//    if(this.modalInterface.isRendered(moduleClass) || (this.currentRenderedController && this.currentRenderedController.getClass() === moduleClass)){
+//        Log.warn('Preventing re-rendering module '+moduleClass);
+//        return;
+//    }
+
+    Router.clearCacheViewData();
+
+    var module = Assembler.getClassInstance(moduleClass, [moduleInitialModel]);
+
+    var inheritsModuleList = Assembler.getClassExtendingList(module);
+
+    if (inheritsModuleList.indexOf('spike.core.Controller') > -1) {
+      System.renderController(module, afterRenderCallback);
+    } else if (inheritsModuleList.indexOf('spike.core.Modal') > -1) {
+      System.renderModal(module, afterRenderCallback);
+    }
+
+  },
+
+  currentRenderedController: null,
+
+  viewSelector: null,
+  appViewSelector: null,
+
+  /**
+   * @public
+   *
+   * Returns main view selector
+   *
+   */
+  getView: function () {
+
+    if(this.viewSelector === null){
+        this.viewSelector = document.querySelector('['+this.attributes.VIEW+']');
+       // this.viewSelector.setAttribute('sp-id','root');
+    }
+
+    return this.viewSelector;
+
+  },
+
+  getAppView: function(){
+
+    if(this.appViewSelector === null){
+        this.appViewSelector = document.querySelector('['+this.attributes.APP+']');
+    }
+
+    return this.appViewSelector;
+
+  },
+
+  modalsSelector: null,
+
+  /**
+     * @public
+     *
+     * Returns modals view selector
+     *
+     */
+  getModalsView: function(){
+
+   if(this.modalsSelector === null){
+    this.modalsSelector = document.querySelector('['+this.attributes.MODALS+']');
+   }
+
+   return this.modalsSelector;
+
+  },
+
+  verifyViews: function(){
+
+    if(this.getView() === null || this.getModalsView() === null){
+        Errors.throwError(Errors.messages.SPIKE_APP_NOT_DEFINED, [this.attributes.VIEW, this.attributes.MODALS]);
+    }
+
+  },
+
+  loader: null,
+
+  /**
+   * @public
+   *
+   * Main function initializing Spike framework and Cordova.
+   * Switch debug mode and prints jQuery and Spike version.
+   *
+   * Waits for @document ready state and initialize Cordova and Spike
+   * for local or device mode.
+   *
+   * @param callBack --optional
+   *
+   */
+  init: function () {
+
+    Log.init();
+
+    Reconcile.constructRestrictedAttributes();
+
+    this.loader = Assembler.findLoaderClass();
+    this.config = Assembler.findConfigClass();
+    this.loader.loadApplication();
+
+    Log.debug('Invoke spike.core.System.init with params', []);
+
+    if(this.config === null){
+        this.setConfig(new spike.core.Config());
+    }
+
+    if(this.modalInterface === null){
+        this.setModalInterface(new ModalInterface());
+    }
+
+    if(this.eventsInterface === null){
+        this.setEventsInterface(new EventsInterface());
+    }
+
+    if(this.xhrInterface === null){
+        this.setXhrInterface(new XhrInterface());
+    }
+
+    Log.log('Destroy assembler');
+    Assembler.destroy();
+
+    Log.warn('Spike version: {0}', [System.version]);
+    Log.ok('Spike application initializing...');
+
+    this.verifyViews();
+    Router.detectHTML5Mode();
+    Events.bindEvents();
+
+    Message.loadLanguage().then(function(){
+
+        Log.log('Translations loaded');
+
+        if ($this.eventsInterface.onReady !== undefined) {
+            $this.eventsInterface.onReady();
         }
 
-    }
+        Router.registerRouter();
+        Watchers.createWatchLoop();
+        $this.initGlobalElements();
 
-}package app.module.auth;
+        $this.loader.onLoadApplication();
 
-class LoginData {
+        Log.ok('Spike application ready to work...');
 
-    LoginData: function(adminId, allowedViews, firstName, lastName, loginName, serverTimeMillis, loginTime){
-        this.adminId = adminId;
-        this.allowedViews = allowedViews;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.loginName = loginName;
-        this.serverTimeMillis = serverTimeMillis;
-        this.loginTime = loginTime;
-    },
+    });
 
-    @number
-    adminId: null,
+  },
 
-    @array
-    allowedViews: [],
+  globalElements: [],
 
-    @string
-    firstName: null,
+  /**
+    Renders global components defined outside 'spike-view'
+    **/
+  initGlobalElements: function(){
 
-    @string
-    lastName: null,
+    var globalElements = document.querySelectorAll('spike[sp-global-element]');
 
-    @string
-    loginName: null,
+    for(var i = 0; i < globalElements.length; i++){
 
-    @number
-    serverTimeMillis: null,
+        setSpikeId(globalElements[i], 'global-'+Util.hash());
+        var className = globalElements[i].getAttribute('sp-global-element');
 
-    @number
-    loginTime: null
-
-}package app.module.cms.common.manager;
-
-import Controller from spike.core.Controller;
-
-class Manager extends Controller {
-
-    Manager: function () {
-    }
-
-}package app.module.cms.controller.custom;
-
-import Manager from app.module.cms.common.manager.Manager;
-
-class Custom extends Manager {
-
-    Custom: function () {
+        var globalElement = Assembler.getClassInstance(className, [getSpikeId(globalElements[i])]);
+        this.globalElements.push(globalElement);
 
     }
 
-}package app.module.cms.controller.news;
+  }
 
-import Manager from app.module.cms.common.manager.Manager;
+}
+package spike.core;
 
-class News extends Manager {
+import Config from spike.core.System.config;
+import Util from spike.core.Util;
 
-    News: function () {
+static class Log {
+
+  init: function(){
+      if (!window.console) window.console = {};
+      if (!window.console.log) window.console.log = function () { };
+  },
+
+  /**
+   * @public
+   *
+   * Function prints JavaScript @object in console
+   *
+   * @param jsObject
+   */
+  obj: function (jsObject) {
+
+    if (Config.showObj) {
+      console.log(jsObject);
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function prints log message
+   *
+   * @param logMessage
+   * @param logData -- optional
+   */
+  log: function (logMessage, logData) {
+
+    if (Config.showLog) {
+      this.print(logMessage, logData, 'LOG');
+    }
+
+  },
+
+  templateLog: function (logMessage, logData) {
+
+    if (Config.showLog) {
+      this.print(logMessage, logData, 'TEMPLATE_LOG');
+    }
+
+  },
+  /**
+   * @public
+   *
+   * Function prints error message
+   *
+   * @param errorMessage
+   * @param errorData -- optional
+   */
+  error: function (errorMessage, errorData) {
+
+    if (Config.showError) {
+      this.print(errorMessage, errorData, 'ERROR');
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function prints debug message
+   * If @Config.debug is false then
+   * debug message is not print
+   *
+   * @param debugMessage
+   * @param debugData -- optional
+   */
+  debug: function (debugMessage, debugData) {
+
+    if (Config.showDebug) {
+      this.print(debugMessage, debugData, 'DEBUG');
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function prints warn message
+   *
+   * @param warnMessage
+   * @param warnData -- optional
+   */
+  warn: function (warnMessage, warnData) {
+
+    if (Config.showWarn) {
+      this.print(warnMessage, warnData, 'WARN');
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function prints ok message
+   *
+   * @param okMessage
+   * @param okData -- optional
+   */
+  ok: function (okMessage, okData) {
+
+    if (Config.showOk) {
+      this.print(okMessage, okData, 'OK');
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function prints message in console
+   * with custom colors
+   *
+   * @param message
+   * @param data -- optional
+   * @param type
+   */
+  print: function (message, data, type) {
+
+    if (typeof message !== 'string') {
+      message = JSON.stringify(message);
+    }
+
+    if (data) {
+      message = Util.bindStringParams(message, data);
+    }
+
+    var color = '';
+    switch (type) {
+      case 'TEMPLATE_LOG' :
+        color = 'chocolate ';
+        break;
+      case 'LOG' :
+        color = 'blue';
+        break;
+      case 'ERROR' :
+        color = 'red';
+        break;
+      case 'DEBUG' :
+        color = 'gray';
+        break;
+      case 'WARN' :
+        color = 'orange';
+        break;
+      case 'OK' :
+        color = 'green';
+        break;
+      default:
+        color = 'black';
+    }
+
+    console.log('%c' + Util.currentDateLog() + ' Spike Framework: ' + message, 'color: ' + color);
+
+  }
+
+}
+package spike.core;
+
+import Selectors from spike.core.Selectors;
+import Util from spike.core.Util;
+import Watchers from spike.core.Watchers;
+
+static class Selectors {
+
+ /**
+   * @public
+   *
+   * Counter for selectors cache for
+   * debug proposes
+   *
+   */
+  cacheUsageCounter: 0,
+
+  /**
+   * @public
+   *
+   * Storage for cached once used selectors
+   *
+   */
+  selectorsCache: {},
+
+  /**
+   * @public
+   *
+   * Clears selectors cache, should be executed before
+   * new controller rendering
+   *
+   */
+  clearSelectorsCache: function () {
+    this.selectorsCache = {};
+  },
+
+  /**
+   * @public
+   *
+   * Clears selector given id from cache
+   *
+   * @param selectorId
+   */
+  clearSelectorInCache: function (selectorId) {
+
+    if (this.selectorsCache[selectorId]) {
+      this.selectorsCache[selectorId] = null;
+    }
+
+  },
+
+  createFormsSelectors: function(element, selectors){
+
+    //Retrieving list of form elements names
+    var formsWithNames = element.querySelectorAll('form[name]');
+
+    function getSelectorFn(name, newName) {
+        return function() {
+
+            var selector = Selectors.selectorsCache[newName];
+
+            if (selector === undefined) {
+                selector = document.querySelector('form[name="'+newName+'"]');
+                selector.plainName = name;
+                selector.serialize = Util.serializeForm.bind(selector);
+
+                Selectors.selectorsCache[newName] = selector;
+            } else {
+                Selectors.cacheUsageCounter++;
+            }
+
+            return selector;
+
+        };
+    };
+
+    for(var i = 0; i < formsWithNames.length; i++){
+
+        if(formsWithNames[i].getAttribute('sp-keep-name') != null){
+            continue;
+        }
+
+        var name = formsWithNames[i].getAttribute('name');
+
+        //Creating new hash for identifier
+        var newName = name + '-' + Util.hash();
+        selectors.forms[name] = getSelectorFn(name, newName);
+        formsWithNames[i].setAttribute('name', newName);
 
     }
 
-}package app.module.cms.controller.table;
+    return element.innerHTML;
 
-import Controller from spike.core.Controller;
-import Log from spike.core.Log;
-import CmsService from app.service.cms.Cms;
-import Utils from app.service.common.Utils;
+  },
 
-class Table extends Controller {
+  createNamesSelectors: function(element, selectors){
 
-    options: {
-        request: CmsService.getPages,
-        urlParams: {
-            type: 'CUSTOM_PAGE',
-            sort: 'id%2Cdesc',
-            limit: 10,
-            offset: 0
+    //Retrieving list of form elements names
+    var elementsWithNames = element.querySelectorAll('[name]');
+
+    function getSelectorFn(name, newName) {
+        return function() {
+
+            var selector = Selectors.selectorsCache[newName];
+
+            if (selector === undefined) {
+                selector = document.querySelector('[name="'+newName+'"]');
+                selector.plainName = name;
+                Selectors.selectorsCache[newName] = selector;
+            } else {
+                Selectors.cacheUsageCounter++;
+            }
+
+            return selector;
+
+        };
+    };
+
+    //Creating names selectors functions
+    for(var i = 0; i < elementsWithNames.length; i++){
+
+        if(elementsWithNames[i].getAttribute('sp-keep-name') != null || elementsWithNames[i].tagName.toLowerCase() === 'form' || elementsWithNames[i].type === 'radio'){
+            continue;
+        }
+
+        var name = elementsWithNames[i].getAttribute('name');
+
+        //Creating new hash for identifier
+        var newName = name + '-' + Util.hash();
+        selectors.names[name] = getSelectorFn(name, newName);
+        elementsWithNames[i].setAttribute('name', newName);
+
+    }
+
+    return element.innerHTML;
+
+  },
+
+  createIdSelectors: function(element, selectors, eventsSelectors, linksSelectors){
+
+    var elementsWithId = element.querySelectorAll('[sp-handle]');
+
+    function getSelectorFn(newId) {
+        return function() {
+
+            var selector = Selectors.selectorsCache[newId];
+
+            if (selector === undefined) {
+              selector = document.querySelector('[sp-handle="'+newId+'"]');
+              selector.plainId = newId;
+              Selectors.selectorsCache[newId] = selector;
+            } else {
+              Selectors.cacheUsageCounter++;
+            }
+
+            return selector;
+
+        };
+    };
+
+   //Creating identifiers selectors functions
+   for(var i = 0; i < elementsWithId.length; i++){
+
+    //Creating new hash for identifier
+    var newId = elementsWithId[i].getAttribute('sp-handle') + '-sp-' + Util.hash();
+
+    //Creating handler function for identifier with optional basic events binding by @jQuery
+    selectors[elementsWithId[i].getAttribute('sp-handle')] = getSelectorFn(newId);
+
+    if(elementsWithId[i].getAttribute('spike-href') != null){
+        linksSelectors.push(newId);
+    }
+
+    elementsWithId[i].setAttribute('sp-handle', newId);
+
+   }
+
+   return element.innerHTML;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function creates selectors for passed HTML @string based
+   * on @attr id and @attr name.
+   * Function returns set of methods as @jQuery selectors getters
+   * and processed HTML @string with replaced attributes with
+   * special hashes
+   *
+   * @param templateHtml
+   *
+   */
+   createUniqueSelectors: function (scope) {
+
+    var element = document.createElement('div');
+    element.innerHTML = scope.compiledHtml;
+
+    scope.selector = {
+        names: {},
+        forms: {}
+    };
+
+    scope.eventsSelectors = [];
+    scope.linksSelectors = [];
+
+  //  var newCompiledHtml =  this.createFormsSelectors(element, scope.selector, scope.selector);
+  //  newCompiledHtml = this.createNamesSelectors(element, scope.selector);
+    newCompiledHtml = this.createIdSelectors(element, scope.selector, scope.eventsSelectors, scope.linksSelectors);
+
+    scope.compiledHtml = newCompiledHtml;
+
+  },
+
+  createUniqueSelectorsForElement: function(scope, element){
+
+    var newCompiledHtml = this.createFormsSelectors(element, scope.selector, scope.selector);
+    newCompiledHtml = this.createNamesSelectors(element, scope.selector);
+    newCompiledHtml = this.createIdSelectors(element, scope.selector, scope.eventsSelectors, scope.linksSelectors);
+
+    return newCompiledHtml;
+
+  }
+
+
+}package spike.core;
+
+static class Util {
+
+        /**
+         * @public
+         *
+         * Returns date for logging module
+         *
+         * @returns {string}
+         */
+        currentDateLog: function () {
+            return new Date().toLocaleTimeString();
         },
-        columns: {
-            id: {
-                header: 'Id',
-                width: 5,
-                sort: 'id,asc',
-                clazz: ''
-            },
-            title: {
-                header: 'Page Title',
-                width: 10,
-                sort: 'title,asc',
-                clazz: 'flex-left'
-            },
-            type: {
-                header: 'Type',
-                width: 15,
-                sort: 'type,asc',
-                clazz: ''
-            },
-            creationDate: {
-                header: 'Create Time',
-                width: 20,
-                sort: 'creationDate,asc',
-                format: 'dd-MM-yyyy',
-                type: 'date',
-                clazz: ''
-            },
-            published: {
-                header: 'Created by',
-                width: 15,
-                sort: 'publishedBy,asc',
-                clazz: ''
-            },
-            brand: {
-                header: 'Brand',
-                width: 5,
-                sort: 'brand,asc',
-                clazz: ''
-            },
-            country: {
-                header: 'Country',
-                width: 5,
-                sort: 'country,asc',
-                clazz: ''
-            },
-            language: {
-                header: 'Language',
-                width: 5,
-                sort: 'language,asc',
-                clazz: ''
-            },
-            status: {
-                header: 'Status',
-                width: 5,
-                sort: 'status,asc',
-                type: 'select',
-                clazz: 'flex-left',
-                arguments: {
-                    DRAFT: 'DRAFT',
-                    PUBLISHED: 'PUBLISHED'
-                },
-                change: function (element, rowData, context) {
 
-                }
-            },
-            visibility: {
-                header: 'Visibility',
-                width: 1,
-                type: 'filter',
-                clazz: '',
-                filter: function (rowData) {
-                    return (rowData.visibilityFrom ? Utils.formatDate(rowData.visibilityFrom, 'dd-MM-yyyy') : '') + ' - ' + (rowData.visibilityTo ? Utils.formatDate(rowData.visibilityTo, 'dd-MM-yyyy') : '');
-                }
-            },
-            modification: {
-                header: 'Modify',
-                width: 5,
-                type: 'href',
-                link: function (rowData) {
-                    return '/cms/custom/' + rowData.id;
-                },
-                target: '_self',
-                clazz: ''
-            },
-            buttons: {
-                header: 'Modify',
-                width: 9,
-                type: 'buttons',
-                buttons: [
-                    {
-                        label: 'add',
-                        click: function (element, rowData) {
-                        }
-                    },
-                    {
-                        label: 'delete',
-                        click: function (element, rowData) {
-                        }
+
+        /**
+         * @public
+         *
+         * Checks if passed object is JavaScript @function
+         *
+         * @param functionToCheck
+         * @returns {*|boolean}
+         */
+        isFunction: function (functionToCheck) {
+            var getType = {};
+            return functionToCheck && getType.toString.call(functionToCheck) === '[object Function]';
+        },
+
+        /**
+         * @public
+         *
+         * Function to bind values represented by map or array to special
+         * formatted @string
+         *
+         * Example:
+         *
+         * var someString = "Mark of this car is {0}";
+         * Util.bindStringParams(someString, ["Ford"] );
+         *
+         * or
+         *
+         * var someString = "Mark of this car is {mark}";
+         * Util.bindStringParams(someString, { mark: "Ford" } );
+         *
+         *
+         * @param string
+         * @param objectOrArrayParams
+         * @returns {*}
+         */
+        bindStringParams: function (string, objectOrArrayParams) {
+
+            if (!string) {
+                return '';
+            }
+
+            if (string.indexOf('{') === -1 || !objectOrArrayParams) {
+                return string;
+            }
+
+            try {
+
+                if (objectOrArrayParams instanceof Array) {
+
+
+                    for (var i = 0; i < objectOrArrayParams.length; i++) {
+                        string = string.replace('{' + i + '}', $this.isObject(objectOrArrayParams[i]) ? JSON.stringify(objectOrArrayParams[i]) : objectOrArrayParams[i])
                     }
 
-                ]
+                } else {
 
+                    for (var paramName in objectOrArrayParams) {
+                        string = string.replace('{' + paramName + '}', $this.isObject(objectOrArrayParams[paramName]) ? JSON.stringify(objectOrArrayParams[paramName]) : objectOrArrayParams[paramName]);
+                    }
+
+                }
+
+            } catch (err) {
+                console.log(err);
+            }
+
+            return string;
+
+        },
+
+        isObject: function(obj){
+            return typeof obj === 'object';
+        },
+
+        getRadioValue: function(radio){
+
+            var value = null;
+            var radios = radio.parentNode.querySelectorAll('input[type=radio][name="'+radio.name+'"]');
+
+            for(var i = 0; i < radios.length; i++){
+
+             if(radios[i].checked === true){
+                 value = radios[i].value;
+                 break;
+             }
+
+            }
+
+            return value;
+
+        },
+
+        serializeForm: function(){
+
+            var serializedObject = {};
+
+            var serializeField = function(field){
+
+                var value = field.value;
+                var name = field.getAttribute('sp-name');
+
+                if(field.type === 'radio'){
+
+                    if(field.checked === true){
+                        value = field.value;
+                        serializedObject[name] = value;
+                    }
+
+                } else if (field.type == 'checkbox') {
+                    value = field.checked;
+                    serializedObject[name] = value;
+                }else{
+                    serializedObject[name] = value;
+                }
+
+            };
+
+            var fields = this.querySelectorAll('input[name], select[name], textarea[name]');
+
+            for(var i = 0; i < fields.length; i++){
+                serializeField(fields[i]);
+            }
+
+            return serializedObject;
+
+        },
+
+        /**
+         * @public
+         *
+         * Returns true if passed object is undefined or null or empty
+         *
+         * @param obj
+         * @returns {boolean}
+         */
+        isEmpty: function (obj) {
+
+            if (obj === undefined || obj === null) {
+                return true;
+            }
+
+            if (typeof obj === 'string') {
+                if (obj.trim().length === 0) {
+                    return true;
+                }
+            }
+
+            return false;
+
+        },
+
+        /**
+         * @public
+         *
+         * If path param is numeric string, then making it just number - integer or float.
+         * If not, returns passed object without modifications
+         *
+         * @param obj
+         */
+        tryParseNumber: function (obj) {
+
+            if (!this.isEmpty(obj) && this.isNumeric(obj)) {
+
+                if(obj.indexOf('e') > -1 || obj.indexOf('E') > -1 || obj.charAt(0) === '0'){
+                    return obj;
+                }
+
+                if (this.isInt(parseFloat(obj))) {
+                    return parseInt(obj, 10);
+                } else {
+                    return parseFloat(obj);
+                }
+
+            }
+
+            return obj;
+
+
+        },
+
+        isNumeric: function( obj ) {
+            return ( typeof obj === "number" || typeof obj === "string" ) && !isNaN( obj - parseFloat( obj ) );
+        },
+
+        /**
+         * @public
+         *
+         * Checks if given number is integer
+         * @param n
+         */
+        isInt: function (n) {
+            return Number(n) === n && n % 1 === 0;
+        },
+
+        /**
+         * @public
+         *
+         * Checks if given number is float
+         * @param n
+         */
+        isFloat: function (n) {
+            return Number(n) === n && n % 1 !== 0;
+        },
+
+        /**
+         * @public
+         *
+         * Returns true if passed object is undefined or null
+         *
+         * @param obj
+         * @returns {boolean}
+         */
+        isNull: function (obj) {
+
+            if (obj === undefined || obj === null) {
+                return true;
+            }
+
+            return false;
+
+        },
+
+        /**
+         * @public
+         *
+         * Function to replacing whole URL path params (not typical) with passed
+         * values from params map
+         *
+         * Example:
+         *
+         * var someURL = "http://www.someSite.com/person/{personId}"
+         * "http://www.someSite.com/person/2" = Util.preparePathParams(someUrl, { personId: 2 });
+         *
+         * @param url
+         * @param params
+         */
+        preparePathDottedParams: function (url, params) {
+
+            for (var prop in params) {
+                url = url.replace(':' + prop, params[prop]);
+            }
+
+            return url;
+
+        },
+
+        /**
+         * @public
+         *
+         * Removes binded undefined pathParams from given url
+         *
+         * @param url
+         * @returns {string}
+         */
+        removeUndefinedPathParams: function (url) {
+            return url.split('/undefined').join('').split('/null').join('');
+        },
+
+        /**
+         * @public
+         *
+         * Function to adding URL params (typical) with passed
+         * values from params map
+         *
+         * Example:
+         *
+         * var someURL = "http://www.someSite.com/person"
+         * "http://www.someSite.com/person?id=2" = Util.prepareUrlParams(someUrl, { id: 2 });
+         *
+         * @param url
+         * @param params
+         */
+        prepareUrlParams: function (url, params) {
+
+            var i = 0;
+            for (var prop in params) {
+
+                if (i === 0) {
+                    url = url + '?' + prop + '=' + params[prop];
+                } else {
+                    url = url + '&' + prop + '=' + params[prop];
+                }
+
+                i++;
+
+            }
+
+            return url;
+
+        },
+
+        /**
+         * @public
+         *
+         * Function to finding string occurence between another @string objects
+         *
+         * @param str - string which want to find
+         * @param first
+         * @param last
+         * @returns {Array}
+         */
+        findStringBetween: function (str, first, last) {
+
+            var r = new RegExp(first + '(.*?)' + last, 'gm');
+            var arr = str.match(r);
+
+            if (arr === null || arr.length === 0) {
+                return [];
+            }
+
+            var arr2 = [];
+
+            for (var i = 0; i < arr.length; i++) {
+                arr2.push(arr[i].replace(first, '').replace(last, ''));
+            }
+
+            return arr2;
+
+        },
+
+        /**
+         * @public
+         *
+         * Function to generating hashes for id creating
+         *
+         * @returns {string}
+         */
+        hash: function () {
+            var text = "";
+            var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+            for (var i = 0; i < 10; i++)
+                text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+            return text;
+        },
+
+        hashString: function(str) {
+
+            var hash = 5381, i    = str.length;
+
+            while(i) {
+                hash = (hash * 33) ^ str.charCodeAt(--i);
+            }
+
+            return hash >>> 0;
+        },
+
+        escapeQuotes: function (text) {
+
+            try {
+              text = text.replace(/"/g, "&quot;").replace(/'/g, "&quot;");
+            } catch (err) {
+                console.log(err);
+                Log.warn('Could not escape single quotes in string: ' + text);
+            }
+
+            return text;
+
+        },
+
+        bindTranslationParams: function (string, objectOrArrayParams) {
+
+                if(!string){
+                    return '';
+                }
+
+                if(string.indexOf('{') === -1 || !objectOrArrayParams){
+                    return string;
+                }
+
+                if (objectOrArrayParams instanceof Array) {
+
+                    for (var i = 0; i < objectOrArrayParams.length; i++) {
+                        string = string.replace('{' + i + '}', objectOrArrayParams[i])
+                    }
+
+                } else {
+
+                    for (var paramName in objectOrArrayParams) {
+                        string = string.replace('{' + paramName + '}', objectOrArrayParams[paramName]);
+                    }
+
+                }
+
+                return string;
+
+            },
+
+}
+package spike.core;
+
+import Errors from spike.core.Errors;
+import Util from spike.core.Util;
+import Xhr from spike.core.System.xhrInterface;
+
+class Request {
+
+    /**
+    url: string
+    type: string,
+    data: obj || string,
+    beforeSend: function () {},
+    complete: function (xhr) {},
+    headers: map,
+    contentType: string
+    **/
+    config: null,
+    xhr: null,
+    catchCallbacks: [],
+    thenCallbacks: [],
+    alwaysCallbacks: [],
+    response: null,
+
+    responseType: 'json',
+
+    STATUS: {
+        DONE: 4,
+        LOADING: 3,
+        HEADERS_RECEIVED: 2,
+        OPENED: 1,
+        UNSENT: 0
+    },
+
+    Request: function(config){
+
+        this.config = this.setConfig(config);
+        this.xhr = this.createXHR();
+
+        this.xhr.alias = this.config.alias;
+
+        this.setXhrInterface();
+        this.setEvents();
+        this.setHeaders();
+
+        this.config.beforeSend();
+        Xhr.onBefore(this.xhr, this);
+
+        this.xhr.send(this.config.data);
+
+
+    },
+
+    setXhrInterface: function(){
+
+        for(var option in Xhr.xhrFields){
+            this.xhr[option] = Xhr.xhrFields[option];
+        }
+
+    },
+
+    setConfig: function(config){
+
+        if(config === undefined || config === null){
+            Errors.throwError(Errors.messages.REQUEST_WRONG_PARAMS, []);
+        }
+
+        if(config.url === undefined || config.type === undefined){
+            Errors.throwError(Errors.messages.REQUEST_WRONG_PARAMS, []);
+        }
+
+        if(config.headers === undefined){
+            config.headers = {};
+        }
+
+        if(config.contentType === undefined){
+            config.contentType = 'application/json';
+        }
+
+        config.headers['Content-Type'] = config.contentType;
+
+        if(config.request === undefined){
+            config.request = {};
+        }
+
+        if(typeof config.request !== 'string'){
+
+            try {
+                config.data = JSON.stringify(config.data);
+            }catch(e){
+                console.error(e);
+                Errors.thrownError(Errors.JSON_PARSE_ERROR, [config.url]);
             }
 
         }
-    },
 
-    Table: function () {},
-}package app.module.common.element.footer;
+        if(config.beforeSend === undefined){
+            config.beforeSend = function() { };
+        }
 
-import GlobalElement from spike.core.GlobalElement;
-import Log from spike.core.Log;
+        if(config.complete === undefined){
+            config.complete = function() { };
+        }
 
-class Footer extends GlobalElement {
-
-    Footer: function () {
-
-    }
-
-}package app.module.common.element.menu;
-
-import GlobalElement from spike.core.GlobalElement;
-import Log from spike.core.Log;
-import Rest from spike.core.Rest;
-import Session from app.enums.api.Session;
-import Broadcaster from spike.core.Broadcaster;
-
-class Menu extends GlobalElement {
-
-    menuTree: null,
-    searchText: null,
-
-    Menu: function () {
-
-        Rest.get(Session.get.menu)
-            .then(function(response){
-
-                $this.menuTree = response;
-                $this.refresh();
-
-            });
-
-
-
-//        Broadcaster.listen("onAuth", $this.refreshMenu);
+        return config;
 
     },
 
-    postConstruct: function(){
+    setEvents: function(){
 
-    $this.refresh();
+        this.xhr.open(this.config.type, this.config.url, true);
 
-    },
+        this.xhr.onreadystatechange = function() {
 
-    refresh: function(){
+             if($this.xhr.readyState === $this.STATUS.DONE && $this.xhr.status === 200) {
 
-        console.log($this);
+                if($this.responseType === 'json'){
 
-        $this.trigger("menuList", {
-            menuTree: $this.menuTree
-        });
-
-    },
-
-    search: function(e){
-        e.preventDefault();
-
-    }
-
-}package app.module.common.element.table;
-
-import Log from spike.core.Log;
-import Element from spike.core.Element;
-
-class Table extends Element {
-
-    @object
-    data: null,
-
-    @map
-    options: null,
-
-    Table: function () {
-    }
-
-    postConstruct: function () {
-        $this.prepareOptions();
-        $this.initTableHeader();
-        $this.initTableList();
-        $this.initTablePagination();
-
-        console.log($this);
-    }
-
-    prepareOptions: function(){
-
-    }
-
-    initTableHeader: function () {
-        $this.trigger("tableHeader");
-    },
-
-    initTableList: function () {
-        $this.options.request($this.options.urlParams).then(function (response) {
-            $this.data = response;
-
-            $this.trigger("tableList");
-
-        });
-    },
-
-    initTablePagination: function () {
-        $this.trigger("tablePagination");
-    },
-
-    delegateEvent: function(eventFn, element, context){
-        console.log(eventFn);
-        console.log(element);
-        console.log(context);
-    }
-
-}package app.module.controls.controller.controls;
-
-import Controller from spike.core.Controller;
-import Log from spike.core.Log;
-
-class Controls extends Controller {
-
-    Controls: function () {
-
-    },
-
-    postConstruct: function(){
-
-        Prism.highlightAll();
-
-    }
-
-}package app.module.home.controller.home;
-
-import Controller from spike.core.Controller;
-import Log from spike.core.Log;
-
-class Home extends Controller {
-
-    Home: function () {
-
-    }
-
-}package app.module.maintenance.controller.maintenance;
-
-import Controller from spike.core.Controller;
-import Log from spike.core.Log;
-import DictionariesManager from app.service.dictionaries.DictionariesManager;
-
-class Maintenance extends Controller {
-
-    Maintenance: function () {
-        $this.dictionaries = DictionariesManager.dictionaries;
-    }
-
-}package app.module.maintenance.controller.maintenance;
-
-import Controller from spike.core.Controller;
-import Log from spike.core.Log;
-
-class PageNotFound extends Controller {
-
-    PageNotFound: function () {
-
-    }
-
-}package app.module.privileges.controller.privileges;
-
-import Controller from spike.core.Controller;
-import Log from spike.core.Log;
-import Rest from spike.core.Rest;
-import PrivilegesApi from app.enums.api.PrivilegesApi;
-import AddRoleModal from app.module.privileges.modal.addRole.AddRole;
-import GeneralExcludesModal from app.module.privileges.modal.generalExcludes.GeneralExcludes;
-import PagePrivilegesModal from app.module.privileges.modal.pagePrivileges.PagePrivileges;
-
-class Privileges extends Controller {
-
-    Privileges: function () {
-        /* Wczytuje listę użytkowników */
-        Rest.get(PrivilegesApi.get.adminrole)
-            .then(function(response){
-                var divRolesList = document.querySelector('.roles-list');
-
-                var roles = response.items;
-                var items = [];
-                roles.forEach(function(val, key) {
-                    var id = val.id;
-                    var level = val.level;
-                    var name = val.name;
-                    var privileges = [];
-                    items.push("<div class='form-group'><input id='role-"+id+"' name='role-"+id+"' class='form-control' type='radio' hidden/><label for='role-"+id+"' title='id: "+id+" | level: "+level+"'>"+name+"</label>"+privileges+"</div>");
-                });
-
-                var formRolesList = document.createElement('form');
-                formRolesList.innerHTML = items.join("");
-                divRolesList.appendChild(formRolesList);
-            });
-
-
-        /* Wczytuje listę przywilejów */
-        Rest.get(PrivilegesApi.get.views)
-            .then(function(response){
-                acViews = response.items;
-                var divViewsList = document.querySelector('.views-list');
-                var views = response.items;
-                var items = [];
-                items.push('<ul class="superpowers powers-lev1">');
-
-                //zamienić to na wyśweitlanie poziomów w pętli
-                views.forEach(function(val, key) {
-                    var label = val.label;
-                    var children = "";
-                    var grandchildren = "";
-
-                    if (val.sublist != "null") {
-
-                        children += "<ul class='powers-lev2'>";
-                        val.sublist.forEach(function(val2, key2) {
-                            var label2 = val2.label;
-                            var id2 = val2.viewId;
-
-                            if (val2.sublist != "null") {
-                                grandchildren += "<ul class='powers-lev3'>";
-                                val.sublist.forEach(function(val3, key3) {
-                                    var label3 = val3.label;
-                                    var id3 = val3.viewId;
-                                    grandchildren += "<li><div class='power'><label for='canedit-"+id3+"' title='Permission to see and edit'><i class='fa fa-pencil-square-o'></i><input id='canedit-"+id3+"' type='checkbox' class='canedit'></label><label for='cansee-"+id3+"' title='Permission only to see'><i class='fa fa-eye'></i><input type='checkbox' id='cansee-"+id3+"' class='cansee'></label><span class='power-name'>"+label3+"</span><label title='More settings'><i class='fa fa-cog'></i><input type='checkbox' class='canconfig'></label></div></li>";
-                                });
-                                grandchildren += "</ul>";
-                            }
-
-                            children += "<li class='active'><div class='power'><label for='canedit-"+id2+"' title='Permission to see and edit'><i class='fa fa-pencil-square-o'></i><input id='canedit-"+id2+"' type='checkbox' class='canedit'></label><label for='cansee-"+id2+"' title='Permission only to see'><i class='fa fa-eye'></i><input type='checkbox' id='cansee-"+id2+"' class='cansee'></label><span class='power-name'>"+label2+"</span><label title='More settings'><i class='fa fa-cog'></i><input type='checkbox' class='canconfig'></label></div>"+grandchildren+"</li>";
-                        });
-                        children += "</ul>";
+                    try {
+                        $this.xhr.responseJSON = JSON.parse($this.xhr.responseText);
+                        $this.response = JSON.parse($this.xhr.responseText);
+                        $this.resolveThen($this.response, $this.xhr, $this.xhr.status);
+                        $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
+                    }catch(e){
+                        console.error(e);
+                        $this.resolveCatch($this.xhr, 0, e);
+                        $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
                     }
-                    items.push("<li class='active'><div class='power'><span class='power-name'>"+label+"</span></div>"+children+"</li>");
-                });
-                items.push('</ul>');
 
-                var formViewsList = document.createElement('form');
-                formViewsList.innerHTML = items.join("");
-                divViewsList.appendChild(formViewsList);
+
+                }else if($this.responseType === 'xml'){
+                    $this.resolveThen($this.xhr.responseXML, $this.xhr, $this.xhr.status);
+                    $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
+                }
+
+              }else if($this.xhr.readyState === $this.STATUS.DONE && $this.xhr.status === 204){
+                $this.resolveThen(null, $this.xhr, $this.xhr.status);
+                $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
+              }else if($this.xhr.readyState === $this.STATUS.DONE && $this.xhr.status !== 200){
+                $this.resolveCatch($this.xhr, $this.xhr.status, new Error('Response error: '+$this.xhr.status));
+                $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
+              }
+
+
+        };
+
+
+    },
+
+    setHeaders: function(){
+
+        this.xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        for(var headerName in this.config.headers){
+            this.xhr.setRequestHeader(headerName, this.config.headers[headerName]);
+        }
+
+        if(this.config.headers['Content-Type'].indexOf('xml') > -1){
+            this.responseType = 'xml';
+        }
+
+    },
+
+    always: function (callback) {
+        this.alwaysCallbacks.push(callback);
+        return this;
+    },
+
+    resolveAlways: function(response, xhr, status){
+
+        for(var i = 0; i < this.alwaysCallbacks.length; i++){
+            this.alwaysCallbacks[i](response, xhr, status);
+        }
+
+    },
+
+    then: function (callback) {
+        this.thenCallbacks.push(callback);
+        return this;
+    },
+
+    resolveThen: function(response, xhr, status){
+
+        Xhr.onComplete(response, xhr, status);
+        for(var i = 0; i < this.thenCallbacks.length; i++){
+            this.thenCallbacks[i](response, xhr, status);
+        }
+
+    },
+
+    catch: function (callback) {
+        this.catchCallbacks.push(callback);
+        return this;
+    },
+
+    resolveCatch: function(xhr, status, thrownError){
+
+        Xhr.onCatch(xhr, status, thrownError);
+        for(var i = 0; i < this.catchCallbacks.length; i++){
+            this.catchCallbacks[i](xhr, status, thrownError);
+        }
+
+    },
+
+    createXHR: function() {
+
+        var xhr;
+        if (window.XMLHttpRequest) {
+            xhr = new XMLHttpRequest();
+        } else if (window.ActiveXObject) {
+            try {
+                xhr = new ActiveXObject("Msxml2.XMLHTTP");
+            } catch (e) {
+                console.warn(e);
+                xhr = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+        }
+
+        return xhr;
+
+    }
+
+}package spike.core;
+
+import Log from spike.core.Log;
+import Request from spike.core.Request;
+
+class MultiRequest {
+
+    responseData: [],
+    alwaysCallbacks: [],
+
+    countResponses: 0,
+    promisesLength: 0,
+
+    resolved: false,
+
+    MultiRequest: function(promises){
+
+        $this.promisesLength = promises.length;
+
+        for(var i = 0; i < promises.length; i++){
+
+            promises[i].always(function(xhr, response, status){
+                $this.countResponses++;
+
+                if(this instanceof Request){
+
+                    if(xhr.response){
+                        xhr.response = JSON.parse(xhr.response);
+                    }
+
+                    $this.responseData.push(xhr);
+                }else{
+                    $this.responseData.push(xhr);
+                }
+
+                if($this.resolved == false && $this.countResponses === $this.promisesLength){
+                    $this.resolveAlways();
+                    $this.resolved = true;
+                }
+
             });
+
+        }
+
     },
 
+    always: function (callback) {
+        $this.alwaysCallbacks.push(callback);
+        return $this;
+    },
 
-    postConstruct: function() {
-        var rolesList = document.querySelector('.roles-list');
-        var viewsList = document.querySelector('.views-list');
+    resolveAlways: function(){
 
-        var rolesListLabels = document.querySelectorAll('.roles-list label');
+        for(var i = 0; i < $this.alwaysCallbacks.length; i++){
+            $this.alwaysCallbacks[i].apply($this, [$this.responseData]);
+        }
+
+    }
+
+}package spike.core;
+
+import Rest from spike.core.Rest;
+import Log from spike.core.Log;
+import Request from spike.core.Request;
+import Errors from spike.core.Errors;
+import Util from spike.core.Util;
+
+static class Rest {
+
+  /**
+   * @public
+   *
+   * Storage for @rest cache
+   *
+   */
+  cacheData: {},
+
+  /**
+   * @public
+   * Storage for interceptors functions
+   */
+  interceptors: {},
+
+  /**
+   * @public
+   * Storage for global interceptors functions
+   */
+  globalInterceptors: {},
+
+  /**
+   * @public
+   *
+   * Function saves new interceptor function which one
+   * can be executed during rest api invoking and which one's
+   * accepts @response and @promise arguments
+   *
+   * @param interceptorName
+   * @param interceptorFunction
+   */
+  interceptor: function (interceptorName, interceptorFunction, isGlobal) {
+
+    if (isGlobal) {
+
+      //Check if interceptor exists, then throws error
+      if (Rest.globalInterceptors[interceptorName]) {
+        Errors.throwError(Errors.messages.INTERCEPTOR_ALREADY_REGISTRED, [interceptorName]);
+      }
+
+      //Saves interceptor function to @interceptors
+      Rest.globalInterceptors[interceptorName] = interceptorFunction;
+
+    } else {
+
+      //Check if interceptor exists, then throws error
+      if (Rest.interceptors[interceptorName]) {
+        Errors.throwError(Errors.messages.INTERCEPTOR_ALREADY_REGISTRED, [interceptorName]);
+      }
+
+      //Saves interceptor function to @interceptors
+      Rest.interceptors[interceptorName] = interceptorFunction;
+
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function iterates passed interceptors (names) and
+   * invokes each interceptor function.
+   *
+   * If interceptor not exists, then throws warn
+   *
+   * @param response
+   * @param promise
+   * @param interceptors
+   */
+  invokeInterceptors: function (requestData, response, promise, interceptors) {
+
+    if (interceptors) {
+
+      for (var i = 0; i < interceptors.length; i++) {
+
+        if (!Rest.interceptors[interceptors[i]]) {
+          Errors.throwWarn(Errors.messages.INTERCEPTOR_NOT_EXISTS, [interceptors[i]]);
+        } else {
+          Rest.interceptors[interceptors[i]](response, promise, requestData);
+        }
+
+      }
+
+    }
+
+    for (var interceptorName in Rest.globalInterceptors) {
+      Rest.globalInterceptors[interceptorName](response, promise, requestData);
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function creates and returns basic promise object
+   *
+   * @param data
+   *
+   */
+  createCachedPromise: function (url, method, interceptors) {
+
+    var data = Rest.cacheData[url + '_' + method].data;
+
+    var promise = {
+      result: data,
+      then: function (callback) {
+
+        if (promise.result) {
+          data = promise.result;
+        }
+
+        var _result = callback(data);
+
+        if (_result) {
+          promise.result = _result;
+        }
+
+        return promise;
+
+      },
+      catch: function () {
+        return promise;
+      }
+    };
+
+    Rest.invokeInterceptors({}, data, promise, interceptors);
+
+    return promise;
 
 
+  },
 
-        // Odznaczanie ról na drugie kliknięcie labela
-        $('.roles-list').on('click', 'label', function handler() {
-            event.preventDefault();
-            var radio = $(this).parent('.form-group').find('input[type="radio"]');
-            if (radio.prop('checked')) {
-                $('.roles-list input[type="radio"]').prop('checked', false);
-            }
-            else {
-                $('.roles-list input[type="radio"]').prop('checked', false);
-                radio.prop('checked', true);
-            }
+  /**
+   * @public
+   *
+   * Checks if endpoint is already cached, filled
+   * depends on cache type.
+   *
+   */
+  isCached: function (url, method) {
+
+    var data = Rest.cacheData[url + '_' + method];
+
+    if (Util.isNull(data)) {
+      return false;
+    }
+
+    if (data.filled === false) {
+      return false;
+    }
+
+    if (data.cacheType === 'TIME') {
+
+      if (data.cacheTime + data.cachePeriod < new Date().getTime()) {
+        return false;
+      }
+
+      return true;
+
+    } else if (data.cacheType === 'PERSIST') {
+      return true;
+    }
+
+    return false;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function executes GET request
+   * Function return promise with execution params for passed @param url
+   *
+   * @param url
+   * @param propertiesObject -- optional {headers, pathParams, urlParams, interceptors}
+   *
+   */
+  get: function (url, propertiesObject) {
+
+    propertiesObject = propertiesObject || {};
+
+    if (typeof url === 'string') {
+
+      if (Rest.isCached(url, 'GET', propertiesObject)) {
+        return Rest.createCachedPromise(url, 'GET', propertiesObject.interceptors || []);
+      } else {
+        return Rest.getDelete(url, 'GET', propertiesObject);
+      }
+
+    } else {
+      Errors.throwWarn(Errors.messages.CACHED_PROMISE_DEPRECADES);
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function executes DELETE request
+   * Function return promise with execution params for passed @param url
+   *
+   * @param url
+   * @param propertiesObject -- optional {headers, pathParams, urlParams, interceptors}
+   *
+   */
+  delete: function (url, propertiesObject) {
+
+    propertiesObject = propertiesObject || {};
+
+    if (typeof url === 'string') {
+
+      if (Rest.isCached(url, 'DELETE', propertiesObject)) {
+        return Rest.createCachedPromise(url, 'DELETE', propertiesObject.interceptors || []);
+      } else {
+        return Rest.getDelete(url, 'DELETE', propertiesObject);
+      }
+
+    } else {
+      Errors.throwWarn(Errors.messages.CACHED_PROMISE_DEPRECADES);
+    }
+
+
+  },
+
+  /**
+   * @public
+   *
+   * Function executes PUT request
+   * Function return promise with execution params for passed @param url
+   *
+   * @param url
+   * @param propertiesObject -- optional {headers, pathParams, urlParams, interceptors}
+   *
+   */
+  update: function (url, request, propertiesObject) {
+
+    propertiesObject = propertiesObject || {};
+
+    if (typeof url === 'string') {
+
+      if (Rest.isCached(url, 'PUT', propertiesObject)) {
+        return Rest.createCachedPromise(url, 'PUT', propertiesObject.interceptors || []);
+      } else {
+        return Rest.postPut(url, 'PUT', request, propertiesObject);
+      }
+
+    } else {
+      Errors.throwWarn(Errors.messages.CACHED_PROMISE_DEPRECADES);
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Substitute method for @update
+   *
+   * @param url
+   * @param propertiesObject -- optional {headers, pathParams, urlParams, interceptors}
+   *
+   */
+  put: function (url, request, propertiesObject) {
+    return Rest.update(url, request, propertiesObject);
+  },
+
+
+  /**
+   * @public
+   *
+   * Function executes POST request
+   * Function return promise with execution params for passed @param url
+   *
+   * @param url
+   * @param propertiesObject -- optional {headers, pathParams, urlParams, interceptors}
+   *
+   */
+  post: function (url, request, propertiesObject) {
+
+    propertiesObject = propertiesObject || {};
+
+    if (typeof url === 'string') {
+
+      if (Rest.isCached(url, 'POST', propertiesObject)) {
+        return Rest.createCachedPromise(url, 'POST', propertiesObject.interceptors || []);
+      } else {
+        return Rest.postPut(url, 'POST', request, propertiesObject);
+      }
+
+    } else {
+      Errors.throwWarn(Errors.messages.CACHED_PROMISE_DEPRECADES);
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function to realize GET and DELETE methods execution using AJAX
+   * and preparing url params, path params, headers etc.
+   *
+   * Constructs promise and returns it.
+   *
+   * @param url
+   * @param method
+   * @param pathParams
+   * @param headers
+   * @param urlParams
+   *
+   */
+  getDelete: function (url, method, propertiesObject) {
+
+    var pathParams = propertiesObject.pathParams;
+    var headers = propertiesObject.headers;
+    var urlParams = propertiesObject.urlParams;
+    var interceptors = propertiesObject.interceptors || [];
+
+    var preparedUrl = url;
+
+    if (pathParams !== undefined && pathParams !== null) {
+      preparedUrl = Util.preparePathDottedParams(url, pathParams);
+
+      if (preparedUrl.indexOf('/undefined') > -1 || preparedUrl.indexOf('/null') > -1) {
+        Errors.throwWarn(Errors.messages.REST_API_NULL_PATHPARAM, [preparedUrl]);
+        preparedUrl = Util.removeUndefinedPathParams(preparedUrl);
+      }
+
+    }
+
+    if (urlParams !== undefined && urlParams !== null) {
+      preparedUrl = Util.prepareUrlParams(preparedUrl, urlParams);
+    }
+
+    var dataType = "json";
+    var contentType = "application/json; charset=utf-8";
+
+    if (!Util.isNull(propertiesObject.cache) && Util.isNull(Rest.cacheData[url + '_' + method])) {
+      Rest.createCacheObject(url, method, propertiesObject.cache);
+    }
+
+    var promiseObj = {
+      url: preparedUrl,
+      type: method,
+      beforeSend: function () {
+
+      },
+      complete: function (xhr) {
+
+        if (!Util.isNull(propertiesObject.cache)) {
+          Rest.fillCache(url, method, xhr.responseJSON);
+        }
+
+      }
+
+    };
+
+    if(propertiesObject.async !== undefined){
+      promiseObj.async = propertiesObject.async;
+    }
+
+    if (!headers) {
+      headers = {}
+    }
+
+    if (headers['Content-Type'] !== null && headers['Content-Type'] !== undefined) {
+      contentType = headers['Content-Type'];
+    }
+
+    if (headers['Data-Type'] !== null && headers['Data-Type'] !== undefined) {
+      dataType = headers['Data-Type'];
+      headers['Data-Type'] = undefined;
+    }
+
+
+    if (headers['Content-Type'] !== null) {
+      promiseObj.contentType = headers['Content-Type'] || contentType;
+    }
+
+    if (headers['Data-Type'] !== null) {
+      promiseObj.dataType = headers['Data-Type'] || dataType;
+      headers['Data-Type'] = undefined;
+    }
+
+    var newHeaders = {};
+    for (var prop in headers) {
+      if (headers[prop] !== undefined && headers[prop] !== null) {
+        newHeaders[prop] = headers[prop];
+      }
+    }
+
+    headers = newHeaders;
+
+
+    promiseObj.headers = headers;
+    promiseObj.alias = propertiesObject.alias;
+
+    var promise = new Request(promiseObj);
+
+    var requestData = {url: url, method: method, pathParams: pathParams, urlParams: urlParams, headers: headers};
+
+    promise.then(function (result) {
+      Rest.invokeInterceptors(requestData, result, promise, interceptors);
+    });
+
+    promise.catch(function (error) {
+      Rest.invokeInterceptors(requestData, error, promise, interceptors);
+    });
+
+    return promise;
+
+
+  },
+
+  /**
+   * @public
+   *
+   * Function to realize POST and PUT methods execution using AJAX
+   * and preparing request data, url params, path params, headers etc.
+   *
+   * Constructs promise and returns it.
+   *
+   * @param url
+   * @param method
+   * @param pathParams
+   * @param headers
+   * @param urlParams
+   *
+   */
+  postPut: function (url, method, request, propertiesObject) {
+
+    var pathParams = propertiesObject.pathParams;
+    var headers = propertiesObject.headers;
+    var urlParams = propertiesObject.urlParams;
+    var interceptors = propertiesObject.interceptors || [];
+
+    var preparedUrl = url;
+
+    if (pathParams !== undefined && pathParams !== null) {
+      preparedUrl = Util.preparePathDottedParams(url, pathParams);
+
+      if (preparedUrl.indexOf('/undefined') > -1 || preparedUrl.indexOf('/null') > -1) {
+        Errors.throwWarn(Errors.messages.REST_API_NULL_PATHPARAM, [preparedUrl]);
+        preparedUrl = Util.removeUndefinedPathParams(preparedUrl);
+      }
+
+    }
+
+    if (urlParams !== undefined && urlParams !== null) {
+      preparedUrl = Util.prepareUrlParams(preparedUrl, urlParams);
+    }
+
+    var dataType = "json";
+    var contentType = "application/json; charset=utf-8";
+
+    if (!Util.isNull(propertiesObject.cache) && Util.isNull(Rest.cacheData[url + '_' + method])) {
+      Rest.createCacheObject(url, method, propertiesObject.cache);
+    }
+
+    var promiseObj = {
+      url: preparedUrl,
+      data: request,
+      type: method,
+      beforeSend: function () {
+
+      },
+      complete: function (xhr) {
+
+        if (!Util.isNull(propertiesObject.cache)) {
+          Rest.fillCache(url, method, xhr.responseJSON);
+        }
+
+      }
+
+    };
+
+    if(propertiesObject.async !== undefined){
+      promiseObj.async = propertiesObject.async;
+    }
+
+    if (!headers) {
+      headers = {}
+    }
+
+    if (headers['Content-Type'] !== null && headers['Content-Type'] !== undefined) {
+      contentType = headers['Content-Type'];
+    }
+
+    if (headers['Data-Type'] !== null && headers['Data-Type'] !== undefined) {
+      dataType = headers['Data-Type'];
+      headers['Data-Type'] = undefined;
+    }
+
+
+    if (headers['Content-Type'] !== null) {
+      promiseObj.contentType = headers['Content-Type'] || contentType;
+    }
+
+    if (headers['Data-Type'] !== null) {
+      promiseObj.dataType = headers['Data-Type'] || dataType;
+      headers['Data-Type'] = undefined;
+    }
+
+    var newHeaders = {};
+    for (var prop in headers) {
+      if (headers[prop] !== undefined && headers[prop] !== null) {
+        newHeaders[prop] = headers[prop];
+      }
+    }
+
+    headers = newHeaders;
+    promiseObj.headers = headers;
+    promiseObj.alias = propertiesObject.alias;
+
+    var promise = new Request(promiseObj);
+
+    var requestData = {
+      url: url,
+      method: method,
+      request: request,
+      pathParams: pathParams,
+      urlParams: urlParams,
+      headers: headers
+    };
+
+    promise.then(function (result) {
+      Rest.invokeInterceptors(requestData, result, promise, interceptors);
+    });
+
+    promise.catch(function (error) {
+      Rest.invokeInterceptors(requestData, error, promise, interceptors);
+    });
+
+    return promise;
+
+  },
+
+  /**
+   * @public
+   *
+   * Fills cache with data
+   *
+   */
+  fillCache: function (url, method, data) {
+
+    Rest.cacheData[url + '_' + method].filled = true;
+    Rest.cacheData[url + '_' + method].data = data;
+    Rest.cacheData[url + '_' + method].cacheTime = new Date().getTime();
+
+  },
+
+  /**
+   * @public
+   *
+   * Creates new cache object
+   *
+   */
+  createCacheObject: function (url, method, cache) {
+
+    Rest.cacheData[url + '_' + method] = {
+      filled: false,
+      cacheTime: new Date().getTime(),
+      cacheType: cache === true ? 'PERSIST' : 'TIME',
+      cachePeriod: cache === true ? null : cache,
+      data: null
+    };
+
+  },
+
+
+}package spike.core;
+
+import Log from spike.core.Log;
+import Request from spike.core.Request;
+import Message from spike.core.Message;
+import Util from spike.core.Util;
+import Config from spike.core.System.config;
+import Errors from spike.core.Errors;
+
+static class Message {
+
+    /**
+     * @public
+     * Information if translations has been downloaded
+     */
+    waitingForTranslations: {},
+
+    /**
+     * @public
+     * Storage for translation data
+     */
+    messages: {},
+
+    loadLanguage: function(){
+        return Message.add(Config.lang, Util.bindStringParams(Config.languageFilePath, { lang: Config.lang }));
+    },
+
+    /**
+     * @public
+     *
+     * Registering new language translation from hosted file
+     * File can be hosted locally or from server
+     *
+     * @param languageName
+     * @param languageFilePath
+     */
+    add: function (languageName, languageFilePath) {
+
+        Log.log('register translation {0}', [languageName]);
+
+        this.waitingForTranslations[languageName] = false;
+
+        var promise = new Request({
+            url: languageFilePath,
+            type: 'GET'
         });
 
-        // Rozwianie widoków po kliknięciu w niebieskiego plusika
-        $('.views-list').on('click', '.power:not(:only-child)', function handler() {
-            var li = $(this).parent('li');
-            var parents = $(this).parents('li');
+        promise.then(function (data) {
 
-            if (li.hasClass('active')) {
-                    li.removeClass('active');
+            Message.setTranslation(languageName, data);
+
+            return data;
+
+        });
+
+        promise.catch(function (error) {
+
+            if (error.status === 200) {
+                Message.setTranslation(languageName, error.responseText);
             } else {
-                $('.superpowers li').removeClass('active');
-                parents.addClass('active');
+                Message.messages[languageName] = {};
+                Errors.throwWarn(Errors.messages.TRANSLATION_LOAD_WARN, [languageName, error.status]);
             }
+
+            return error;
+
         });
 
+        return promise;
 
-        // Zaznaczanie checboxów edytuj/oglądaj
-        $('.views-list').on('click', 'label', function handler() {
-            event.preventDefault();
-            var label = $(this);
-            var checkbox = label.find('input');
-            var inputclass = checkbox.attr('class');
-            var cansee = label.parent('div').find('input.cansee');
-            var labelcansee = cansee.parent('label');
-            var canedit = label.parent('div').find('input.canedit');
-            var labelcanedit = canedit.parent('label');
+    },
 
-            // gdy jest zaznaczony
-            if (checkbox.prop('checked')) {
-                if (inputclass == 'cansee') { // i jest okiem
-                    labelcansee.removeClass('active'); labelcanedit.removeClass('active');
-                    cansee.prop('checked', false); canedit.prop('checked', false);
-                } else { // i jest długopisem
-                    labelcanedit.removeClass('active');
-                    canedit.prop('checked', false);
-                }
+    setTranslation: function (languageName, translationData) {
 
-            // gdy nie jest zaznaczony
+        if (typeof translationData === 'string') {
+
+            try {
+                translationData = JSON.parse(translationData);
+            } catch (err) {
+                console.error(err);
+                Errors.throwError(Errors.messages.TRANSLATION_PARSING, [languageName]);
+            }
+
+        }
+
+        Message.messages[languageName] = translationData;
+        Message.waitingForTranslations[languageName] = true;
+    },
+
+
+    /**
+     * @public
+     *
+     * Function to retrieve single translation for named message
+     * using existing language from @Config.lang
+     *
+     * @param messageName
+     */
+    get: function (messageName, arrayOrMapParams) {
+
+        var message = this.messages[Config.lang][messageName];
+        if(!message){
+            Errors.throwWarn(Errors.messages.TRANSLATION_MESSAGE_NOT_FOUND, [messageName])
+        }
+
+        if(arrayOrMapParams && message){
+            message = Util.bindTranslationParams(message, arrayOrMapParams);
+        }
+
+        return message || messageName;
+    }
+
+}package spike.core;
+
+import Assembler from spike.core.Assembler;
+import Watchers from spike.core.Watchers;
+
+static class Templates {
+
+    templates: {},
+
+    scopesRef: {},
+
+    compileTemplate: function(scope, name){
+        return this.templates[Assembler.sourcePath+"_"+name](scope);
+    },
+
+    includeTemplate: function(name, scope){
+
+      name = name.split('.').join('_')+'_html';
+      return this.templates[Assembler.sourcePath+"_"+name](scope);
+
+    }
+
+}package spike.core;
+
+import Router from spike.core.Router;
+import System from spike.core.System;
+import Errors from spike.core.Errors;
+import Util from spike.core.Util;
+import Log from spike.core.Log;
+import Config from spike.core.System.config;
+import Events from spike.core.Events;
+import Assembler from spike.core.Assembler;
+
+static class Router {
+
+  /**
+   * @public
+   *
+   * Stores information about path which should be prevented
+   * to reload page
+   */
+  preventReloadPage: null,
+
+  /**
+   * @public
+   *
+   * List of registerd events to fire on route change
+   */
+  events: {},
+
+  /**
+   * @public
+   * Declares string which is used as 'OTHERWISE' URL
+   */
+  otherwisePath: '/',
+
+  /**
+   * @public
+   * Declares pattern replacement for path params
+   */
+  pathParamReplacement: 'var',
+
+  /**
+   * @public
+   * Storage of routing endpoints objects
+   */
+  endpoints: {},
+
+  /**
+   * @public
+   *
+   * Defines if HTML5 mode is available
+   */
+  routerHTML5Mode: false,
+
+  /**
+   * @public
+   *
+   * Returns factory object for creating routing endpoints
+   * based on {path} and {other} functions mapped from
+   * @public pathFunction and @public otherFunction
+   *
+   */
+  getRouterFactory: function () {
+    return {
+      routingParams: Router.routingParamsFunction,
+      path: Router.pathFunction,
+      other: Router.otherFunction
+    }
+  },
+
+  /**
+   * @public
+   *
+   * Function registers otherwise endpoint.
+   * Returns routing creator.
+   *
+   * @param pathObject
+   */
+  otherFunction: function (pathValue) {
+    Router.otherwisePath = pathValue;
+    return Router.getRouterFactory();
+  },
+
+  commonRoutingParams: {},
+
+  routingParamsFunction: function(routingParams){
+    Router.commonRoutingParams = routingParams;
+    return Router.getRouterFactory();
+  },
+
+  /**
+   * @public
+   * @ToImplement
+   *
+   * Function invokes before @pathFunction registers new endpoint in routing
+   * Developer can change path value using @pathValue nad @pathObject args
+   *
+   */
+  pathFunctionHandler: null,
+
+  /**
+   * @public
+   *
+   * Function registers routing endpoint.
+   * Checks if @pathValue and @pathObject are defined
+   * If not throws error.
+   * If defined, registers new endpoint via @public {registerPath}
+   *
+   * Returns routing creator
+   *
+   * @param pathValue
+   * @param pathObject
+   */
+  pathFunction: function (pathValue, pathObject) {
+
+    if (Util.isEmpty(pathValue) || Util.isNull(pathObject)) {
+      Errors.throwError(Errors.messages.PATH_DEFINITION);
+    }
+
+    if(Router.pathFunctionHandler){
+      pathValue = Router.pathFunctionHandler(pathValue, pathObject);
+    }
+
+    Router.registerPath(pathValue, pathObject.controller, pathObject.routingParams, pathObject.onRoute, pathObject.name, pathObject.modal, pathObject.defaultController);
+
+    return Router.getRouterFactory();
+
+  },
+
+  /**
+   * @public
+   *
+   * Function registers new routing endpoint.
+   * If endpoint with given @pathValue already exists then
+   * throws error.
+   * If not, creates given @pathValue pattern and checks
+   * if endpoint with similar pattern already exist, if exist
+   * throws error.
+   *
+   * Creates endpoint object.
+   *
+   * @param pathValue
+   * @param pathController
+   * @param routingParams
+   * @param onRoute
+   *
+   */
+  registerPath: function (pathValue, pathController, routingParams, onRoute, routeName, pathModal, pathModalDefaultController) {
+
+    if (Router.endpoints[pathValue]) {
+      Errors.throwError(Errors.messages.PATH_ALREADY_EXIST, [pathValue]);
+    }
+
+    if (routeName && Router.routeNameExist(routeName)) {
+      Errors.throwError(Errors.messages.ROUTE_NAME_EXIST, [routeName]);
+    }
+
+    var pathPattern = Router.createPathPattern(pathValue);
+
+    //Checks if pattern exists in set of endpoints
+    if (Router.pathPatternExist(pathPattern)) {
+      Errors.throwError(Errors.messages.PATH_PATTERN_ALREADY_EXIST, [pathValue, pathPattern.join("").split(Router.pathParamReplacement).join("/PATH_PARAM")]);
+    }
+
+    Router.endpoints[pathValue] = {
+      pathValue: pathValue,
+      controller: pathController,
+      defaultController: pathModalDefaultController,
+      modal: pathModal,
+      routingParams: Router.mergeRoutingParams(routingParams || {}),
+      onRoute: onRoute,
+      pathPattern: pathPattern,
+      routeName: routeName,
+      isModal: !Util.isEmpty(pathModal)
+    };
+
+  },
+
+  /**
+   * @public
+   *
+   * Finds endpoint full path by declared @routeName
+   *
+   * @param routeName
+   */
+  byName: function (routeName) {
+
+    for (var pathValue in Router.endpoints) {
+
+      if (Router.endpoints[pathValue].routeName === routeName) {
+        return pathValue;
+      }
+
+    }
+
+    Errors.throwError(Errors.messages.ROUTE_NAME_NOT_EXIST, [routeName]);
+
+  },
+
+  /**
+   * @public
+   *
+   * Function checks if given @routeName already exists in registred endpoints
+   *
+   * @param routeName
+   */
+  routeNameExist: function (routeName) {
+
+    for (var pathValue in Router.endpoints) {
+
+      if (Router.endpoints[pathValue].routeName === routeName) {
+        return true;
+      }
+
+    }
+
+    return false;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function checks if path patterns already exists in set of endpoints
+   *
+   * @param pathPattern
+   */
+  pathPatternExist: function (pathPattern) {
+
+    for (var pathValue in Router.endpoints) {
+
+      if (Router.endpoints[pathValue].pathPattern.pattern.join("") === pathPattern.pattern.join("")) {
+        return true;
+      }
+
+    }
+
+    return false;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function creates path pattern from given @pathValue
+   * Returns path pattern object containing pattern and
+   * giver @pathValue path params set
+   *
+   * @param pathValue
+   *
+   */
+  createPathPattern: function (pathValue) {
+
+    var pathPattern = {
+      pattern: [],
+      pathParams: []
+    };
+
+    //Avoid processing URL params
+    var split = pathValue.substring(0, pathValue.indexOf('?') > -1 ? pathValue.indexOf('?') : pathValue.length).split('/');
+
+    for (var i = 0; i < split.length; i++) {
+
+      if (split[i].indexOf(':') > -1) {
+        //Is path param
+        pathPattern.pathParams.push(split[i].replace(':', ''));
+        pathPattern.pattern.push(Router.pathParamReplacement)
+      } else if (split[i].trim().length > 0) {
+        pathPattern.pattern.push(split[i])
+      }
+
+    }
+
+    return pathPattern;
+
+  },
+
+  /**
+   * @public
+   *
+   * Detects history API exists and sets @routerHTML5Mode to TRUE if exists
+   *
+   */
+  detectHTML5Mode: function () {
+
+    if (window.history && window.history.pushState && Config.html5Mode === true) {
+      Router.routerHTML5Mode = true;
+    }else{
+        System.eventsInterface.onIncompatible('HISTORY_API');
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function initializes router.
+   * If @Config.routingEnabled is setted, then
+   * prepare browser URL to work with router.
+   *
+   * Binds hashchange event.
+   *
+   */
+  registerRouter: function () {
+
+     Log.ok('HTML5 router mode status: {0}', [Router.routerHTML5Mode]);
+
+     if (Util.isEmpty(System.routing)) {
+       Errors.throwError(Errors.messages.ROUTING_ENABLED_NOT_DEFINED, []);
+     }
+
+     System.routing.create(Router.getRouterFactory());
+
+     if (Router.routerHTML5Mode === false && window.location.hash.substring(0, 2) !== '#/') {
+       window.location.hash = '#/';
+     }
+
+     Router.renderCurrentView();
+
+     if (Router.routerHTML5Mode === false) {
+       this.initHashChangeEvent();
+     }
+
+  },
+
+  hashChangeInterval: null,
+  lastHashValue: null,
+  initHashChangeEvent: function(){
+
+    function hashChangeCallback(){
+
+        if(Router.lastHashValue !== window.location.hash){
+            Router.lastHashValue = window.location.hash;
+            Router.onHashChanges();
+        }
+
+    }
+
+    Router.hashChangeInterval = setInterval(hashChangeCallback, 100);
+
+  },
+
+  /**
+   * @public
+   *
+   * Event function executes when hash changes in not html5 mode
+   */
+  onHashChanges: function () {
+
+    Log.debug('Executes Router.onHashChanges');
+
+    if (window.location.hash.replace('#', '') === Router.preventReloadPage) {
+      Router.preventReloadPage = null;
+      Router.fireRouteEvents();
+      return false;
+    }
+
+    Router.clearCacheViewData();
+    Router.fireRouteEvents();
+    Router.renderCurrentView();
+
+  },
+
+  /**
+   * @public
+   *
+   * Event function executes when history changes in html5 mode
+   */
+  onHistoryChanges: function () {
+
+    if (Router.routerHTML5Mode === true) {
+
+      Log.debug('Executes Router.onHistoryChanges');
+
+      if (Router.getPathName() === Router.preventReloadPage) {
+        Router.preventReloadPage = null;
+        Router.fireRouteEvents();
+        return false;
+      }
+
+      Router.clearCacheViewData();
+      Router.fireRouteEvents();
+      Router.renderCurrentView();
+
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Function iterate all registred events and fire them
+   */
+  fireRouteEvents: function () {
+
+    var currentRoute = Router.getCurrentRoute();
+
+    for(var eventName in Router.events){
+
+        if (Router.events[eventName]) {
+            Router.events[eventName](currentRoute, app.currentController);
+        }
+
+    }
+
+    System.eventsInterface.onRouteChange(currentRoute, app.currentController);
+
+  },
+
+
+  /**
+   * @public
+   *
+   * Function registers new route event fired when route changing
+   */
+  onRouteChange: function (eventName, eventFunction) {
+
+    if (Router.events[eventName]) {
+      Errors.throwWarn(Errors.messages.ROUTE_EVENT_ALREADY_REGISTRED, [eventName]);
+    }
+
+    Router.events[eventName] = eventFunction;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function unregisters route event
+   */
+  offRouteChange: function (eventName) {
+
+    if (Router.events[eventName]) {
+      Router.events[eventName] = null;
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   *  Function checks if given @hashPattern so pattern created
+   *  from current browser hash matches with @endpointPattern
+   *  given from @public endpoints set
+   *
+   * @param hashPattern
+   * @param endpointPattern
+   *
+   */
+  checkPathIntegrity: function (hashPattern, endpointPattern) {
+
+    for (var i = 0; i < endpointPattern.pattern.length; i++) {
+
+      if (endpointPattern.pattern[i] !== Router.pathParamReplacement
+        && endpointPattern.pattern[i] !== hashPattern.pattern[i]) {
+        return false;
+      }
+
+    }
+
+    return true;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function returns object with params stored in current browser URL
+   *
+   */
+  getURLParams: function () {
+    return Router.getURLParams();
+  },
+
+  /**
+   * @public
+   *
+   * Function returns object with params stored in current browser URL
+   *
+   */
+  getQueryParams: function () {
+    return Router.getURLParams();
+  },
+
+  /**
+   * @public
+   *
+   * Function returns object with params stored in current browser URL
+   *
+   */
+  getURLParams: function () {
+
+    var params = {};
+
+    if (window.location.href.indexOf('?') > -1) {
+      window.location.href.substring(window.location.href.indexOf('?'), window.location.href.length).replace(/[?&]+([^=&]+)=([^&]*)/gi, function (str, key, value) {
+        params[key] = Util.tryParseNumber(value);
+
+        if (!Util.isNull(params[key]) && typeof params[key] === 'string') {
+          if (params[key].indexOf('#/') > -1) {
+            params[key] = params[key].replace('#/', '');
+          }
+        }
+
+      });
+    }
+
+    return params;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function returns current route path params
+   *
+   */
+  getPathParams: function () {
+    return Router.getCurrentViewData().data.pathParams;
+  },
+
+  /**
+   * @public
+   *
+   * Function returns current route routing params
+   *
+   */
+  getRoutingParams: function () {
+    return Router.getCurrentViewData().data.routingParams;
+  },
+
+  /**
+   * @public
+   *
+   * Function returns object containing @urlParams and
+   * @pathParams as objects. Data is retrieved from
+   * given @hashPattern based on @endpointPattern
+   *
+   *
+   *
+   * @param hashPattern
+   * @param endpointPattern
+   */
+  getPathData: function (hashPattern, endpointPattern) {
+
+    var urlParams = Router.getURLParams();
+    var pathParams = {};
+    var pathParamsIndex = 0;
+    for (var i = 0; i < endpointPattern.pattern.length; i++) {
+
+      if (endpointPattern.pattern[i] === Router.pathParamReplacement) {
+        //If path param is numeric string, then making it just number. If not, returns passed object without modifications
+        pathParams[endpointPattern.pathParams[pathParamsIndex]] = Util.tryParseNumber(hashPattern.pattern[i]);
+        pathParamsIndex++;
+      }
+
+    }
+
+    return {
+      urlParams: urlParams,
+      pathParams: pathParams,
+    };
+
+  },
+
+  /**
+   * @public
+   *
+   * Clears cached current view data
+   */
+  clearCacheViewData: function () {
+
+    Router.getCurrentViewCache = null;
+    Router.getCurrentViewDataCache = null;
+
+  },
+
+  setCacheViewData: function(type, data) {
+
+    if(type === 'DATA'){
+      Router.getCurrentViewDataCache = data;
+      Router.getCurrentViewDataRouteCache = Router.getCurrentRoute();
+    }else {
+      Router.getCurrentViewCache = data;
+      Router.getCurrentViewRouteCache = Router.getCurrentRoute();
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Stores cache of @getCurrentView function result
+   * Restores to null on history change
+   */
+  getCurrentViewCache: null,
+
+  /**
+   * @public
+   *
+   * Stores cache of @getCurrentView route
+   */
+  getCurrentViewRouteCache: null,
+
+  /**
+   * @public
+   *
+   * Function gets current browser URL data
+   *
+   * Finally, for given endpoint data sets
+   * global info like @public controller, @public routingParams
+   * and @public {onRouteEfvent} properties.
+   *
+   * Returns those data.
+   */
+  getCurrentView: function () {
+
+    if (Router.getCurrentViewCache !== null && Router.getCurrentRoute() != Router.getCurrentViewRouteCache) {
+      Log.debug('Using @getCurrentViewCache cache');
+      return Router.getCurrentViewCache;
+    }
+
+    var currentEndpointObject = Router.getCurrentViewData();
+
+    if(currentEndpointObject.endpoint == null && currentEndpointObject.data == null){
+        Router.redirect(Router.otherwisePath);
+        return;
+    }
+
+    var currentEndpointData = currentEndpointObject.data;
+    var currentEndpoint = currentEndpointObject.endpoint;
+
+    if (currentEndpointData.isModal === true && !Util.isEmpty(app.previousController)) {
+      currentEndpointData.controller = app.previousController;
+    } else {
+      currentEndpointData.controller = currentEndpoint.controller;
+    }
+
+    currentEndpointData.defaultController = currentEndpoint.defaultController;
+    currentEndpointData.modal = currentEndpoint.modal;
+    currentEndpointData.isModal = currentEndpoint.isModal;
+    currentEndpointData.routingParams = currentEndpoint.routingParams;
+    currentEndpointData.onRoute = currentEndpoint.onRoute;
+    currentEndpointData.onRouteWithModal = function () {
+      System.render(currentEndpointData.modal, currentEndpointData, currentEndpointData.onRoute);
+    }
+
+    Router.setCacheViewData('VIEW', currentEndpointData);
+
+    return currentEndpointData;
+
+  },
+
+  /**
+   * @public
+   *
+   * Stores cache of @getCurrentViewData function result
+   * Restored to null when history change
+   */
+  getCurrentViewDataCache: null,
+
+  /**
+   * @public
+   *
+   * Stores cache of @getCurrentViewData route
+   */
+  getCurrentViewDataRouteCache: null,
+
+  /**
+   * @public
+   *
+   * Function gets current browser URL and matches it
+   * with @public endpoints.
+   *
+   * If current URL matches with any of routing declarations from
+   * @public endpoints set, then gets endpoint data.
+   *
+   * If current URL not matches then endpoint data is null.
+   *
+   * Returns those data.
+   */
+  getCurrentViewData: function () {
+
+    if (Router.getCurrentViewDataCache !== null && Router.getCurrentRoute() != Router.getCurrentViewDataRouteCache) {
+      Log.debug('Using @getCurrentViewDataCache cache');
+      return Router.getCurrentViewDataCache;
+    }
+
+    var hash = null;
+
+    if (Router.routerHTML5Mode === false) {
+      hash = window.location.hash.replace(/^#\//, '');
+    } else if (Router.getPathName().indexOf('/') > 0) {
+      hash = '/' + Router.getPathName();
+    } else {
+      hash = Router.getPathName();
+    }
+
+    var hashPattern = Router.createPathPattern(hash);
+
+    var viewData = {
+      endpoint: null,
+      data: null
+    };
+
+    var currentEndpoint = Router.findSamePatternEndpoint(hashPattern);
+    var currentEndpointData = Router.getPathData(hashPattern, currentEndpoint.pathPattern);
+
+    if (currentEndpoint.isModal === true) {
+
+      if (Util.isEmpty(app.previousController)) {
+        currentEndpoint.controller = currentEndpoint.defaultController;
+      } else {
+        currentEndpoint.controller = app.previousController;
+      }
+
+    }
+
+    currentEndpointData.routingParams = Router.mergeRoutingParams(currentEndpoint.routingParams || {});
+
+    if(Util.isFunction(currentEndpoint.controller)){
+        currentEndpoint.controller = currentEndpoint.controller(currentEndpointData);
+    }
+
+    viewData = {
+      endpoint: currentEndpoint,
+      data: currentEndpointData
+    };
+
+    Router.setCacheViewData('DATA', viewData);
+
+    return viewData;
+
+  },
+
+  findSamePatternEndpoint: function(hashPattern){
+
+    for (var pathValue in Router.endpoints) {
+
+      var hashPatternPathValue = '';
+      for(var i = 0; i < hashPattern.pattern.length; i++){
+          hashPatternPathValue += hashPattern.pattern[i]+'/';
+      }
+
+      if(pathValue+'/' === '/'+hashPatternPathValue){
+        return Router.endpoints[pathValue];
+      }
+
+    }
+
+    for (var pathValue in Router.endpoints) {
+
+      if (Router.endpoints[pathValue].pathPattern.pattern.length === hashPattern.pattern.length
+        && Router.checkPathIntegrity(hashPattern, Router.endpoints[pathValue].pathPattern)) {
+
+        return Router.endpoints[pathValue];
+
+      }
+
+    }
+
+  },
+
+  mergeRoutingParams: function(routingParams){
+
+    for(var prop in Router.commonRoutingParams){
+        if(Router.commonRoutingParams.hasOwnProperty(prop)){
+
+            if(routingParams[prop] === undefined){
+                routingParams[prop] = Router.commonRoutingParams[prop];
+            }
+
+        }
+    }
+
+    return routingParams;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function applies given @pathParams to the current
+   * browser URL.
+   *
+   * If given @pathParams not contains or contains undefined
+   * or null value for specified param, then function omits it
+   *
+   * @param pathParams
+   */
+  setPathParams: function (pathParams) {
+
+    var currentViewData = Router.getCurrentViewData();
+
+    for (var pathParam in pathParams) {
+
+      if (currentViewData.data.pathParams[pathParam]
+        && !Util.isNull(pathParams[pathParam])) {
+        currentViewData.data.pathParams[pathParam] = pathParams[pathParam];
+      }
+
+    }
+
+    Router.redirectToView(currentViewData.endpoint.pathValue, currentViewData.data.pathParams, currentViewData.data.urlParams, true);
+
+
+  },
+
+  /**
+   * @public
+   *
+   * Function applies given @urlParams to the current
+   * browser URL
+   *
+   * If given @urlParams not contains or contains undefined
+   * or null value for specified param, then function omits it
+   *
+   *
+   *
+   * @param urlParams
+   */
+  setURLParams: function (urlParams) {
+
+    var currentViewData = Router.getCurrentViewData();
+
+    var newURLParams = {};
+
+    for (var urlParam in urlParams) {
+
+      if (urlParams[urlParam] !== null) {
+        newURLParams[urlParam] = urlParams[urlParam];
+      }
+
+    }
+
+    currentViewData.data.urlParams = newURLParams;
+
+    Router.redirectToView(currentViewData.endpoint.pathValue, currentViewData.data.pathParams, currentViewData.data.urlParams, true);
+
+  },
+
+  /**
+   * @public
+   *
+   * Function returns current URI
+   *
+   */
+  getCurrentRoute: function () {
+
+    if (Router.routerHTML5Mode === true) {
+      return Router.getPathName().substring(1, Router.getPathName().length);
+    }
+
+    return window.location.hash.replace('#/', '');
+
+  },
+
+  /**
+   * @public
+   * @ToImplement
+   *
+   * Function invokes after preparing path in @_redirectToView function
+   * Developer can change @path value using given arguments
+   */
+  redirectToViewHandler: null,
+
+  /**
+   * @public
+   *
+   * Function redirects to given @path defined in @Config.routing
+   * object and applies given @pathParams and @urlParams to @path
+   *
+   * @param path
+   * @param pathParams
+   * @param urlParams
+   */
+  redirectToView: function (path, pathParams, urlParams, preventReloadPage) {
+
+    Router.clearCacheViewData();
+
+    if (!path) {
+      Errors.throwError(Errors.messages.REDIRECT_NO_PATH);
+    }
+
+    path = path.replace('#/', '/');
+
+    if (path[0] !== '/') {
+      path = '/' + path;
+    }
+
+    path = Util.preparePathDottedParams(path, pathParams);
+    path = Util.prepareUrlParams(path, urlParams);
+
+    if(Router.redirectToViewHandler){
+     path = Router.redirectToViewHandler(path, pathParams, urlParams, preventReloadPage);
+    }
+    if (preventReloadPage === true) {
+      Router.preventReloadPage = path;
+    }
+
+    if (Router.routerHTML5Mode === true) {
+      Router.pushState(path);
+    } else {
+      window.location.hash = path;
+    }
+
+  },
+
+  /**
+   * @public
+   *
+   * Wrapper for history.pushState
+   */
+  pushState: function (path) {
+    history.pushState({state: path}, null, path);
+  },
+
+  /**
+   * @public
+   *
+   * Substitute function to @getCurrentViewData
+   */
+  getViewData: function () {
+    var currentViewData = Router.getCurrentViewData();
+    return Assembler.extend(currentViewData.endpoint, currentViewData.data);
+  },
+
+  /**
+   * @public
+   *
+   * Substitute function to @renderCurrentView
+   */
+  reloadView: function () {
+    Router.renderCurrentView();
+  },
+
+  /**
+   * @public
+   *
+   * Function retrieves current view data from current browser URL
+   * and renders matched endpoint  defined in @Config.routing
+   *
+   */
+  renderCurrentView: function () {
+
+    var currentEndpointData = Router.getCurrentView();
+
+    if(currentEndpointData === undefined){
+        return;
+    }
+
+    if (currentEndpointData.isModal === true) {
+
+      Log.debug('rendering controller & modal, previous controller: ' + app.previousController);
+
+      if (app.previousController === null) {
+
+        Log.debug('rendering controller & modal, default controller: ' + currentEndpointData.defaultController);
+
+        System.render(currentEndpointData.defaultController, currentEndpointData, currentEndpointData.onRouteWithModal);
+      } else {
+        System.render(currentEndpointData.modal, currentEndpointData, currentEndpointData.onRoute);
+        //Router.refreshCurrentHyperlinkCache();
+      }
+
+    } else {
+      System.render(currentEndpointData.controller, currentEndpointData, currentEndpointData.onRoute);
+    }
+
+    app.previousController = currentEndpointData.controller;
+
+  },
+
+  /**
+   * @public
+   *
+   * Returns path value without path params
+   *
+   * @param pathValue
+   */
+  getPathValueWithoutParams: function (pathValue) {
+
+    if (pathValue.indexOf(':') > -1) {
+      return pathValue.substring(0, pathValue.indexOf(':'));
+    }
+
+    return pathValue;
+
+  },
+
+  /**
+   * @public
+   *
+   * Renders controller based on passed @path param
+   * declared in @Config.routing
+   *
+   * Optionally can apply @pathParams and @urlParams
+   *
+   * Window location will be set
+   *
+   * @param path
+   * @param pathParams
+   * @param urlParams
+   */
+  redirect: function (path, pathParams, urlParams, preventReloadPage) {
+    Router.redirectToView(path, pathParams, urlParams, preventReloadPage);
+  },
+
+  /**
+   * @public
+   *
+   * Renders controller based on passed @path param
+   * declared in @Config.routing
+   *
+   * Optionally can apply @pathParams and @urlParams
+   *
+   * Window location will be set
+   *
+   * @param routeName
+   * @param pathParams
+   * @param urlParams
+   */
+  redirectByName: function (routeName, pathParams, urlParams, preventReloadPage) {
+    Router.redirectToView(Router.byName(routeName), pathParams, urlParams, preventReloadPage);
+  },
+
+  /**
+   * @public
+   *
+   * Opens given URL/URI using window.location or window.open
+   * if @redirectType provided
+   *
+   * @param url
+   * @param redirectType
+   */
+  location: function (url, redirectType) {
+
+    Router.clearCacheViewData();
+
+    if (redirectType) {
+
+      redirectType = redirectType.toLowerCase();
+
+      if (redirectType.indexOf('blank') > -1) {
+        redirectType = '_blank';
+      } else if (redirectType.indexOf('self') > -1) {
+        redirectType = '_self';
+      } else if (redirectType.indexOf('parent') > -1) {
+        redirectType = '_parent';
+      } else if (redirectType.indexOf('top') > -1) {
+        redirectType = '_top';
+      }
+
+      window.open(url, redirectType);
+
+    } else {
+      window.location = url;
+    }
+
+  },
+
+  /**
+   * @public
+   * @ToImplement
+   *
+   * Handler for @createLink function which is invoked before returning path
+   */
+  createLinkHandler: null,
+
+  /**
+   * @public
+   *
+   * Prepares passed @path as relative link accepted by router
+   *
+   * @param path
+   */
+  createLink: function (path, pathParams, urlParams) {
+
+    if (Router.routerHTML5Mode === false) {
+
+      if (path.substring(0, 1) === '/') {
+        path = '#' + path;
+      } else if (path.substring(0, 1) !== '#') {
+        path = '#/' + path;
+      }
+
+    }
+
+    path = Util.preparePathDottedParams(path, pathParams);
+    path = Util.prepareUrlParams(path, urlParams);
+
+    if(Router.createLinkHandler){
+      path = Router.createLinkHandler(path, pathParams, urlParams);
+    }
+
+    return path;
+
+  },
+
+  /**
+   * @public
+   *
+   * Function forces going to previous page
+   *
+   */
+  back: function () {
+    window.history.go(-1);
+  },
+
+  /**
+   * Return current pathname
+   * Can be overriden for custom purposes
+   *
+   * @returns {string}
+   */
+  getPathName: function(){
+    return window.location.pathname;
+  },
+
+  /**
+     * @public
+     *
+     * Finds all @a elements
+     * in given (root) selector.
+     *
+     * Binds @click event to prevent default browser navigation
+     * and use @Router.redirect or @Router.locations
+     *
+     * @param rootSelector
+     */
+  bindLinks: function(element){
+
+//    this.bindLinksForElement(element);
+//    for(var i = 0; i < element.childElements.length; i++){
+//
+//        if(element.childElements[i].length > 0){
+//            this.bindLinks(element.childElements[i]);
+//        }
+//
+//    }
+
+  },
+
+  bindLinksForElement: function (element) {
+
+    for(var i = 0; i < element.linksSelectors.length; i++){
+
+        var selector = getElementBySpikeId(document, element.linksSelectors[i]);
+
+        selector.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            var link = this.getAttribute('href');
+
+            if (Router.routerHTML5Mode === true) {
+              link = link.replace('#', '');
+
+              if (link.trim() === '') {
+                link = '/';
+              }
+
             } else {
-                if (inputclass == 'canedit') { // i jest długopisem
-                    labelcanedit.addClass('active'); labelcansee.addClass('active');
-                    canedit.prop('checked', true); cansee.prop('checked', true);
-                } else { // i jest okiem
-                    labelcansee.addClass('active');
-                    cansee.prop('checked', true);
-                }
+
+              if (link.trim() === '') {
+                link = '/#/';
+              }
+
             }
+
+            if (link.indexOf('www') > -1 || link.indexOf('http') > -1) {
+              Router.location(link,this.getAttribute('target') || '_blank');
+            } else {
+              Router.redirect(link);
+            }
+
         });
-         Log.log('AZ: Koniec!');
-    },
 
-    // Kliknięcie w przycisk otwiera modal z opcjami
-    showRoleEditor: function(event){
-        event.preventDefault();
+    }
 
-        var addRoleModal = new AddRoleModal();
-        addRoleModal.show();
-
-    },
+  }
 
 }
 
 
+package spike.core;
 
+import System from spike.core.System;
+import Config from spike.core.System.config;
+import Templates from spike.core.Templates;
+import Errors from spike.core.Errors;
+import Selectors from spike.core.Selectors;
+import Assembler from spike.core.Assembler;
+import Events from spike.core.Events;
 
-package app.module.privileges.modal.addRole;
+class Element {
 
-import Modal from spike.core.Modal;
-import Log from spike.core.Log;
-import Rest from spike.core.Rest;
-import PrivilegesApi from app.enums.api.PrivilegesApi;
+    rendered: false,
 
-class AddRole extends Modal {
+    elementId: null,
+    elementSelector: null,
 
-    AddRole: function () {
-        this.super();
-        this.listRoles();
+    compiledHtml: null,
+    childElements: [],
+
+    selector: {},
+    eventsSelectors: [],
+    linksSelectors: [],
+
+    templatePath: null,
+
+    rootSelector: function(){
+
+        if(this.elementSelector === null){
+            this.elementSelector = getElementBySpikeId(document, this.elementId);
+        }
+
+        return this.elementSelector;
     },
 
+    Element: function(parentElement){
+     this.constructor_2(parentElement, null);
+    },
 
-    roles: [],
-    listRoles: function(){
+    Element: function(parentElement, params){
 
-     Rest.get(PrivilegesApi.get.adminrole)
-        .then(function(response){
-            $this.roles = response.items;
+        this.constructor_0();
 
-            console.log($this);
-
-        });
+        this.margeParams(params);
+        this.createTemplatePath();
+        this.createTemplate();
 
     },
+
+    margeParams: function(params){
+
+        if(params){
+            for(var prop in params){
+                this[prop] = params[prop];
+            }
+        }
+
+    },
+
+    include: function(childElement){
+
+        childElement.extractElementId();
+        this.childElements.push(childElement);
+
+        return childElement.compiledHtml;
+
+    },
+
+    extractElementId: function(){
+
+        var virtualElement = document.createElement('div');
+        virtualElement.innerHTML = this.compiledHtml;
+
+        this.elementId = getSpikeId(virtualElement.firstChild);
+
+    },
+
+    createTemplatePath: function(){
+
+        this.templatePath = '';
+
+        var elementPath = this.getClass().split('.');
+
+        for(var i = 0; i < elementPath.length; i++){
+            this.templatePath += elementPath[i]+'_';
+        }
+
+        this.templatePath = this.templatePath.substring(0, this.templatePath.lastIndexOf('_'));
+        var templateFileName = this.templatePath.substring(this.templatePath.lastIndexOf('_')+1, this.templatePath.length);
+        templateFileName = templateFileName.substring(0,1).toLowerCase()+templateFileName.substring(1, templateFileName.length);
+
+        this.templatePath = this.templatePath.substring(0, this.templatePath.lastIndexOf('_'));
+        this.templatePath = this.templatePath+'_'+templateFileName+'_html';
+
+        return this.templatePath;
+
+    },
+
+    createTemplate: function () {
+
+     this.compiledHtml = Templates.compileTemplate(this, this.templatePath);
+     Selectors.createUniqueSelectors(this);
+
+    },
+
+    postConstructChildren: function(){
+
+//        for(var i = 0; i < this.childElements.length; i++){
+//            this.childElements[i].postConstruct();
+//        }
+
+    },
+
+    watchers: {},
+
+    watch: function(field, watchFn){
+
+        if(this.watchers[field] === undefined){
+
+            this.watchers[field] = watchFn;
+
+        }else{
+            Log.warn('Watcher for field {0} exist', [field]);
+        }
+
+    },
+
+    destroy: function(){
+
+//        if(this.childElements.length > 0){
+//            for(var i = 0; i < this.childElements.length; i++){
+//                this.childElements[i].destroy();
+//            }
+//        }
+
+    },
+
+    abstract function render;
 
     postConstruct: function(){
-
+        this.postConstructChildren();
     }
 
-}package app.module.privileges.modal.generalExcludes;
+}package spike.core;
 
-import Modal from spike.core.Modal;
-import Log from spike.core.Log;
-
-class GeneralExcludes extends Modal {
-
-    GeneralExcludes: function () {
-
-    }
-
-}package app.module.privileges.modal.pagePrivileges;
-
-import Modal from spike.core.Modal;
-import Log from spike.core.Log;
-
-class PagePrivileges extends Modal {
-
-    PagePrivileges: function () {
-
-    }
-
-}package app.service.auth;
-
-import Log from spike.core.Log;
+import System from spike.core.System;
+import Events from spike.core.Events;
 import Router from spike.core.Router;
-import Session from app.enums.api.Session;
-import Rest from spike.core.Rest;
-import LoginData from app.module.auth.LoginData;
-import Broadcaster from spike.core.Broadcaster;
-import Storage from app.service.common.Storage;
+import Element from spike.core.Element;
+import Watchers from spike.core.Watchers;
 
-static class Auth {
+class GlobalElement extends Element {
 
-    customerData: null,
+    GlobalElement: function(elementId){
 
-    storageSessionData: 'session_data',
-
-    isLogged: function(){
-        return !!this.customerData;
-    },
-
-    saveSessionCache: function(){
-
-        var sessionData = Storage.get($this.storageSessionData);
-        if(sessionData){
-            sessionData.loginTime = new Date().getTime();
-        }
-
-        Storage.set($this.storageSessionData, $this.customerData);
+        this.constructor_0();
+        this.elementId = elementId;
+        this.createTemplatePath();
+        this.createTemplate();
+        this.render();
 
     },
 
-    logout: function(){
+    render: function(){
 
-        $this.customerData = false;
-        Storage.remove($this.storageSessionData);
-        Router.redirect('/login');
+        this.replaceWith();
 
-    },
+        Watchers.observe(this);
 
-    loginSuccess: function(response){
+        this.rendered = true;
 
-        $this.customerData = new LoginData(
-            response.adminId,
-            response.allowedViews,
-            response.firstName,
-            response.lastName,
-            response.loginName,
-            response.serverTimeMillis,
-            new Date().getTime()
-        );
+        this.postConstructChildren();
+        this.postConstruct();
 
-        $this.saveSessionCache();
-        Broadcaster.broadcast('onAuth');
 
     },
 
-    getSession: function(){
+    replaceWith: function () {
 
-        var sessionData = Storage.get($this.storageSessionData);
-        if(sessionData && new Date().getTime() - sessionData.loginTime < 300000){
-            $this.loginSuccess(sessionData);
-        }else{
-            Rest.get(Session.get.session).then($this.loginSuccess.bind($this));
-        }
+        var elementDiv = document.createElement("div");
+        elementDiv.innerHTML = this.compiledHtml;
+        elementDiv.setAttribute('element-name', this.getClass());
+        elementDiv.setAttribute('sp-id', this.elementId);
+
+        System.getAppView().replaceChild(elementDiv, this.rootSelector());
+
+        this.elementSelector = getElementBySpikeId(document, this.elementId);
 
     },
 
-    login: function(loginRequest){
-      return Rest.post(Session.post.login, loginRequest).then($this.loginSuccess.bind($this));
+    destroy: function(){
+        this.super.destroy();
+        Watchers.unobservable(this);
+    }
+
+}package spike.core;
+
+import System from spike.core.System;
+import Events from spike.core.Events;
+import Router from spike.core.Router;
+import Element from spike.core.Element;
+import Assembler from spike.core.Assembler;
+import Watchers from spike.core.Watchers;
+
+class Controller extends Element {
+
+    scrollTop: true,
+    checkNetwork: true,
+
+    Controller: function () {
+        $this.super();
+        $this.init();
+        $this.VIEW_TYPE = $this.VIEW_TYPES.PRIV;
     },
 
-    loginFromAC1: function(){
 
-        var urlParams = Router.getURLParams();
+    render: function(){
 
-        if (urlParams.token && urlParams.path && urlParams.id && urlParams.createdTime) {
+        System.getView().innerHTML = this.compiledHtml;
+        this.elementSelector = System.getView().firstChild;
+        this.elementId = this.elementSelector.getAttribute('sp-id');
 
-          var request = {
-            token: urlParams.token,
-            adminId: urlParams.id,
-            createdTime: urlParams.createdTime
-          };
+        Watchers.observe(this);
 
-          Rest.post(Session.loginUsingToken, request)
-            .then(function (response) {
-              window.location.href = urlParams.path;
-            });
+        this.rendered = true;
 
+        this.postConstructChildren();
+        this.postConstruct();
+
+    },
+
+
+    destroy: function(){
+        this.super().destroy();
+        Watchers.unobservable(this);
+    }
+
+}package spike.core;
+
+import Log from spike.core.Log;
+import System from spike.core.System;
+import Errors from spike.core.Errors;
+import ModalInterface from spike.core.System.modalInterface;
+import Element from spike.core.Element;
+import Watchers from spike.core.Watchers;
+import Util from spike.core.Util;
+import Events from spike.core.Events;
+import Router from spike.core.Router;
+
+class Modal extends Element {
+
+    visible: false,
+
+    Modal: function(){
+
+        this.createTemplatePath();
+        this.createTemplate();
+        this.render();
+
+    },
+
+    render: function(){
+
+        this.elementId = 'modal-'+Util.hash();
+
+        var modalElement = document.createElement('div');
+        setSpikeId(modalElement, this.elementId);
+        modalElement = ModalInterface.onConstruct(modalElement);
+
+        System.getModalsView().appendChild(modalElement);
+        this.rootSelector().innerHTML = this.compiledHtml;
+
+        Watchers.observe(this);
+
+        ModalInterface.onRender(this);
+        this.rendered = true;
+
+        this.postConstructChildren();
+        this.postConstruct();
+
+    },
+
+    show: function(){
+        this.visible = true;
+        ModalInterface.onShow(this);
+    },
+
+    hide: function(){
+        this.visible = false;
+        ModalInterface.onHide(this);
+    },
+
+    destroy: function () {
+
+        if(this.rendered === true){
+             this.rootSelector().remove();
+             ModalInterface.onDestroy(this);
+             this.visible = false;
+             this.super.destroy();
+             Watchers.unobservable(this);
         }
 
     }
 
 
-}package app.service.cms;
+};package spike.core;
 
-import CmsEnum from app.enums.api.Cms;
-import Rest from spike.core.Rest;
-
-static class Cms {
-
-    getComponents: function () {
-            return Rest.get(CmsEnum.get.getComponents).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getComponentById: function (id) {
-            return Rest.get(CmsEnum.get.getComponentById, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getComponentByHtmlTag: function (htmlTag) {
-            return Rest.get(CmsEnum.get.getComponentByHtmlTag, {
-                urlParams: {
-                    htmlTag: htmlTag
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        createComponent: function (component) {
-            return Rest.get(CmsEnum.get.createComponent, component).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        updateComponentById: function (id) {
-            return put(CmsEnum.put.updateComponent, $this.MODULES.COMPONENT, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (data) {
-                return data;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        deleteComponentById: function (id) {
-            // TO DO //
-        },
-
-        getTemplateById: function (id) {
-            return Rest.get(CmsEnum.get.getTemplateById, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        createTemplate: function (template) {
-            return Rest.post(CmsEnum.post.createTemplate, template).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        updateTemplateById: function (id, page) {
-            return put(CmsEnum.put.updateTemplateById, page, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getTemplates: function () {
-            return Rest.get(CmsEnum.get.getTemplates).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getSimpleTemplates: function () {
-            return Rest.get(CmsEnum.get.getTemplatesSimple).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        deleteTemplateById: function (id) {
-            return remove(paths.cms.DELETE.deleteTemplateById, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        createPage: function (page) {
-            return Rest.post(CmsEnum.post.createPage, page).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        updatePageById: function (id, page) {
-            return put(CmsEnum.put.updatePageById, page, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getPageById: function (id) {
-            return Rest.get(CmsEnum.get.getPageById, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getPageTypes: function () {
-            return Rest.get(CmsEnum.get.getPageTypes).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getPublishedPages: function () {
-            return Rest.get(CmsEnum.get.getPublishedPages).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getPublishedById: function (id) {
-            return Rest.get(CmsEnum.get.getPageContentById, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-        },
-
-        getPages: function (urlParams) {
-            return new Promise(function (resolve) {
-                resolve([{
-                    "id": 238,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "test",
-                    "creationDate": 1521638558509,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": 1,
-                    "language": "EN",
-                    "country": "GH"
-                }, {
-                    "id": 25,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521721574174,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": null,
-                    "language": null,
-                    "country": null
-                }, {
-                    "id": 24,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521715956617,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": null,
-                    "language": null,
-                    "country": null
-                }, {
-                    "id": 23,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521715874681,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": null,
-                    "language": null,
-                    "country": null
-                }, {
-                    "id": 22,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521715823466,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": null,
-                    "language": null,
-                    "country": null
-                }, {
-                    "id": 21,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521715780658,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": null,
-                    "language": null,
-                    "country": null
-                }, {
-                    "id": 20,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521715749659,
-                    "visibilityFrom": 1521715749659,
-                    "visibilityTo": 1521715749659,
-                    "publishDate": null,
-                    "brand": 2,
-                    "language": null,
-                    "country": "NG"
-                }, {
-                    "id": 19,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521715736346,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": 2,
-                    "language": "EN",
-                    "country": "NG"
-                }, {
-                    "id": 18,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521715704546,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": 1,
-                    "language": "EN",
-                    "country": "GH"
-                }, {
-                    "id": 17,
-                    "type": "CUSTOM_PAGE",
-                    "status": "DRAFT",
-                    "publishedBy": null,
-                    "title": "qwerty",
-                    "creationDate": 1521715684257,
-                    "visibilityFrom": null,
-                    "visibilityTo": null,
-                    "publishDate": null,
-                    "brand": null,
-                    "language": null,
-                    "country": null
-                }]);
-            });
-        },
-
-        deletePageById: function (id) {
-
-            return remove(paths.cms.DELETE.deletePageById, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-
-        },
-
-        changeStatusToDraft: function (id) {
-
-            return Rest.post(CmsEnum.post.changePageTypeToDraft, {
-                pathParams: {
-                    id: id
-                }
-            }).then(function (response) {
-                return response;
-            }).catch(function (err) {
-                throw err;
-            });
-
-        }
-
-}package app.service.common;
-
+import Errors from spike.core.Errors;
 import Util from spike.core.Util;
 
-static class Storage {
+static class Broadcaster {
 
-  set: function(paramName, paramObject){
+    /**
+     * @public
+     *
+     * Storage for all events created by developer
+     *
+     */
+    applicationEvents: {},
 
-    if(paramObject && (paramObject instanceof Array || typeof paramObject === 'object')){
-      paramObject = JSON.stringify(paramObject);
+    /**
+     * @public
+     *
+     * Registers new event with given name.
+     * Events should be registred manually to avoid events spagetti
+     *
+     * If event with given name exists, then throws error
+     *
+     * @param eventName
+     */
+    register: function (eventName) {
+
+        if (!Util.isNull(this.applicationEvents[eventName])) {
+            Errors.throwError(Errors.messages.APPLICATION_EVENT_ALREADY_EXIST, [eventName]);
+        }
+
+        this.applicationEvents[eventName] = [];
+
+    },
+
+    /**
+     * @public
+     *
+     * Broadcast event with given name and given data across
+     * all registred and @on declared events
+     *
+     * If event with given name not exists, then throws error
+     *
+     * @param eventName
+     * @param eventData
+     */
+    broadcast: function (eventName, eventData) {
+
+        if (Util.isNull(this.applicationEvents[eventName])) {
+            Errors.throwError(Errors.messages.APPLICATION_EVENT_NOT_EXIST, [eventName]);
+        }
+
+        for(var i = 0; i < this.applicationEvents[eventName].length; i++){
+            this.applicationEvents[eventName][i](eventData);
+        }
+
+    },
+
+    /**
+     * @public
+     *
+     * Catches all @broadcasted events with given name and executes
+     * given event callback with @eventData as argument
+     *
+     * Checks if event listener is already reigstred, then
+     * prevents duplicating it.
+     *
+     * If event with given name not exists, then throws error
+     *
+     * @param eventName
+     * @param eventData
+     */
+    listen: function (eventName, eventCallback) {
+
+        if (Util.isNull(this.applicationEvents[eventName])) {
+            Errors.throwError(Errors.messages.APPLICATION_EVENT_NOT_EXIST, [eventName]);
+        }
+
+        if (Util.isNull(eventCallback)) {
+            Errors.throwError(Errors.messages.APPLICATION_EVENT_CALLBACK_NULL, [eventName]);
+        }
+
+        var isAlreadyRegisteredListener = false;
+
+        for(var i = 0; i < this.applicationEvents[eventName].length; i++){
+
+            if(this.applicationEvents[eventName][i].toString() === eventCallback.toString()){
+                isAlreadyRegisteredListener = true;
+            }
+
+        }
+
+        if(isAlreadyRegisteredListener === false){
+            this.applicationEvents[eventName].push(eventCallback);
+        }
+
+    },
+
+    /**
+     * @public
+     *
+     * Removes all events listeners for given @eventName
+     *
+     * If event with given name not exists, then throws error
+     *
+     * @param eventName
+     */
+    destroy: function (eventName) {
+
+        if (Util.isNull(this.applicationEvents[eventName])) {
+            Errors.throwError(Errors.messages.APPLICATION_EVENT_NOT_EXIST, [eventName]);
+        }
+
+        this.applicationEvents[eventName] = [];
+
     }
 
-    localStorage.setItem(paramName, paramObject);
+}package spike.core;
 
+import Log from spike.core.Log;
+import Reconcile from spike.core.Reconcile;
+import Events from spike.core.Events;
+
+static class Reconcile {
+
+ restrictedAttributes: [],
+
+ constructRestrictedAttributes: function(){
+
+   //Reconcile.restrictedAttributes = ['spike-unbinded', 'spike-binded'];
+
+//   for(var i = 0; i < Events.allowedEvents.length; i++){
+//     Reconcile.restrictedAttributes.push('spike-event-'+Events.allowedEvents[i]);
+//     Reconcile.restrictedAttributes.push('spike-event-'+Events.allowedEvents[i]+'-link');
+//   }
+
+ },
+
+ escape: function (s) {
+    var n = s;
+    n = n.replace(/&/g, '&amp;');
+    n = n.replace(/</g, '&lt;');
+    n = n.replace(/>/g, '&gt;');
+    n = n.replace(/"/g, '&quot;');
+
+    return n;
   },
 
-  get: function(paramName){
+  mapElements: function (nodes) {
+    var map = {};
+    var tags = {};
+    var node;
 
-    var value = localStorage.getItem(paramName);
+    var indices = [];
+    for (var i = 0, len = nodes.length; i < len; i++) {
+      node = nodes[i];
+      var id = spike.core.Reconcile.generateId(node, tags);
+      map[id] = node;
+      node._i = i;
+      node._id = id;
+      indices.push(i);
+    }
 
-    if(!Util.isEmpty(value)){
+    return {'map': map, 'indices': indices};
+  },
 
-      value = value.trim();
+  generateId: function (node, tags) {
+    // get the tag or create one from the other node types
+    var tag = (node.tagName) ? node.tagName : 'x' + node.nodeType;
 
-      if(value[0] == '{' || value[0] == '['){
-        value = JSON.parse(value);
-      }else if(value == 'true'){
-        value = true;
-      }else if(value == 'false'){
-        value = false;
+    // set the counter to zero
+    if (!tags[tag]) {
+      tags[tag] = 0;
+    }
+
+    // increment the counter for that tag
+    tags[tag]++;
+
+    return tag + tags[tag];
+  },
+
+  generateMoves: function (map, nodes, indices, base, reverse, index) {
+    var moves = [];
+    var compare = [];
+    var operateMap = {};
+    var tags = {};
+
+    // iterate over the nodes and base nodes in the given order
+    for (var i = 0, len = nodes.length; i < len; i++) {
+      var node = nodes[reverse ? (nodes.length - i - 1) : i],
+        bound = base.childNodes[reverse ? (base.childNodes.length - indices[i] - 1) : indices[i]],
+        id = spike.core.Reconcile.generateId(node, tags);
+
+      // skip if force no change
+      if (node.attributes && node.hasAttribute('assume-no-change')) {
+        continue;
       }
 
-      return value;
+      // skip if we already performed an insertion map
+      if (operateMap[id]) {
+        continue;
+      }
 
+      // check if the node has an id
+      // if it exists in the base map, then move that node to the correct
+      // position, this will usually be the same node, which means no dom move
+      // is necessary, otherwise clone the node from the source (new inserts)
+      var existing = map[id];
+      if (existing) {
+        if (existing !== bound) {
+          var relativeBaseIndex = (reverse ? base.childNodes.length - existing._i - 1 : existing._i);
+          moves.push({
+            'action': 'moveChildElement',
+            'element': existing,
+            'baseIndex': index + '>' + relativeBaseIndex,
+            'sourceIndex': index + '>' + i
+          });
+
+          // move the index so we can retrieve the next appropriate node
+          indices.splice(i, 0, indices.splice(relativeBaseIndex, 1)[0]);
+        }
+        if (!node.isEqualNode(existing)) {
+          compare.push([node, existing]);
+        }
+      } else {
+        var inserted = node.cloneNode(true);
+        var relativeBaseIndex = (reverse ? nodes.length - i - 1 : i);
+        moves.push({
+          'action': 'insertChildElement',
+          'element': inserted,
+          'baseIndex': index + '>' + relativeBaseIndex,
+          'sourceIndex': index + '>' + relativeBaseIndex
+        });
+      }
+      operateMap[id] = true;
     }
 
-    return null;
+    // Remove any tail nodes in the base
+    for (var i = 0, len = base.childNodes.length; i < len; i++) {
+      var remove = base.childNodes[i];
+      var removeId = remove._id;
+      if (base.childNodes[i].attributes && base.childNodes[i].hasAttribute('assume-no-change')) {
+        continue;
+      }
+      if (!operateMap[removeId]) {
+        moves.push({
+          'action': 'removeChildElement',
+          'element': remove,
+          'baseIndex': index + '>' + remove._i,
+          'sourceIndex': null
+        });
+      }
+    }
 
+    return {'compare': compare, 'diff': moves};
   },
 
-  remove: function(paramName){
-    localStorage.removeItem(paramName);
-  }
+  diffString: function (source, base, index, baseElement) {
 
-}package app.service.common;
+    var o = base == "" ? [] : base.split(/\s+/);
+    var n = source == "" ? [] : source.split(/\s+/);
+    var ns = new Object();
+    var os = new Object();
 
-static class Utils {
+    for (var i = 0; i < n.length; i++) {
+      if (ns[n[i]] == null)
+        ns[n[i]] = {
+          rows: new Array(),
+          o: null
+        };
+      ns[n[i]].rows.push(i);
+    }
 
-    formatDate: function (date, format, allowNumsWithoutZero) {
+    for (var i = 0; i < o.length; i++) {
+      if (os[o[i]] == null)
+        os[o[i]] = {
+          rows: new Array(),
+          n: null
+        };
+      os[o[i]].rows.push(i);
+    }
 
-            if (typeof date == 'number') {
-                date = new Date(date);
+    for (var i in ns) {
+      if (ns[i].rows.length == 1 && typeof(os[i]) != "undefined" && os[i].rows.length == 1) {
+        n[ns[i].rows[0]] = {
+          text: n[ns[i].rows[0]],
+          row: os[i].rows[0]
+        };
+        o[os[i].rows[0]] = {
+          text: o[os[i].rows[0]],
+          row: ns[i].rows[0]
+        };
+      }
+    }
+
+    for (var i = 0; i < n.length - 1; i++) {
+      if (n[i].text != null && n[i + 1].text == null && n[i].row + 1 < o.length && o[n[i].row + 1].text == null &&
+        n[i + 1] == o[n[i].row + 1]) {
+        n[i + 1] = {
+          text: n[i + 1],
+          row: n[i].row + 1
+        };
+        o[n[i].row + 1] = {
+          text: o[n[i].row + 1],
+          row: i + 1
+        };
+      }
+    }
+
+    for (var i = n.length - 1; i > 0; i--) {
+      if (n[i].text != null && n[i - 1].text == null && n[i].row > 0 && o[n[i].row - 1].text == null &&
+        n[i - 1] == o[n[i].row - 1]) {
+        n[i - 1] = {
+          text: n[i - 1],
+          row: n[i].row - 1
+        };
+        o[n[i].row - 1] = {
+          text: o[n[i].row - 1],
+          row: i - 1
+        };
+      }
+    }
+
+    var oSpace = base.match(/\s+/g);
+    if (oSpace == null) {
+      oSpace = [''];
+    } else {
+      oSpace.push('');
+    }
+    var nSpace = source.match(/\s+/g);
+    if (nSpace == null) {
+      nSpace = [''];
+    } else {
+      nSpace.push('');
+    }
+
+    var changes = [];
+    var baseIndex = 0;
+    if (n.length == 0) {
+      var deletedText = '';
+      for (var i = 0; i < o.length; i++) {
+        deletedText += o[i] + oSpace[i];
+        baseIndex += o[i].length + oSpace[i].length;
+      }
+      if (o.length > 0) {
+        changes.push({
+          'action': 'deleteText',
+          'element': baseElement,
+          'baseIndex': index,
+          'sourceIndex': index,
+          '_textStart': 0,
+          '_textEnd': baseIndex,
+          '_deleted': deletedText,
+          '_length': deletedText.length
+        });
+      }
+    } else {
+      var current = null;
+      if (n[0].text == null) {
+        for (var i = 0; i < o.length; i++) {
+          if (o[i].text != null) {
+            if (current != null) {
+              changes.push(current);
             }
+            current = null;
+            continue;
+          }
 
-            var minutes = (date.getMinutes() < 10 && !allowNumsWithoutZero ? '0' : '') + date.getMinutes();
-            var seconds = (date.getSeconds() < 10 && !allowNumsWithoutZero ? '0' : '') + date.getSeconds();
-            var hours = (date.getHours() < 10 && !allowNumsWithoutZero ? '0' : '') + date.getHours();
-            var day = (date.getDate() < 10 && !allowNumsWithoutZero ? '0' : '') + date.getDate();
-            var month = (date.getMonth() < 9 && !allowNumsWithoutZero ? '0' : '') + (date.getMonth() + 1);
-            var year = (1900 + date.getYear());
+          if (current == null) {
+            current = {
+              'action': 'deleteText',
+              'element': baseElement,
+              'baseIndex': index,
+              'sourceIndex': index,
+              '_textStart': baseIndex,
+              '_textEnd': 0,
+              '_deleted': '',
+              '_length': 0
+            };
+          }
 
-            format = format.replace('dd', day);
-            format = format.replace('MM', month);
-            format = format.replace('yyyy', year);
-            format = format.replace('HH', hours);
-            format = format.replace('mm', minutes);
-            format = format.replace('ss', seconds);
-
-            return format;
-    },
-
-
-    formatNumber: function (number, format) {
-
-        var isDecimal = format.indexOf('#.') > -1;
-
-        if (typeof number == 'string') {
-            number = parseFloat(number);
+          // update the current deletion parameters
+          current['_deleted'] += o[i] + oSpace[i];
+          current['_length'] = current['_deleted'].length;
+          baseIndex += current['_length'];
+          current['_textEnd'] = baseIndex;
         }
 
-        if (isDecimal) {
-            var decimalPlaces = format.substring(format.indexOf('.') + 1, format.length).length;
+        if (current != null) {
+          changes.push(current);
+          current = null;
+        }
+      }
 
-            number = number.toFixed(decimalPlaces);
+      var k = 0;
+      for (var i = 0; i < n.length; i++) {
+        if (n[i].text == null) {
+
+          // ensure that previous changes are added to the changeset if
+          // they happen to differ from an expected insertion below
+          if (current != null && current['action'] === 'deleteText') {
+            changes.push(current);
+            current = null;
+          }
+
+          if (current == null) {
+            current = {
+              'action': 'insertText',
+              'element': baseElement,
+              'baseIndex': index,
+              'sourceIndex': index,
+              '_textStart': baseIndex,
+              '_textEnd': 0,
+              '_inserted': '',
+              '_length': 0
+            };
+          }
+
+          // update the current insertion parameters
+          current['_inserted'] += n[i] + nSpace[i];
+          current['_length'] = current['_inserted'].length;
+          baseIndex += current['_length'];
+          current['_textEnd'] = baseIndex;
 
         } else {
-            number = Math.round(number);
+          baseIndex += n[i].text.length + nSpace[i].length;
+          // edge case for white space insertions
+          if (n[k].text == null) {
+            continue;
+          }
+          for (k = n[k].row + 1; k < o.length && o[k].text == null; k++) {
+            // ensure that the previous changes are added to the changeset
+            if (current != null && current['action'] === 'insertText') {
+              changes.push(current);
+              current = null;
+            }
+
+            if (current == null) {
+              current = {
+                'action': 'deleteText',
+                'element': baseElement,
+                'baseIndex': index,
+                'sourceIndex': index,
+                '_textStart': baseIndex,
+                '_textEnd': 0,
+                '_deleted': '',
+                '_length': 0
+              };
+            }
+
+            // update the current insertion parameters
+            current['_deleted'] += o[k] + oSpace[k];
+            current['_length'] = current['_deleted'].length;
+            baseIndex += current['_length'];
+            current['_textEnd'] = baseIndex;
+          }
         }
+      }
 
-        return number;
-
+      // ensure that remaining changes are pushed to the changeset
+      if (current != null) {
+        changes.push(current);
+        current = null;
+      }
     }
 
-}package app.service.dictionaries;
+    return changes;
+  },
 
-import Log from spike.core.Log;
-import Rest from spike.core.Rest;
-import MultiRequest from spike.core.MultiRequest;
+  mapStyleValues: function (styleString) {
+    // remove comments, find key-value pairs outside of quoted semicolon delimited
+    var attrs = styleString ? styleString.replace(/\/\*.*\*\//g, '')
+        .split(/;(?=(?:[^'"]*['"][^'"]*['"])*[^'"]*$)/)
+      : [];
+    var map = {};
+    for (var i = 0; i < attrs.length; i++) {
+      var item = attrs[i].trim();
+      if (!item) {
+        continue;
+      }
+      var index = item.indexOf(':');
+      var name = item.slice(0, index).trim();
+      var value = item.slice(index + 1).trim();
+      if (name.length === 0 || value.length === 0) {
+        continue;
+      }
+      map[name] = value;
+    }
+    return map;
+  },
 
-class DictionariesLoader {
+  diffStyleString: function (source, base, index, baseElement) {
+    var diffActions = [];
 
-    ready: false,
-    dictionariesList: [],
-
-    DictionariesLoader: function () {
-    },
-
-    load: function(){
-
-        var loadersList = [];
-
-        for(var dictionaryName in $this.dictionariesList){
-
-            if($this.dictionariesList[dictionaryName] === undefined){
-                throw new Error($this.getClass()+' Dictionary path not declared');
-            }
-
-          loadersList.push(Rest.get($this.dictionariesList[dictionaryName], {
-            alias: dictionaryName
-          }));
-
-        }
-
-        return new MultiRequest(loadersList).always(function(responses){
-
-            for(var i = 0; i < responses.length; i++){
-
-                $this[responses[i].alias] = responses[i].responseJSON ? responses[i].responseJSON : null;
-
-            }
-
+    // map both source and base style strings to determine
+    // whether a change was made or a new style value exists
+    var sourceMap = spike.core.Reconcile.mapStyleValues(source);
+    var baseMap = spike.core.Reconcile.mapStyleValues(base);
+    for (var k in sourceMap) {
+      var sourceVal = sourceMap[k];
+      var baseVal = baseMap[k];
+      if (sourceVal != baseVal) {
+        diffActions.push({
+          'action': 'setStyleValue',
+          'name': k,
+          'element': baseElement,
+          'baseIndex': index,
+          'sourceIndex': index,
+          '_deleted': baseVal,
+          '_inserted': sourceVal
         });
-
+      }
     }
 
-}package app.service.dictionaries;
+    // remove style values which were unset in the source string
+    for (var k in baseMap) {
+      if (sourceMap[k] == null) {
+        diffActions.push({
+          'action': 'removeStyleValue',
+          'name': k,
+          'element': baseElement,
+          'baseIndex': index,
+          'sourceIndex': index,
+          '_deleted': baseMap[k]
+        });
+      }
+    }
 
-import Log from spike.core.Log;
-import GeneralDictionaries from app.service.dictionaries.loaders.GeneralDictionaries;
-import CmsDictionaries from app.service.dictionaries.loaders.CmsDictionaries;
-import OffersDictionaries from app.service.dictionaries.loaders.OffersDictionaries;
-import MultiRequest from spike.core.MultiRequest;
-import Config from app.Config;
-import Storage from app.service.common.Storage;
+    return diffActions;
+  },
 
-static class DictionariesManager {
+  diff: function (source, base, index) {
+    var diffActions = [];
+    if (index == null) {
+      index = '0'; // 0 for root node
+    }
+    // if the source and base is either a text node or a comment node,
+    // then we can simply say the difference is their text content
+    if (source.nodeType === base.nodeType && (source.nodeType === 3 || source.nodeType === 8)) {
+      if (base.nodeValue !== source.nodeValue) {
+        var textActions = spike.core.Reconcile.diffString(source.nodeValue, base.nodeValue, index, base);
+        if (textActions.length > 0) {
+          diffActions = diffActions.concat(textActions);
+        }
+      }
 
-    dictionariesLoaded: false,
+      return diffActions;
+    }
 
-    dictionaries: {
-        generalDictionaries: null,
-        cmsDictionaries: null,
-        offersDictionaries: null
-    },
+    // look for differences between the nodes by their attributes
+    if (source.attributes && base.attributes) {
+      var attributes = source.attributes,
+        value,
+        name;
 
-    saveDictionaries: function(){
+      // iterate over the source attributes that we want to copy over to the new base node
+      for (var i = attributes.length; i--;) {
+        value = attributes[i].nodeValue;
+        name = attributes[i].nodeName;
 
-        for(var dictionaryName in $this.dictionaries){
-            Storage.set('__dictionary_'+dictionaryName, $this.dictionaries[dictionaryName]);
+        if(Reconcile.restrictedAttributes.indexOf(name) > -1){
+            continue;
         }
 
-    },
+        var val = base.getAttribute(name);
+        if (val !== value) {
+          if (val == null) {
 
-    loadDictionariesFromCache: function(){
+             diffActions.push({
+                  'action': 'setAttribute',
+                  'name': name,
+                  'element': base,
+                  'baseIndex': index,
+                  'sourceIndex': index,
+                  '_inserted': value
+                });
 
-        var counter = 0;
-        for(var dictionaryName in $this.dictionaries){
+          } else {
+            // if the attribute happens to be a style
+            // only generate style Updates
+            if (name === 'style') {
+              var styleChanges = spike.core.Reconcile.diffStyleString(value, val, index, base);
+              if (styleChanges.length > 0) {
+                diffActions = diffActions.concat(styleChanges);
+              }
+            } else {
+              diffActions.push({
+                'action': 'setAttribute',
+                'name': name,
+                'element': base,
+                'baseIndex': index,
+                'sourceIndex': index,
+                '_deleted': val,
+                '_inserted': value
+              });
+            }
+          }
+        }
+      }
 
-            var dictionaries = Storage.get('__dictionary_'+dictionaryName);
-            if(dictionaries == null){
-                break;
-            }else{
-                $this.dictionaries[dictionaryName] = dictionaries;
-                counter++;
+      // iterate over attributes to remove that the source no longer has
+      attributes = base.attributes;
+      for (var i = attributes.length; i--;) {
+        name = attributes[i].nodeName;
+
+        if(Reconcile.restrictedAttributes.indexOf(name) > -1){
+            continue;
+        }
+
+        if (source.getAttribute(name) === null) {
+          diffActions.push({
+            'action': 'removeAttribute',
+            'name': name,
+            'baseIndex': index,
+            'sourceIndex': index,
+            '_deleted': attributes[i].nodeValue
+          });
+        }
+      }
+    }
+
+    // insert, delete, and move child nodes based on a predictable id
+    var compare = [];
+    if (source.childNodes && base.childNodes) {
+      var mapResult = spike.core.Reconcile.mapElements(base.childNodes),
+        nodes = source.childNodes;
+
+      var map = mapResult['map'];
+      var indices = mapResult['indices'];
+
+      var moves = spike.core.Reconcile.generateMoves(map, nodes, indices.slice(0), base, false, index);
+      if (moves['diff'].length > 1) {
+        var backwardMoves = spike.core.Reconcile.generateMoves(map, nodes, indices.slice(0), base, true, index);
+        if (backwardMoves['diff'].length < moves['diff'].length) {
+          moves = backwardMoves;
+        }
+      }
+      diffActions = diffActions.concat(moves['diff']);
+      compare = moves['compare'];
+    }
+
+    // at this point we should have child nodes of equal length
+    if (compare.length > 0) {
+      for (var i = 0, len = compare.length; i < len; i++) {
+        var sourceChildNode = compare[i][0];
+        var baseChildNode = compare[i][1];
+
+        // perform the diff between the given source and base child nodes
+        var childDiffs = spike.core.Reconcile.diff(
+          sourceChildNode,
+          baseChildNode, index + '>' +
+          baseChildNode._i);
+
+        // if there was any difference, concat those to our existing actions
+        if (childDiffs.length > 0) {
+          diffActions = diffActions.concat(childDiffs);
+        }
+
+        // remove temporary data stored on the node
+        delete baseChildNode._i;
+        delete baseChildNode._id;
+      }
+    }
+
+    return diffActions;
+  },
+
+  sortChange: function (a, b) {
+    if (a['sourceIndex'] === b['sourceIndex']) {
+      if (a['_textStart'] && b['_textStart']) {
+        return (a['_textStart'] > b['_textStart']) ? 1 : -1;
+      }
+      return 0;
+    } else if (!a['sourceIndex'] && b['sourceIndex']) {
+      return -1;
+    } else if (a['sourceIndex'] && !b['sourceIndex']) {
+      return 1;
+    }
+    var aIndices = a['sourceIndex'].split('>');
+    var bIndices = b['sourceIndex'].split('>');
+    var equal = true;
+    var i = 0;
+    while (equal && i < aIndices.length && i < bIndices.length) {
+      var aN = parseInt(aIndices[i], 10);
+      var bN = parseInt(bIndices[i], 10);
+      if (aN === bN) {
+        i++;
+        continue;
+      } else if (isNaN(aN) || isNaN(bN)) {
+        return isNaN(aN) ? 1 : -1;
+      } else {
+        return (aN > bN) ? 1 : -1;
+      }
+    }
+
+    return 0;
+  },
+
+  findChildAtIndex: function (node, index) {
+    if (!index || !node.childNodes || node.childNodes.length === 0) {
+      return null;
+    }
+
+    var result = {};
+    var indices = index.split('>');
+    var found = true;
+    var lastParentIndex = '';
+    for (var i = 1, len = indices.length; i < len; i++) {
+      var nodeIndex = parseInt(indices[i], 10);
+      if (node.childNodes && node.childNodes.length > nodeIndex) {
+        node = node.childNodes[nodeIndex];
+      } else {
+        lastParentIndex = indices.slice(0, i - 1).join('>');
+        found = false;
+        break;
+      }
+    }
+
+    result['lastParent'] = found ? node.parentNode : node;
+    result['lastParentIndex'] = found ? index.slice(0, index.lastIndexOf('>')) : lastParentIndex;
+    result['node'] = found ? node : null;
+    result['found'] = found;
+    return result;
+  },
+
+  apply: function (changes, base, force, showChanges) {
+    // a patch contains a list of changes to be made to a given element
+    var unapplied = [];
+    var moves = [];
+    var removals = [];
+    var conflictChanges = [];
+    var textChanges = {};
+    var styleChanges = {};
+    for (var c = 0, cLen = changes.length; c < cLen; c++) {
+      var change = changes[c];
+      var action = change['action'];
+      var baseIndex = change['baseIndex'];
+      var sourceIndex = change['sourceIndex'];
+      var baseReference = change['_baseReference'];
+      var sourceReference = change['_sourceReference'];
+
+      if (change['_conflict'] && !force) {
+        change['_baseReference'] = spike.core.Reconcile.findChildAtIndex(base, baseIndex);
+        if (sourceIndex && baseIndex !== sourceIndex) {
+          change['_sourceReference'] = spike.core.Reconcile.findChildAtIndex(base, sourceIndex);
+        }
+        conflictChanges.push(change);
+        continue;
+      }
+
+      // find the index from the base element
+      // this is done using a binary index
+      // where 10 is effectively first child element > first child element
+      var node = null;
+      var findBaseChildResult = baseReference;
+      if (findBaseChildResult == null) {
+        findBaseChildResult = spike.core.Reconcile.findChildAtIndex(base, baseIndex);
+        if (findBaseChildResult == null) {
+          unapplied.push(change);
+          continue;
+        }
+      }
+
+      var node = findBaseChildResult['node'];
+      if (!findBaseChildResult['found']) {
+        // if we were going to append the element to the base, then
+        // do so now, for the given changset to be applied
+        if (action === 'insertChildElement') {
+          var lastParent = findBaseChildResult['lastParent'];
+          var insertion = change['element'];
+          if (showChanges) {
+            var insNode = document.createElement('ins');
+            ins.appendChild(insertion);
+            insertion = ins;
+          }
+          moves.push({
+            'parent': lastParent,
+            'insertion': insertion,
+            'source': null,
+            'change': change,
+            'appendOnly': false
+          });
+        } else {
+          unapplied.push(change);
+        }
+        continue;
+      }
+
+      // if we couldn't find the base index node, apply the insert if it
+      // is an appending insert, otherwise, do not apply the change
+      if (node === null) {
+        continue;
+      }
+
+      if (action === 'moveChildElement' || action === 'insertChildElement') {
+        // locate the source index from the base node
+        var sourceNode = node;
+        if (sourceIndex !== baseIndex) {
+          var findSourceChildResult = sourceReference;
+          if (findSourceChildResult == null) {
+            findSourceChildResult = spike.core.Reconcile.findChildAtIndex(base, sourceIndex);
+          }
+          sourceNode = findSourceChildResult !== null ? findSourceChildResult['node'] : null;
+        }
+
+        // a move that is prior to a given source element
+        if (action === 'moveChildElement') {
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': node,
+            'source': sourceNode,
+            'change': change,
+            'appendOnly': false
+          });
+        } else {
+          var insertion = change['element'];
+          if (showChanges) {
+            var insNode = document.createElement('ins');
+            insNode.appendChild(insertion);
+            insertion = insNode;
+          }
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': insertion,
+            'source': sourceNode,
+            'change': change,
+            'appendOnly': false
+          });
+        }
+
+      } else if (action === 'removeChildElement') {
+        if (showChanges) {
+          var delNode = document.createElement('del');
+          delNode.appendChild(node.cloneNode(true));
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': delNode,
+            'source': null,
+            'change': change,
+            'appendOnly': true
+          });
+        }
+        removals.push([node.parentNode, node]);
+      } else if (action === 'deleteText' || action === 'insertText' ||
+        action === 'setStyleValue' || action === 'removeStyleValue') {
+        // all text changes need to be grouped into a
+        // single action, this helps us apply a single set of
+        // operations to the same text node without too much trouble
+        var existingOp = textChanges[change['baseIndex']];
+        if (!existingOp) {
+          existingOp = {
+            'parent': node.parentNode,
+            'source': node,
+            'changes': []
+          };
+        }
+
+        existingOp['changes'].push(change);
+        if (action === 'insertText' || action === 'deleteText') {
+          textChanges[change['baseIndex']] = existingOp;
+        } else {
+          styleChanges[change['baseIndex']] = existingOp;
+        }
+      } else if (action === 'replaceText') {
+        if (!showChanges) {
+          node.nodeValue = change['_inserted'];
+        } else {
+          var deletionNode = document.createElement('del');
+          deletionNode.appendChild(document.createTextNode(change['_deleted']));
+          var insertionNode = document.createElement('ins');
+          insertionNode.appendChild(document.createTextNode(change['_inserted']));
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': deletionNode,
+            'source': node,
+            'change': change,
+            'appendOnly': false
+          });
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': insertionNode,
+            'source': node,
+            'change': change,
+            'appendOnly': false
+          });
+          node.nodeValue = '';
+        }
+      } else if (action === 'setAttribute') {
+        node.setAttribute(change['name'], change['_inserted']);
+      } else if (action === 'removeAttribute') {
+        node.removeAttribute(change['name']);
+      }
+    }
+
+    // perform the moves/insertions last by first sorting the changeset
+    moves.sort(function (a, b) {
+      return spike.core.Reconcile.sortChange(a['change'], b['change']);
+    });
+    for (var i = 0, len = moves.length; i < len; i++) {
+      var move = moves[i];
+      var parent = move['parent'],
+        insertion = move['insertion'],
+        source = move['source'],
+        change = move['change'],
+        appendOnly = move['appendOnly'];
+
+      // if this was an append, then find out the approximate index it should be at
+      // based on the relative index of the change itself, if this is still
+      // null, then just append the item altogether, typically this will
+      // only matter when we are forcing the insertion to happen on conflict resolve
+      if (source === null && !appendOnly) {
+        var sourceIndex = change['sourceIndex'];
+        if (sourceIndex) {
+          var lastIndexStr = sourceIndex.substr(sourceIndex.lastIndexOf('>') + 1, sourceIndex.length);
+          var childIndex = parseInt(lastIndexStr, 10);
+          if (parent.childNodes && parent.childNodes.length > childIndex) {
+            source = parent.childNodes[childIndex];
+          }
+        }
+      }
+      parent.insertBefore(insertion, source);
+    }
+
+    // execute all removal changes
+    for (var i = 0; i < removals.length; i++) {
+      var removal = removals[i];
+      removal[0].removeChild(removal[1]);
+    }
+
+    // execute all text changes
+    for (var b in textChanges) {
+      var nodeChanges = textChanges[b];
+      var node = nodeChanges['source'];
+      var value = node.nodeValue;
+      var nodeOps = nodeChanges['changes'];
+      nodeOps.sort(function (a, b) {
+        return a['_textStart'] > b['_textStart'] ? 1 : -1;
+      });
+      var newStr = '';
+      var valueIndex = 0;
+      for (var i = 0; i < nodeOps.length; i++) {
+        var op = nodeOps[i];
+        if (op['action'] === 'insertText') {
+          newStr += value.substr(valueIndex, op['_textStart']);
+          if (showChanges) {
+            newStr += '<ins>' + spike.core.Reconcile.escape(op['_inserted']) + '</ins>';
+          } else {
+            newStr += op['_inserted'];
+          }
+          if (valueIndex === op['_textStart']) {
+            newStr += value.substr(valueIndex, op['_textEnd']);
+          }
+        } else {
+          newStr += value.substr(valueIndex, op['_textStart']);
+          if (!!showChanges) {
+            newStr += ('<del>' + spike.core.Reconcile.escape(op['_deleted']) + '</del>');
+          }
+        }
+        valueIndex = op['_textEnd'];
+      }
+      newStr += value.substr(valueIndex);
+
+      if (!showChanges) {
+        node.nodeValue = newStr;
+      } else {
+        node.innerHTML = newStr;
+      }
+    }
+
+    // execute all style changes
+    for (var b in styleChanges) {
+      var nodeChanges = styleChanges[b];
+      var node = nodeChanges['source'];
+      var nodeOps = nodeChanges['changes'];
+
+      // generate a map and perform the operations
+      var styleMap = spike.core.Reconcile.mapStyleValues(node.getAttribute('style'));
+      for (var i = 0; i < nodeOps.length; i++) {
+        var op = nodeOps[i];
+        if (op['action'] === 'setStyleValue') {
+          styleMap[op['name']] = op['_inserted'];
+        } else {
+          delete styleMap[op['name']];
+        }
+      }
+
+      // generate the style string result
+      var str = [];
+      for (var k in styleMap) {
+        str.push(k + ': ' + styleMap[k]);
+      }
+
+      // perform the single update to invalidate css styles
+      if (str.length > 0) {
+        node.setAttribute('style', str.join(';') + (str.length === 1 ? ';' : ''));
+      } else {
+        node.removeAttribute('style');
+      }
+    }
+
+    // loop through the conflicts and group them by theirs/mine
+    var conflicts = [];
+    while (conflictChanges.length > 0) {
+      var change = conflictChanges.pop();
+      var conflict = {
+        'mine': [],
+        'theirs': []
+      };
+      conflict[change['_owner']].push(change);
+      if (change['_conflictedWith']) {
+        var conflictedWithChange = change['_conflictedWith'];
+        if (conflictedWithChange) {
+          // iterate over the changes that 'change' is conflicted with
+          for (var k = 0; k < conflictedWithChange.length; k++) {
+            var conflictedWithItem = conflictedWithChange[k];
+            var i = conflictChanges.indexOf(conflictedWithItem);
+            if (i > -1) {
+              conflictChanges.splice(i, 1);
+              conflict[conflictedWithItem['_owner']].push(conflictedWithItem);
+            }
+            // iterate over the changes that 'conflictedWithItem' is conflicted with
+            if (conflictedWithItem['_conflictedWith']) {
+              for (var s = 0; s < conflictedWithItem['_conflictedWith'].length; s++) {
+                var item = conflictedWithItem['_conflictedWith'][s];
+                var i = conflictChanges.indexOf(item);
+                if (i > -1) {
+                  conflictChanges.splice(i, 1);
+                  conflict[item['_owner']].push(item);
+                }
+
+                delete item['_conflictedWith'];
+              }
             }
 
+            delete conflictedWithItem['_conflictedWith'];
+          }
+
+          // remove temporary reference, since we no longer need it
+          delete change['_conflictedWith'];
         }
-
-        if(counter === Object.keys($this.dictionaries).length){
-            $this.dictionariesLoaded = true;
-        }
-
-    },
-
-    loadDictionaries: function() {
-
-        $this.dictionaries.generalDictionaries = new GeneralDictionaries();
-        $this.dictionaries.cmsDictionaries = new CmsDictionaries();
-        $this.dictionaries.offersDictionaries = new OffersDictionaries();
-
-        $this.loadDictionariesFromCache();
-
-        if($this.dictionariesLoaded === false){
-
-            var loadersPromises = [
-                 $this.dictionaries.generalDictionaries.load(),
-                 $this.dictionaries.cmsDictionaries.load(),
-                 $this.dictionaries.offersDictionaries.load()
-            ];
-
-            new MultiRequest(loadersPromises).always(function(responses){
-                $this.saveDictionaries();
-                $this.dictionariesLoaded = true;
-            });
-
-        }
-
-
-    },
-
-}package app.service.dictionaries.loaders;
-
-import Log from spike.core.Log;
-import Dictionaries from app.enums.api.Dictionaries;
-import DictionariesLoader from app.service.dictionaries.DictionariesLoader;
-
-class CmsDictionaries extends DictionariesLoader {
-
-    @object
-    cmsCommentsStatuses: null,
-
-    dictionariesList: {
-        cmsCommentsStatuses: Dictionaries.get.cmsCommentsStatuses
+      }
+      conflicts.push(conflict);
     }
 
-}package app.service.dictionaries.loaders;
-
-import Log from spike.core.Log;
-import Dictionaries from app.enums.api.Dictionaries;
-import DictionariesLoader from app.service.dictionaries.DictionariesLoader;
-
-class GeneralDictionaries extends DictionariesLoader {
-
-  @object
-  adminRoles: null,
-
-  @object
-  privilegeStatuses: null,
-
-  @object
-  queryStatuses: null,
-
-  @object
-  betSlipCombinationStatuses: null,
-
-  @object
-  betSlipRegMethods: null,
-
-  @object
-  eventsTypes: null,
-
-  @object
-  transactionsTypes: null,
-
-  @object
-  transactionsTypeSwitches: null,
-
-  dictionariesList: {
-    adminRoles: Dictionaries.get.adminRoles,
-    privilegeStatuses: Dictionaries.get.privilegeStatuses,
-    queryStatuses: Dictionaries.get.queryStatuses,
-    betSlipCombinationStatuses: Dictionaries.get.betSlipCombinationStatuses,
-    betSlipRegMethods: Dictionaries.get.betSlipRegMethods,
-    eventsTypes: Dictionaries.get.eventsTypes,
-    transactionsTypes: Dictionaries.get.transactionsTypes,
-    transactionsTypeSwitches: Dictionaries.get.transactionsTypeSwitches
+    return {'unapplied': unapplied, 'conflicts': conflicts};
   }
 
-}package app.service.dictionaries.loaders;
+}
+package spike.core;
 
+import Assembler from spike.core.Assembler;
 import Log from spike.core.Log;
-import Dictionaries from app.enums.api.Dictionaries;
-import DictionariesLoader from app.service.dictionaries.DictionariesLoader;
+import Util from spike.core.Util;
+import Reconcile from spike.core.Reconcile;
+import Events from spike.core.Events;
+import Router from spike.core.Router;
+import Templates from spike.core.Templates;
 
-class OffersDictionaries extends DictionariesLoader {
+static class Watchers {
 
-    @object
-    offerDefinitionStatuses: null,
+    compileWatchers: function(scope){
 
-    @object
-    offerTypes: null,
+        var watcherHtml = Templates.compileTemplate(scope, scope.templatePath);
+        var element = scope.rootSelector();
 
-    @object
-    offerAssignConditions: null,
+        if(Util.hashString(watcherHtml) !== Util.hashString(element.outerHTML)){
+            $this.replaceChangedElements(scope, watcherHtml, element);
+        }
 
-    @object
-    offerWithdrawLockTypes: null,
+    },
 
-    @object
-    offerCachbackCalculationTypes: null,
+    replaceChangedElements: function(scope, watcherHtml, currentElement){
 
-    @object
-    offerCachbackProgressiveCachbackTypes: null,
+        var elementInDocument = getElementById(getSpikeId(currentElement));
 
-    dictionariesList: {
-        offerDefinitionStatuses: Dictionaries.get.offerDefinitionStatuses,
-        offerTypes: Dictionaries.get.offerTypes,
-        offerAssignConditions: Dictionaries.get.offerAssignConditions,
-        offerWithdrawLockTypes: Dictionaries.get.offerWithdrawLockTypes,
-        offerCachbackCalculationTypes: Dictionaries.get.offerCachbackCalculationTypes,
-        offerCachbackProgressiveCachbackTypes: Dictionaries.get.offerCachbackProgressiveCachbackTypes,
+        var watcherVirtual = document.createElement('div');
+        watcherVirtual.innerHTML = watcherHtml;
+
+        if(currentElement.outerHTML !== watcherHtml){
+
+            var changes = Reconcile.diff(watcherVirtual.firstChild, currentElement);
+
+            if(changes.length > 0){
+                Reconcile.apply(changes, elementInDocument);
+            }
+
+        }
+
+    },
+
+
+    @map
+    scopes: {},
+
+    @map
+    observables: {},
+
+    @array
+    observablesArr: [],
+
+    @boolean
+    stopLoop: false,
+
+    observe: function(scope){
+        this.stopLoop = true;
+        this.observables[scope.elementId] = scope;
+        this.createObservablesList();
+        this.stopLoop = false;
+    },
+
+    unobservable: function(scope){
+       this.stopLoop = true;
+       this.observables[scope.elementId] = null;
+       this.createObservablesList();
+       this.stopLoop = false;
+    },
+
+    createObservablesList: function(){
+
+        var list = [];
+        for(var elementId in this.observables){
+
+            if(this.observables[elementId] !== undefined && this.observables[elementId] !== null){
+             list.push(this.observables[elementId]);
+            }
+
+        }
+
+        $this.observablesArr = list;
+
+    },
+
+    excludedProperties: {
+        //'childElements' : 'childElements',
+        'eventsSelectors': 'eventsSelectors',
+        'linksSelectors': 'linksSelectors',
+        'compiledHtml': 'compiledHtml',
+        'elementSelector': 'elementSelector',
+        'templatePath': 'templatePath',
+        'selector': 'selector',
+        '__proto__': '__proto__',
+        'selector':'selector',
+        'exclusion':'exclusion'
+    },
+
+    getScopeCopy: function(scope){
+
+        var copy = {};
+        for(var key in scope) {
+            if(typeof scope[key] !== 'function'){
+
+                if($this.excludedProperties[key] === undefined){
+                  copy[key] = scope[key];
+                }
+
+            }
+        }
+
+        scope.watchExclusion = scope.watchExclusion || [];
+        for(var i = 0; i < scope.watchExclusion.length; i++){
+           new Function("copy", "copy."+scope.watchExclusion[i]+" = '[Circular]';")(copy);
+        }
+
+        return copy;
+
+    },
+
+    fireWatchers: function(scope){
+
+        var oldScope = {};
+
+        if($this.scopes[scope.elementId]){
+            oldScope = JSON.parse($this.scopes[scope.elementId]);
+        }
+
+        for(var propertyPath in scope.watchers){
+
+           var oldScopePropertyValue = Assembler.getDotPathObject(oldScope, propertyPath);
+           var scopePropertyValue = Assembler.getDotPathObject(scope, propertyPath);
+
+           if(JSON.stringify(oldScopePropertyValue) !== JSON.stringify(scopePropertyValue)){
+               scope.watchers[propertyPath](oldScopePropertyValue, scopePropertyValue);
+           }
+
+        }
+
+    },
+
+    isCyclic: function (obj) {
+     var keys = [];
+     var stack = [];
+     var stackSet = new Set();
+     var detected = false;
+
+     function detect(obj, key) {
+       if (!(obj instanceof Object)) { return; } // Now works with other
+                                                 // kinds of object.
+
+       if (stackSet.has(obj)) { // it's cyclic! Print the object and its locations.
+         var oldindex = stack.indexOf(obj);
+         var l1 = (keys.join('.') + '.' + key).replace('obj.','scope.');
+         var l2 = keys.slice(0, oldindex + 1).join('.').replace('obj.','scope.');
+         throw new Error('Spike Framework: Obervables circular structure field: '+l1+' = '+l2+'\nAdd to scope.exclusion given field');
+         detected = true;
+         return;
+       }
+
+       keys.push(key);
+       stack.push(obj);
+       stackSet.add(obj);
+       for (var k in obj) { //dive on the object's children
+         if (obj.hasOwnProperty(k)) { detect(obj[k], k); }
+       }
+
+       keys.pop();
+       stack.pop();
+       stackSet.delete(obj);
+       return;
+     }
+
+     detect(obj, 'obj');
+     return detected;
+   },
+
+    detectScopeChange: function(scope){
+
+        var scopeCopy = $this.getScopeCopy(scope);
+        $this.isCyclic(scopeCopy);
+
+        var stringify = JSON.stringify(scopeCopy);
+
+        if(stringify !== $this.scopes[scope.elementId]){
+
+            Log.log('scope changed during lifecycle '+scope.getClass());
+
+         //   console.log(stringify);
+        //    console.log($this.scopes[scope.elementId]);
+
+            $this.fireWatchers(scope);
+            $this.compileWatchers(scope);
+
+        }
+
+        $this.scopes[scope.elementId] = stringify;
+
+    },
+
+
+    createWatchLoop: function(scope){
+
+        setTimeout(function(){
+
+            if(!$this.stopLoop){
+
+                for(var i = 0; i < $this.observablesArr.length; i++){
+                    $this.detectScopeChange($this.observablesArr[i]);
+                }
+
+            }
+
+            $this.createWatchLoop();
+
+        }, 2000)
+
     }
 
 }

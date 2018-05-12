@@ -29,7 +29,7 @@ public class WatchIdProcessor extends SpikeProcessor {
 
         if (element.attr(CommonCompiler.IDENTITY_ATTRIBUTE) == null || element.attr(CommonCompiler.IDENTITY_ATTRIBUTE).isEmpty()) {
             watchId++;
-            element.attr(CommonCompiler.IDENTITY_ATTRIBUTE, watchName);
+          //  element.attr(CommonCompiler.IDENTITY_ATTRIBUTE, watchName);
         }
 
     }

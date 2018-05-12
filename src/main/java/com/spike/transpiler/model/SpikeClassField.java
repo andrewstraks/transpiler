@@ -63,8 +63,8 @@ public class SpikeClassField {
             StringBuilder compiledBuilder = new StringBuilder();
 
           compiledBuilder
-                  .append(this.spikeClass.classFullName)
-                  .append(".prototype.")
+                  .append("__compilant")
+                  .append(".")
                   .append(fieldBody);
 
             if (!fieldBody.endsWith(";")) {

@@ -177,7 +177,7 @@ public class CommonCompiler {
         }
 
         Element fistElement = doc.body().children().first();
-        fistElement.attr("sp-watch","");
+        //fistElement.attr("sp-watch","");
 
         for(Element element : allElements){
 
@@ -220,7 +220,7 @@ public class CommonCompiler {
 
         if (fistElement.attr(CommonCompiler.IDENTITY_ATTRIBUTE).isEmpty()) {
             elementId++;
-            fistElement.attr(CommonCompiler.IDENTITY_ATTRIBUTE, "element-" + elementId);
+          //  fistElement.attr(CommonCompiler.IDENTITY_ATTRIBUTE, "element-" + elementId);
         }
 
     }

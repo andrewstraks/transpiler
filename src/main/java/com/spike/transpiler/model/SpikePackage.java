@@ -156,7 +156,7 @@ public class SpikePackage {
         this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(this.packageName+"."+privateClassName) + "\\b", privateClassName);
         this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(privateClassName) + "\\b", this.packageName + "." + privateClassName);
         this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote("new "+className) + "\\b", "new "+this.packageName + "." + privateClassName);
-        this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(".prototype."+className) + "\\b", ".prototype."+privateClassName);
+       // this.compiled = this.compiled.replaceAll("\\b" + Pattern.quote(".prototype."+className) + "\\b", ".prototype."+privateClassName);
 
     }
 

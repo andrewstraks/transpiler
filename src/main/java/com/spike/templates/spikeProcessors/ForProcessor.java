@@ -50,7 +50,13 @@ public class ForProcessor extends SpikeProcessor {
             templateParts.listName = repeatElements[1];
 
 
-            templateParts.prefix += "var isDeclared = false; try { if("+templateParts.listName + ".length !== undefined){ isDeclared = true; } }catch(_e){}";
+            templateParts.prefix += "var isDeclared = false; try { ";
+            templateParts.prefix += "if("+templateParts.listName+" instanceof Array){";
+            templateParts.prefix += "if("+templateParts.listName + ".length !== undefined){ isDeclared = true; } ";
+            templateParts.prefix += "} else {";
+            templateParts.prefix += "if(Object.keys("+templateParts.listName + ").length > 0){ isDeclared = true; } ";
+            templateParts.prefix += "}";
+            templateParts.prefix += "}catch(_e){}";
             templateParts.prefix += "if(isDeclared) { ";
             templateParts.prefix += "for(var " + templateParts.indexName + " = 0; " + templateParts.indexName + " < " + templateParts.listName + ".length; " + templateParts.indexName + "++){";
             if(templateParts.varName != null){

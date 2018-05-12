@@ -58,13 +58,14 @@ public class SpikeClassFunction {
             StringBuilder compiledBuilder = new StringBuilder();
 
             compiledBuilder
-                    .append(this.spikeClass.classFullName)
-                    .append(".prototype.")
+                    .append("__compilant")
+                    .append(".")
                     .append(this.functionName)
                     .append("=function(")
                     .append(this.arguments)
                     .append(")")
-                    .append(this.addThisKeywordReference(functionBody));
+                    .append(functionBody);
+                   // .append(this.addThisKeywordReference(functionBody));
 
             if (!functionBody.endsWith(";")) {
                 compiledBuilder.append(";");

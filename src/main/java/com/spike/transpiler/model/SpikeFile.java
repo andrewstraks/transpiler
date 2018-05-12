@@ -38,11 +38,14 @@ public class SpikeFile {
         }
 
         this.compiled = compiledBuilder.toString();
-        this.collectDependencies();
+       // this.collectDependencies();
         this.compileSuperConstructorUsages();
         this.compileSuperUsages();
         this.collectTotalNamespaces();
         this.compileGlobalVariables();
+
+        this.compiled += "spike.core.Assembler.checkIfCanBootstrap();";
+
     }
 
     private void createPackages() {
@@ -66,8 +69,11 @@ public class SpikeFile {
     }
 
     private void compileSuperUsages() {
-        this.compiled = this.compiled.replaceAll("(this\\.super\\.*)", "this.super().");
+        String replacement = "spike.core.Assembler.constructSuper(\\$this); \\$this.super.";
+        this.compiled = this.compiled.replaceAll("(this\\.super\\.*)", replacement);
         this.compiled = this.compiled.replaceAll("\\.\\)", ")");
+        this.compiled = this.compiled.replaceAll(Pattern.quote("$spike"), "spike");
+
     }
 
     private void compileSuperConstructorUsages() {
@@ -84,7 +90,8 @@ public class SpikeFile {
 
             int argumentsCount = argumentsCleaned.length() == 0 ? 0 : argumentsCleaned.split(",").length;
 
-            this.compiled = this.compiled.replace(matchedConstructor, "this.super.constructor_" + argumentsCount + ".apply(this,[" + arguments + "]");
+            String replacement = "this.super.constructor_" + argumentsCount + ".apply(this,[" + arguments + "]";
+            this.compiled = this.compiled.replace(matchedConstructor, replacement);
 
         }
 
@@ -123,9 +130,15 @@ public class SpikeFile {
 
         }
 
-        DependencyConstructor dependencyConstructor = new DependencyConstructor();
-        dependencyConstructor.generateDependencies(this.extendingMap, extendsClassesMap, this);
-        this.compiled = this.compiled + dependencyConstructor.compiled;
+        System.out.println(extendsClassesMap);
+
+
+
+//        DependencyConstructor dependencyConstructor = new DependencyConstructor();
+//        dependencyConstructor.generateDependencies(this.extendingMap, extendsClassesMap, this);
+
+
+       // this.compiled = this.compiled + dependencyConstructor.compiled;
 
     }
 

@@ -1,34 +1,14 @@
 package spike.core;
 
-class Config {
+static class Config {
 
-  /**
-   * List of allowed events which can be binded by Spike Framework and compiled by Spike compiler
-   */
-  allowedEvents: [
-    'click',
-    'change',
-    'keyup',
-    'keydown',
-    'keypress',
-    'blur',
-    'focus',
-    'dblclick',
-    'die',
-    'hover',
-    'keydown',
-    'mousemove',
-    'mouseover',
-    'mouseenter',
-    'mousedown',
-    'mouseleave',
-    'mouseout',
-    'submit',
-    'trigger',
-    'toggle',
-    'load',
-    'unload'
-  ],
+      /**
+       * @public
+       *
+       * Defines path to language files
+       */
+      languageFilePath: "/{lang}.json",
+
       /**
        * @public
        *
@@ -143,7 +123,9 @@ static class Errors {
 
       SPIKE_APP_NOT_DEFINED: 'No DOM element with {0} or {1} attribute specified',
       REQUEST_WRONG_PARAMS: 'Request url and type not defined',
-      JSON_PARSE_ERROR: 'JSON parse error during execution {0}'
+      JSON_PARSE_ERROR: 'JSON parse error during execution {0}',
+
+      TRIGGER_NOT_DEFINED: 'Trigger {0} is not defined for scope {1}'
 
     },
 
@@ -199,6 +181,8 @@ static class Errors {
 }package spike.core;
 
 import System from spike.core.System;
+import Utils from spike.core.Util;
+import Log from spike.core.Log;
 
 static class Events {
 
@@ -217,63 +201,50 @@ static class Events {
     'die',
     'hover',
     'keydown',
-    'mousemove',
-    'mouseover',
-    'mouseenter',
-    'mousedown',
-    'mouseleave',
-    'mouseout',
+//    'mousemove',
+//    'mouseover',
+//    'mouseenter',
+//    'mousedown',
+//    'mouseleave',
+//    'mouseout',
     'submit',
-    'trigger',
-    'toggle',
     'load',
     'unload'
   ],
 
-  bindEvents: function(element){
+  __linkReferences: {},
 
-    for(var i = 0; i < element.childElements.length; i++){
+  bindEvents: function(){
 
-        this.bindEventsForElement(element.childElements[i]);
+    for (var k = 0; k < this.allowedEvents.length; k++) {
 
-        if(element.childElements[i].length > 0){
-            this.bindEvents(element.childElements[i]);
-        }
+        document.addEventListener(this.allowedEvents[k], function(e){
+
+            if(e.target){
+
+                if(e.target.hasAttribute('spike-event')){
+
+                    var eventId = e.target.getAttribute('spike-event-'+e.type+'-link');
+
+                    if(eventId !== null){
+                        $this.__linkReferences[eventId](e);
+                    }
+
+                }
+
+            }
+
+        }, true);
 
     }
 
   },
 
-  /**
-   * @public
-   *
-   * Finds all elements with attribute @spike-event
-   * in given (root) selector.
-   *
-   * Gets event name and event function string, binds
-   * jQuery event with created function.
-   *
-   * @param rootSelector
-   */
-  bindEventsForElement: function (element) {
+  linkEvent: function(eventFn){
 
-    for(var i = 0; i < element.eventsSelectors.length; i++){
-
-        var selector = document.getElementById(element.eventsSelectors[i]);
-
-        for (var k = 0; k < this.allowedEvents.length; k++) {
-
-            var eventFunctionBody = selector.getAttribute('spike-event-' + this.allowedEvents[k]);
-
-            if (eventFunctionBody) {
-                selector.addEventListener(this.allowedEvents[i], Function('event', eventFunctionBody));
-            }
-
-        }
-
-        element.removeAttribute('spike-unbinded');
-
-    }
+    var linkId = Utils.hash();
+    $this.__linkReferences[linkId] = eventFn;
+    return linkId;
 
   },
 
@@ -281,7 +252,18 @@ static class Events {
 
 class EventsInterface {
 
-/**
+        /**
+          * @public
+          * @toImplement
+          *
+          * Executes when framework cannot run without given browser standard
+          *
+          */
+        onIncompatible: function(){
+
+        },
+
+        /**
           * @public
           * @toImplement
           *
@@ -362,7 +344,28 @@ class EventsInterface {
           *
           */
          onReady: function () {
+         },
+
+         /**
+            @public
+            @toImplement
+            Invokes when route changes
+         **/
+         onRouteChange: function(){
+
          }
+
+}package spike.core;
+
+class XhrInterface {
+
+    xhrFields: {
+        withCredentials: false
+    },
+
+    abstract function onBefore;
+    abstract function onComplete;
+    abstract function onCatch;
 
 }package spike.core;
 
@@ -393,32 +396,10 @@ class ModalInterface {
 
     modals: [],
 
-    /**
-     * @public
-     * @toImplement
-     *
-     * Additional function executed when modal is rendered
-     * Executes every time when new modal instance is rendered
-     * Is not invoke if modal is already rendered and will be only showed
-     *
-     * @param modalSelector
-     */
     onRender: function (modal) {
-        this.clearDestroyedModals();
         this.modals.push(modal);
     },
 
-    /**
-     * @public
-     * @toImplement
-     *
-     * Function implements modal showing mechanics
-     * By default invokes default implementation @public onModalShowEventDefault
-     *
-     * @param modalSelector
-     * @param modalObject
-     * @param defaultImpl
-     */
     onShow: function (modal) {
          modal.rootSelector().style = 'display: block;';
     },
@@ -427,47 +408,30 @@ class ModalInterface {
          modal.rootSelector().style = 'display: hide;';
     },
 
-    /**
-     * @public
-     * @toImplement
-     *
-     * Function implements modal hiding mechanics
-     * By default invokes default implementation @public onModalHideEventDefault
-     *
-     * @param modalSelector
-     * @param modalObject
-     * @param defaultImpl
-     */
+    //add classes etc
+    onConstruct: function(modalElement){
+        return modalElement;
+    },
+
     onDestroy: function (modal) {
-        modal.rootSelector().style = 'display: none;';
-        modal.destroy();
-    },
 
-    /**
-     * @public
-     *
-     * Function invalidates all rendered modals.
-     * Iterates over @public modal executes @public modal.invalidate function to remove modals from DOM and cache
-     *
-     */
-    invalidateAll: function () {
+        for(var i = 0; i < this.modals.length; i++){
 
-       for(var i = 0; i < this.modals.length; i++){
-           this.onDestroy(this.modals[i]);
-       }
+            if(this.modals[i].elementId === modal.elementId){
+                this.modals.splice(i, 1);
+            }
+
+        }
 
     },
 
-    clearDestroyedModals: function(){
+    removeAll: function () {
 
-       var modals = [];
        for(var i = 0; i < this.modals.length; i++){
-          if(this.modals[i].destroyed === false){
-            modals.push(this.modals[i]);
-          }
+           this.modals[i].destroy();
        }
 
-       this.modals = modals;
+       this.modals = [];
 
     }
 
@@ -477,16 +441,23 @@ import System from spike.core.System;
 import Router from spike.core.Router;
 import Log from spike.core.Log;
 import Assembler from spike.core.Assembler;
-import Config from spike.core.System.config;
 import Errors from spike.core.Errors;
 import ModalInterface from spike.core.ModalInterface;
 import EventsInterface from spike.core.EventsInterface;
+import Selectors from spike.core.Selectors;
+import Util from spike.core.Util;
+import Message from spike.core.Message;
+import Watchers from spike.core.Watchers;
+import XhrInterface from spike.core.XhrInterface;
+import Reconcile from spike.core.Reconcile;
+import Events from spike.core.Events;
 
 static class System {
 
    config: null,
    eventsInterface: null,
    modalInterface: null,
+   xhrInterface: null,
    routing: null,
 
    setConfig: function(configObject){
@@ -499,6 +470,10 @@ static class System {
 
    setEventsInterface: function(eventsInterface){
     this.eventsInterface = eventsInterface;
+   },
+
+   setXhrInterface: function(xhrInterface){
+    this.xhrInterface = xhrInterface;
    },
 
    setModalInterface: function(modalInterface){
@@ -517,6 +492,7 @@ static class System {
    * Stores DOM elements attributes
    */
   attributes: {
+    APP: 'spike-app',
     VIEW: 'spike-view',
     MODALS: 'spike-modals',
   },
@@ -550,7 +526,7 @@ static class System {
       return endpoint.controller;
     }
 
-    return this.currentController || Config.mainController;
+    return this.currentController || this.config.mainController;
   },
 
 
@@ -562,8 +538,8 @@ static class System {
    **/
   execOnRenderEvent: function () {
 
-    if (Events.onRender) {
-      Events.onRender();
+    if (this.eventsInterface.onRender) {
+      this.eventsInterface.onRender();
     }
 
   },
@@ -628,17 +604,23 @@ static class System {
     }
 
     //Invalidates all existing modals (even hidden)
-    this.modalInterface.invalidateAll();
+    this.modalInterface.removeAll();
 
   //  if (controllerObject.checkNetwork === true && Config.mobileRun === true) {
       //app.cordova.checkNetwork();
    // }
 
     //Clears selectors cache
-    System.clearSelectorsCache();
+    //Selectors.clearSelectorsCache();
+
+    if(this.currentRenderedController){
+        this.currentRenderedController.destroy();
+    }
 
     //Renders controller
     controller.render();
+
+    this.currentRenderedController = controller;
 
     System.execOnRenderEvent();
 
@@ -646,7 +628,7 @@ static class System {
       afterRenderCallback();
     }
 
-    Log.ok('Selectors cache usage during app lifecycle: ' + System.cacheUsageCounter);
+    //Log.ok('Selectors cache usage during app lifecycle: ' + Selectors.cacheUsageCounter);
 
   },
 
@@ -665,25 +647,33 @@ static class System {
    */
   render: function (moduleClass, moduleInitialModel, afterRenderCallback) {
 
-    console.log(moduleClass);
-
     if (!moduleClass) {
       Errors.throwError(Errors.messages.MODULE_NOT_EXIST);
     }
 
+//    if(this.modalInterface.isRendered(moduleClass) || (this.currentRenderedController && this.currentRenderedController.getClass() === moduleClass)){
+//        Log.warn('Preventing re-rendering module '+moduleClass);
+//        return;
+//    }
+
     Router.clearCacheViewData();
 
-    var module =  new moduleClass(moduleInitialModel);
+    var module = Assembler.getClassInstance(moduleClass, [moduleInitialModel]);
 
-    if (module.getSuper() === 'spike.core.Controller') {
+    var inheritsModuleList = Assembler.getClassExtendingList(module);
+
+    if (inheritsModuleList.indexOf('spike.core.Controller') > -1) {
       System.renderController(module, afterRenderCallback);
-    } else if (module.getSuper() === 'spike.core.Modal') {
+    } else if (inheritsModuleList.indexOf('spike.core.Modal') > -1) {
       System.renderModal(module, afterRenderCallback);
     }
 
   },
 
+  currentRenderedController: null,
+
   viewSelector: null,
+  appViewSelector: null,
 
   /**
    * @public
@@ -695,9 +685,20 @@ static class System {
 
     if(this.viewSelector === null){
         this.viewSelector = document.querySelector('['+this.attributes.VIEW+']');
+       // this.viewSelector.setAttribute('sp-id','root');
     }
 
     return this.viewSelector;
+
+  },
+
+  getAppView: function(){
+
+    if(this.appViewSelector === null){
+        this.appViewSelector = document.querySelector('['+this.attributes.APP+']');
+    }
+
+    return this.appViewSelector;
 
   },
 
@@ -727,39 +728,6 @@ static class System {
 
   },
 
-  /**
-   * @public
-   *
-   * Sets plain (without Spike support) HTML template
-   * before whole application start initializing with Cordova
-   *
-   * Can be used as loading screen, splash screen etc.
-   *
-   * View is defined in @Config.initialView
-   *
-   */
-  renderInitialView: function () {
-    Log.debug('Running system.initialView');
-
-    if (Config.initialView !== undefined) {
-
-      try {
-
-        var templateHtml = Templates.templates[Config.initialView];
-
-        if(templateHtml){
-            System.getView().html(templateHTML);
-        }
-
-      } catch (err) {
-        Errors.throwError(Errors.messages.INITIAL_VIEW_ERROR, [Config.initialView])
-      }
-
-    }
-
-
-  },
-
   loader: null,
 
   /**
@@ -776,12 +744,17 @@ static class System {
    */
   init: function () {
 
+    Log.init();
+
+    Reconcile.constructRestrictedAttributes();
+
     this.loader = Assembler.findLoaderClass();
+    this.config = Assembler.findConfigClass();
     this.loader.loadApplication();
 
     Log.debug('Invoke spike.core.System.init with params', []);
 
-    if(Config === null){
+    if(this.config === null){
         this.setConfig(new spike.core.Config());
     }
 
@@ -793,44 +766,56 @@ static class System {
         this.setEventsInterface(new EventsInterface());
     }
 
-    Router.detectHTML5Mode();
+    if(this.xhrInterface === null){
+        this.setXhrInterface(new XhrInterface());
+    }
+
+    Log.log('Destroy assembler');
+    Assembler.destroy();
 
     Log.warn('Spike version: {0}', [System.version]);
     Log.ok('Spike application initializing...');
 
-
     this.verifyViews();
-    System.renderInitialView();
-    this.routing.create(Router.create());
-    this.initGlobalElements();
+    Router.detectHTML5Mode();
+    Events.bindEvents();
 
-    Router.registerRouter();
+    Message.loadLanguage().then(function(){
 
+        Log.log('Translations loaded');
 
-    if (this.getEvents().onReady !== undefined) {
-        this.getEvents().onReady();
-    }
+        if ($this.eventsInterface.onReady !== undefined) {
+            $this.eventsInterface.onReady();
+        }
 
-    this.loader.onLoadApplication();
+        Router.registerRouter();
+        Watchers.createWatchLoop();
+        $this.initGlobalElements();
 
-    Log.ok('Spike application ready to work...');
+        $this.loader.onLoadApplication();
+
+        Log.ok('Spike application ready to work...');
+
+    });
 
   },
+
+  globalElements: [],
 
   /**
     Renders global components defined outside 'spike-view'
     **/
   initGlobalElements: function(){
 
-    var globalElements = this.getView().getElementsByTagName('element');
+    var globalElements = document.querySelectorAll('spike[sp-global-element]');
 
     for(var i = 0; i < globalElements.length; i++){
 
-        var className = globalElements[i].getAttribute('name');
+        setSpikeId(globalElements[i], 'global-'+Util.hash());
+        var className = globalElements[i].getAttribute('sp-global-element');
 
-        var globalElement = Assembler.getDotPath(className)();
-
-        globalElement.render();
+        var globalElement = Assembler.getClassInstance(className, [getSpikeId(globalElements[i])]);
+        this.globalElements.push(globalElement);
 
     }
 
@@ -843,6 +828,11 @@ import Config from spike.core.System.config;
 import Util from spike.core.Util;
 
 static class Log {
+
+  init: function(){
+      if (!window.console) window.console = {};
+      if (!window.console.log) window.console.log = function () { };
+  },
 
   /**
    * @public
@@ -870,11 +860,18 @@ static class Log {
   log: function (logMessage, logData) {
 
     if (Config.showLog) {
-      app.print(logMessage, logData, 'LOG');
+      this.print(logMessage, logData, 'LOG');
     }
 
   },
 
+  templateLog: function (logMessage, logData) {
+
+    if (Config.showLog) {
+      this.print(logMessage, logData, 'TEMPLATE_LOG');
+    }
+
+  },
   /**
    * @public
    *
@@ -886,8 +883,9 @@ static class Log {
   error: function (errorMessage, errorData) {
 
     if (Config.showError) {
-      app.print(errorMessage, errorData, 'ERROR');
+      this.print(errorMessage, errorData, 'ERROR');
     }
+
   },
 
   /**
@@ -903,7 +901,7 @@ static class Log {
   debug: function (debugMessage, debugData) {
 
     if (Config.showDebug) {
-      app.print(debugMessage, debugData, 'DEBUG');
+      this.print(debugMessage, debugData, 'DEBUG');
     }
 
   },
@@ -919,7 +917,7 @@ static class Log {
   warn: function (warnMessage, warnData) {
 
     if (Config.showWarn) {
-      app.print(warnMessage, warnData, 'WARN');
+      this.print(warnMessage, warnData, 'WARN');
     }
 
   },
@@ -935,7 +933,7 @@ static class Log {
   ok: function (okMessage, okData) {
 
     if (Config.showOk) {
-      app.print(okMessage, okData, 'OK');
+      this.print(okMessage, okData, 'OK');
     }
 
   },
@@ -962,6 +960,9 @@ static class Log {
 
     var color = '';
     switch (type) {
+      case 'TEMPLATE_LOG' :
+        color = 'chocolate ';
+        break;
       case 'LOG' :
         color = 'blue';
         break;
@@ -989,6 +990,8 @@ static class Log {
 package spike.core;
 
 import Selectors from spike.core.Selectors;
+import Util from spike.core.Util;
+import Watchers from spike.core.Watchers;
 
 static class Selectors {
 
@@ -1035,85 +1038,133 @@ static class Selectors {
 
   },
 
-  createNamesSelectors: function(templateHtml, selectors){
+  createFormsSelectors: function(element, selectors){
 
     //Retrieving list of form elements names
-    var nameList = Util.findStringBetween(templateHtml, 'name="', '"');
+    var formsWithNames = element.querySelectorAll('form[name]');
 
-    //Creating names selectors functions
-    for(var i = 0; i < nameList.length; i++){
-
-        //Creating new hash for identifier
-        var newName = name + '-' + Util.hash();
-
-        selectors.names[name] = function () {
+    function getSelectorFn(name, newName) {
+        return function() {
 
             var selector = Selectors.selectorsCache[newName];
 
             if (selector === undefined) {
-                selector = document.querySelector('['+newId+']');
-                selector.plainId = newId;
-                Selectors.selectorsCache[newId] = selector;
+                selector = document.querySelector('form[name="'+newName+'"]');
+                selector.plainName = name;
+                selector.serialize = Util.serializeForm.bind(selector);
+
+                Selectors.selectorsCache[newName] = selector;
             } else {
                 Selectors.cacheUsageCounter++;
             }
 
             return selector;
 
+        };
+    };
 
+    for(var i = 0; i < formsWithNames.length; i++){
+
+        if(formsWithNames[i].getAttribute('sp-keep-name') != null){
+            continue;
         }
 
-        //Replacing identifier with generated hash
-        templateHtml = templateHtml.replace('name="' + name + '"', 'spike-name="' + newName + '" name="' + name + '"');
+        var name = formsWithNames[i].getAttribute('name');
+
+        //Creating new hash for identifier
+        var newName = name + '-' + Util.hash();
+        selectors.forms[name] = getSelectorFn(name, newName);
+        formsWithNames[i].setAttribute('name', newName);
 
     }
 
-    return templateHtml;
+    return element.innerHTML;
 
   },
 
-  createIdSelectors: function(templateHtml, selectors, eventsSelectors, linksSelectors){
+  createNamesSelectors: function(element, selectors){
 
-   //Retrieving list of identifiers names
-   var idList = Util.findStringBetween(templateHtml, 'id="', '"');
+    //Retrieving list of form elements names
+    var elementsWithNames = element.querySelectorAll('[name]');
 
-   //Creating identifiers selectors functions
-   for(var i = 0; i < idList.length; i++){
+    function getSelectorFn(name, newName) {
+        return function() {
 
-    //Creating new hash for identifier
-    var newId = idList[i] + '-' + Util.hash();
+            var selector = Selectors.selectorsCache[newName];
 
-    //Creating handler function for identifier with optional basic events binding by @jQuery
-    selectors[idList[i]] = function () {
+            if (selector === undefined) {
+                selector = document.querySelector('[name="'+newName+'"]');
+                selector.plainName = name;
+                Selectors.selectorsCache[newName] = selector;
+            } else {
+                Selectors.cacheUsageCounter++;
+            }
 
-        var selector = Selectors.selectorsCache[newId];
+            return selector;
 
-        if (selector === undefined) {
-          selector = document.getElementById(newId);
-          selector.plainId = newId;
-          Selectors.selectorsCache[newId] = selector;
-        } else {
-          Selectors.cacheUsageCounter++;
-        }
-
-        return selector;
-
+        };
     };
 
-    if(idList[i].indexOf('spike-event-') > -1){
-        eventsSelectors.push(newId);
+    //Creating names selectors functions
+    for(var i = 0; i < elementsWithNames.length; i++){
+
+        if(elementsWithNames[i].getAttribute('sp-keep-name') != null || elementsWithNames[i].tagName.toLowerCase() === 'form' || elementsWithNames[i].type === 'radio'){
+            continue;
+        }
+
+        var name = elementsWithNames[i].getAttribute('name');
+
+        //Creating new hash for identifier
+        var newName = name + '-' + Util.hash();
+        selectors.names[name] = getSelectorFn(name, newName);
+        elementsWithNames[i].setAttribute('name', newName);
+
     }
 
-    if(idList[i].indexOf('spike-href-') > -1){
+    return element.innerHTML;
+
+  },
+
+  createIdSelectors: function(element, selectors, eventsSelectors, linksSelectors){
+
+    var elementsWithId = element.querySelectorAll('[sp-handle]');
+
+    function getSelectorFn(newId) {
+        return function() {
+
+            var selector = Selectors.selectorsCache[newId];
+
+            if (selector === undefined) {
+              selector = document.querySelector('[sp-handle="'+newId+'"]');
+              selector.plainId = newId;
+              Selectors.selectorsCache[newId] = selector;
+            } else {
+              Selectors.cacheUsageCounter++;
+            }
+
+            return selector;
+
+        };
+    };
+
+   //Creating identifiers selectors functions
+   for(var i = 0; i < elementsWithId.length; i++){
+
+    //Creating new hash for identifier
+    var newId = elementsWithId[i].getAttribute('sp-handle') + '-sp-' + Util.hash();
+
+    //Creating handler function for identifier with optional basic events binding by @jQuery
+    selectors[elementsWithId[i].getAttribute('sp-handle')] = getSelectorFn(newId);
+
+    if(elementsWithId[i].getAttribute('spike-href') != null){
         linksSelectors.push(newId);
     }
 
-    //Replacing identifier with generated hash
-    templateHtml = templateHtml.replace('id="' + id + '"', 'id="' + newId + '"');
+    elementsWithId[i].setAttribute('sp-handle', newId);
 
    }
 
-   return templateHtml;
+   return element.innerHTML;
 
   },
 
@@ -1129,65 +1180,41 @@ static class Selectors {
    * @param templateHtml
    *
    */
-   createUniqueSelectors: function (templateHtml) {
+   createUniqueSelectors: function (scope) {
 
-    var selectors = {
+    var element = document.createElement('div');
+    element.innerHTML = scope.compiledHtml;
+
+    scope.selector = {
         names: {},
         forms: {}
     };
 
-    var eventsSelectors = [];
-    var linksSelectors = [];
+    scope.eventsSelectors = [];
+    scope.linksSelectors = [];
 
-    templateHtml = this.createNamesSelectors(templateHtml, selectors);
-    templateHtml = this.createIdSelectors(templateHtml, selectors, eventsSelectors, linksSelectors);
+  //  var newCompiledHtml =  this.createFormsSelectors(element, scope.selector, scope.selector);
+  //  newCompiledHtml = this.createNamesSelectors(element, scope.selector);
+    newCompiledHtml = this.createIdSelectors(element, scope.selector, scope.eventsSelectors, scope.linksSelectors);
 
-    return {
-      html: templateHtml,
-      selectors: selectors,
-      eventsSelectors: eventsSelectors,
-      linksSelectors: linksSelectors
-    };
+    scope.compiledHtml = newCompiledHtml;
 
   },
+
+  createUniqueSelectorsForElement: function(scope, element){
+
+    var newCompiledHtml = this.createFormsSelectors(element, scope.selector, scope.selector);
+    newCompiledHtml = this.createNamesSelectors(element, scope.selector);
+    newCompiledHtml = this.createIdSelectors(element, scope.selector, scope.eventsSelectors, scope.linksSelectors);
+
+    return newCompiledHtml;
+
+  }
 
 
 }package spike.core;
 
 static class Util {
-
-        /**
-         * Transforms string into camel case notation
-         * Example: category-id => categoryId
-         * Example category id => categoryId
-         *
-         * @param str
-         */
-        toCamelCase: function (str) {
-
-            if (Util.isEmpty(str)) {
-                return str;
-            }
-
-            str = str.split('-').join(' ');
-
-            return str.replace(/(?:^\w|[A-Z]|\b\w|\s+)/g, function (match, index) {
-                if (+match === 0) return ""; // or if (/\s+/.test(match)) for white spaces
-                return index === 0 ? match.toLowerCase() : match.toUpperCase();
-            });
-
-        },
-
-        /**
-         * @public
-         *
-         * Copies array to another instance without reference
-         *
-         * @returns {string}
-         */
-        copyArray: function (oldArray) {
-            return JSON.parse(JSON.stringify(oldArray));
-        },
 
         /**
          * @public
@@ -1198,6 +1225,20 @@ static class Util {
          */
         currentDateLog: function () {
             return new Date().toLocaleTimeString();
+        },
+
+
+        /**
+         * @public
+         *
+         * Checks if passed object is JavaScript @function
+         *
+         * @param functionToCheck
+         * @returns {*|boolean}
+         */
+        isFunction: function (functionToCheck) {
+            var getType = {};
+            return functionToCheck && getType.toString.call(functionToCheck) === '[object Function]';
         },
 
         /**
@@ -1221,7 +1262,7 @@ static class Util {
          * @param objectOrArrayParams
          * @returns {*}
          */
-        bindStringParams: function (string, objectOrArrayParams, noStringify) {
+        bindStringParams: function (string, objectOrArrayParams) {
 
             if (!string) {
                 return '';
@@ -1235,82 +1276,82 @@ static class Util {
 
                 if (objectOrArrayParams instanceof Array) {
 
+
                     for (var i = 0; i < objectOrArrayParams.length; i++) {
-                        string = string.replace('{' + i + '}', noStringify ? objectOrArrayParams[i] : JSON.stringify(objectOrArrayParams[i]))
+                        string = string.replace('{' + i + '}', $this.isObject(objectOrArrayParams[i]) ? JSON.stringify(objectOrArrayParams[i]) : objectOrArrayParams[i])
                     }
 
                 } else {
 
                     for (var paramName in objectOrArrayParams) {
-                        string = string.replace('{' + paramName + '}', noStringify ? objectOrArrayParams[paramName] : JSON.stringify(objectOrArrayParams[paramName]));
+                        string = string.replace('{' + paramName + '}', $this.isObject(objectOrArrayParams[paramName]) ? JSON.stringify(objectOrArrayParams[paramName]) : objectOrArrayParams[paramName]);
                     }
 
                 }
 
             } catch (err) {
+                console.log(err);
             }
 
             return string;
 
         },
 
-        /**
-         * @public
-         *
-         * Checks if passed object is JavaScript @function
-         *
-         * @param functionToCheck
-         * @returns {*|boolean}
-         */
-        isFunction: function (functionToCheck) {
-            var getType = {};
-            return functionToCheck && getType.toString.call(functionToCheck) === '[object Function]';
+        isObject: function(obj){
+            return typeof obj === 'object';
         },
 
-        /**
-         * @public
-         *
-         * Checks if given variable is an object
-         * If null or undefined returns false
-         *
-         * @param object
-         */
-        isObject: function (object) {
+        getRadioValue: function(radio){
 
-            if (Util.isNull(object)) {
-                return false;
+            var value = null;
+            var radios = radio.parentNode.querySelectorAll('input[type=radio][name="'+radio.name+'"]');
+
+            for(var i = 0; i < radios.length; i++){
+
+             if(radios[i].checked === true){
+                 value = radios[i].value;
+                 break;
+             }
+
             }
 
-            if (object.toString() === '[object Object]') {
-                return true;
-            }
-
-            return false;
+            return value;
 
         },
 
-        /**
-         * @public
-         *
-         * Function to parse JSON @string to JavaScript @object with replacing
-         * whole whitespaces, tabs, new lines etc.
-         *
-         * @param s
-         */
-        parseJSON: function (s) {
+        serializeForm: function(){
 
-            s = s.replace(/\\n/g, "\\n")
-                .replace(/\\'/g, "\\'")
-                .replace(/\\"/g, '\\"')
-                .replace(/\\&/g, "\\&")
-                .replace(/\\r/g, "\\r")
-                .replace(/\\t/g, "\\t")
-                .replace(/\\b/g, "\\b")
-                .replace(/\\f/g, "\\f");
-            s = s.replace(/[\u0000-\u0019]+/g, "");
-            var o = JSON.parse(s);
+            var serializedObject = {};
 
-            return o;
+            var serializeField = function(field){
+
+                var value = field.value;
+                var name = field.getAttribute('sp-name');
+
+                if(field.type === 'radio'){
+
+                    if(field.checked === true){
+                        value = field.value;
+                        serializedObject[name] = value;
+                    }
+
+                } else if (field.type == 'checkbox') {
+                    value = field.checked;
+                    serializedObject[name] = value;
+                }else{
+                    serializedObject[name] = value;
+                }
+
+            };
+
+            var fields = this.querySelectorAll('input[name], select[name], textarea[name]');
+
+            for(var i = 0; i < fields.length; i++){
+                serializeField(fields[i]);
+            }
+
+            return serializedObject;
+
         },
 
         /**
@@ -1347,13 +1388,13 @@ static class Util {
          */
         tryParseNumber: function (obj) {
 
-            if (!Util.isEmpty(obj) && $.isNumeric(obj)) {
+            if (!this.isEmpty(obj) && this.isNumeric(obj)) {
 
-                if(obj.indexOf('e') > -1 || obj.indexOf('E') > -1){
+                if(obj.indexOf('e') > -1 || obj.indexOf('E') > -1 || obj.charAt(0) === '0'){
                     return obj;
                 }
 
-                if (Util.isInt(parseFloat(obj))) {
+                if (this.isInt(parseFloat(obj))) {
                     return parseInt(obj, 10);
                 } else {
                     return parseFloat(obj);
@@ -1364,6 +1405,10 @@ static class Util {
             return obj;
 
 
+        },
+
+        isNumeric: function( obj ) {
+            return ( typeof obj === "number" || typeof obj === "string" ) && !isNaN( obj - parseFloat( obj ) );
         },
 
         /**
@@ -1519,11 +1564,23 @@ static class Util {
             return text;
         },
 
+        hashString: function(str) {
+
+            var hash = 5381, i    = str.length;
+
+            while(i) {
+                hash = (hash * 33) ^ str.charCodeAt(--i);
+            }
+
+            return hash >>> 0;
+        },
+
         escapeQuotes: function (text) {
 
             try {
               text = text.replace(/"/g, "&quot;").replace(/'/g, "&quot;");
             } catch (err) {
+                console.log(err);
                 Log.warn('Could not escape single quotes in string: ' + text);
             }
 
@@ -1564,6 +1621,7 @@ package spike.core;
 
 import Errors from spike.core.Errors;
 import Util from spike.core.Util;
+import Xhr from spike.core.System.xhrInterface;
 
 class Request {
 
@@ -1580,6 +1638,7 @@ class Request {
     xhr: null,
     catchCallbacks: [],
     thenCallbacks: [],
+    alwaysCallbacks: [],
     response: null,
 
     responseType: 'json',
@@ -1592,21 +1651,30 @@ class Request {
         UNSENT: 0
     },
 
-    Request: function(config, array){
-        this.config = config;
-        this.array = array;
-    },
-
     Request: function(config){
 
         this.config = this.setConfig(config);
         this.xhr = this.createXHR();
 
+        this.xhr.alias = this.config.alias;
+
+        this.setXhrInterface();
         this.setEvents();
         this.setHeaders();
 
         this.config.beforeSend();
+        Xhr.onBefore(this.xhr, this);
+
         this.xhr.send(this.config.data);
+
+
+    },
+
+    setXhrInterface: function(){
+
+        for(var option in Xhr.xhrFields){
+            this.xhr[option] = Xhr.xhrFields[option];
+        }
 
     },
 
@@ -1625,18 +1693,21 @@ class Request {
         }
 
         if(config.contentType === undefined){
-            config.headers['Content-Type'] = 'application/json';
+            config.contentType = 'application/json';
         }
 
-        if(config.data === undefined){
-            config.data = {};
+        config.headers['Content-Type'] = config.contentType;
+
+        if(config.request === undefined){
+            config.request = {};
         }
 
-        if(typeof config.data === 'string'){
+        if(typeof config.request !== 'string'){
 
             try {
-                config.data = JSON.parse(config.data);
+                config.data = JSON.stringify(config.data);
             }catch(e){
+                console.error(e);
                 Errors.thrownError(Errors.JSON_PARSE_ERROR, [config.url]);
             }
 
@@ -1658,30 +1729,37 @@ class Request {
 
         this.xhr.open(this.config.type, this.config.url, true);
 
-        var self = this;
         this.xhr.onreadystatechange = function() {
 
-             if(self.xhr.readyState === self.STATUS.DONE && self.xhr.status === 200) {
+             if($this.xhr.readyState === $this.STATUS.DONE && $this.xhr.status === 200) {
 
-                if(self.responseType === 'json'){
+                if($this.responseType === 'json'){
 
                     try {
-                        self.response = JSON.parse(self.xhr.responseText);
-                        self.resolveThen(self.response, self.xhr, self.xhr.status);
+                        $this.xhr.responseJSON = JSON.parse($this.xhr.responseText);
+                        $this.response = JSON.parse($this.xhr.responseText);
+                        $this.resolveThen($this.response, $this.xhr, $this.xhr.status);
+                        $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
                     }catch(e){
-                        self.resolveCatch(self.xhr, 0, e);
+                        console.error(e);
+                        $this.resolveCatch($this.xhr, 0, e);
+                        $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
                     }
 
 
-                }else if(self.responseType === 'xml'){
-                    self.resolveThen(self.xhr.responseXML, self.xhr, self.xhr.status);
+                }else if($this.responseType === 'xml'){
+                    $this.resolveThen($this.xhr.responseXML, $this.xhr, $this.xhr.status);
+                    $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
                 }
 
-              }else if(self.xhr.readyState === self.STATUS.DONE && self.xhr.status === 204){
-                self.resolveThen(null, self.xhr, self.xhr.status);
-              }else if(self.xhr.readyState === self.STATUS.DONE && self.xhr.status !== 200){
-                self.resolveCatch(self.xhr, self.xhr.status, new Error('Response error: '+self.xhr.status));
+              }else if($this.xhr.readyState === $this.STATUS.DONE && $this.xhr.status === 204){
+                $this.resolveThen(null, $this.xhr, $this.xhr.status);
+                $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
+              }else if($this.xhr.readyState === $this.STATUS.DONE && $this.xhr.status !== 200){
+                $this.resolveCatch($this.xhr, $this.xhr.status, new Error('Response error: '+$this.xhr.status));
+                $this.resolveAlways($this.xhr, $this.response, $this.xhr.status);
               }
+
 
         };
 
@@ -1702,6 +1780,19 @@ class Request {
 
     },
 
+    always: function (callback) {
+        this.alwaysCallbacks.push(callback);
+        return this;
+    },
+
+    resolveAlways: function(response, xhr, status){
+
+        for(var i = 0; i < this.alwaysCallbacks.length; i++){
+            this.alwaysCallbacks[i](response, xhr, status);
+        }
+
+    },
+
     then: function (callback) {
         this.thenCallbacks.push(callback);
         return this;
@@ -1709,6 +1800,7 @@ class Request {
 
     resolveThen: function(response, xhr, status){
 
+        Xhr.onComplete(response, xhr, status);
         for(var i = 0; i < this.thenCallbacks.length; i++){
             this.thenCallbacks[i](response, xhr, status);
         }
@@ -1722,6 +1814,7 @@ class Request {
 
     resolveCatch: function(xhr, status, thrownError){
 
+        Xhr.onCatch(xhr, status, thrownError);
         for(var i = 0; i < this.catchCallbacks.length; i++){
             this.catchCallbacks[i](xhr, status, thrownError);
         }
@@ -1737,6 +1830,7 @@ class Request {
             try {
                 xhr = new ActiveXObject("Msxml2.XMLHTTP");
             } catch (e) {
+                console.warn(e);
                 xhr = new ActiveXObject("Microsoft.XMLHTTP");
             }
         }
@@ -1747,10 +1841,70 @@ class Request {
 
 }package spike.core;
 
+import Log from spike.core.Log;
+import Request from spike.core.Request;
+
+class MultiRequest {
+
+    responseData: [],
+    alwaysCallbacks: [],
+
+    countResponses: 0,
+    promisesLength: 0,
+
+    resolved: false,
+
+    MultiRequest: function(promises){
+
+        $this.promisesLength = promises.length;
+
+        for(var i = 0; i < promises.length; i++){
+
+            promises[i].always(function(xhr, response, status){
+                $this.countResponses++;
+
+                if(this instanceof Request){
+
+                    if(xhr.response){
+                        xhr.response = JSON.parse(xhr.response);
+                    }
+
+                    $this.responseData.push(xhr);
+                }else{
+                    $this.responseData.push(xhr);
+                }
+
+                if($this.resolved == false && $this.countResponses === $this.promisesLength){
+                    $this.resolveAlways();
+                    $this.resolved = true;
+                }
+
+            });
+
+        }
+
+    },
+
+    always: function (callback) {
+        $this.alwaysCallbacks.push(callback);
+        return $this;
+    },
+
+    resolveAlways: function(){
+
+        for(var i = 0; i < $this.alwaysCallbacks.length; i++){
+            $this.alwaysCallbacks[i].apply($this, [$this.responseData]);
+        }
+
+    }
+
+}package spike.core;
+
 import Rest from spike.core.Rest;
 import Log from spike.core.Log;
 import Request from spike.core.Request;
 import Errors from spike.core.Errors;
+import Util from spike.core.Util;
 
 static class Rest {
 
@@ -2146,7 +2300,7 @@ static class Rest {
 
 
     promiseObj.headers = headers;
-
+    promiseObj.alias = propertiesObject.alias;
 
     var promise = new Request(promiseObj);
 
@@ -2187,9 +2341,6 @@ static class Rest {
     var urlParams = propertiesObject.urlParams;
     var interceptors = propertiesObject.interceptors || [];
 
-
-    var jsonData = JSON.stringify(request);
-
     var preparedUrl = url;
 
     if (pathParams !== undefined && pathParams !== null) {
@@ -2215,7 +2366,7 @@ static class Rest {
 
     var promiseObj = {
       url: preparedUrl,
-      data: jsonData,
+      data: request,
       type: method,
       beforeSend: function () {
 
@@ -2266,6 +2417,7 @@ static class Rest {
 
     headers = newHeaders;
     promiseObj.headers = headers;
+    promiseObj.alias = propertiesObject.alias;
 
     var promise = new Request(promiseObj);
 
@@ -2329,6 +2481,8 @@ import Log from spike.core.Log;
 import Request from spike.core.Request;
 import Message from spike.core.Message;
 import Util from spike.core.Util;
+import Config from spike.core.System.config;
+import Errors from spike.core.Errors;
 
 static class Message {
 
@@ -2343,6 +2497,10 @@ static class Message {
      * Storage for translation data
      */
     messages: {},
+
+    loadLanguage: function(){
+        return Message.add(Config.lang, Util.bindStringParams(Config.languageFilePath, { lang: Config.lang }));
+    },
 
     /**
      * @public
@@ -2362,13 +2520,12 @@ static class Message {
         var promise = new Request({
             url: languageFilePath,
             type: 'GET'
-        }, [
-            'test'
-        ]);
+        });
 
         promise.then(function (data) {
 
             Message.setTranslation(languageName, data);
+
             return data;
 
         });
@@ -2397,6 +2554,7 @@ static class Message {
             try {
                 translationData = JSON.parse(translationData);
             } catch (err) {
+                console.error(err);
                 Errors.throwError(Errors.messages.TRANSLATION_PARSING, [languageName]);
             }
 
@@ -2431,13 +2589,25 @@ static class Message {
 
 }package spike.core;
 
+import Assembler from spike.core.Assembler;
+import Watchers from spike.core.Watchers;
+
 static class Templates {
 
     templates: {},
 
-    compileTemplate: function(element, name, model){
-        return this.templates[name](element, model);
+    scopesRef: {},
+
+    compileTemplate: function(scope, name){
+        return this.templates[Assembler.sourcePath+"_"+name](scope);
     },
+
+    includeTemplate: function(name, scope){
+
+      name = name.split('.').join('_')+'_html';
+      return this.templates[Assembler.sourcePath+"_"+name](scope);
+
+    }
 
 }package spike.core;
 
@@ -2447,6 +2617,8 @@ import Errors from spike.core.Errors;
 import Util from spike.core.Util;
 import Log from spike.core.Log;
 import Config from spike.core.System.config;
+import Events from spike.core.Events;
+import Assembler from spike.core.Assembler;
 
 static class Router {
 
@@ -2469,7 +2641,7 @@ static class Router {
    * @public
    * Declares string which is used as 'OTHERWISE' URL
    */
-  otherwiseReplacement: '!',
+  otherwisePath: '/',
 
   /**
    * @public
@@ -2500,20 +2672,10 @@ static class Router {
    */
   getRouterFactory: function () {
     return {
+      routingParams: Router.routingParamsFunction,
       path: Router.pathFunction,
       other: Router.otherFunction
     }
-  },
-
-  /**
-   * @public
-   *
-   * Function creates starts creating new router and
-   * Returns routing creator object.
-   *
-   */
-  create: function () {
-    return Router.getRouterFactory();
   },
 
   /**
@@ -2524,8 +2686,16 @@ static class Router {
    *
    * @param pathObject
    */
-  otherFunction: function (pathObject) {
-    return Router.pathFunction(Router.otherwiseReplacement, pathObject);
+  otherFunction: function (pathValue) {
+    Router.otherwisePath = pathValue;
+    return Router.getRouterFactory();
+  },
+
+  commonRoutingParams: {},
+
+  routingParamsFunction: function(routingParams){
+    Router.commonRoutingParams = routingParams;
+    return Router.getRouterFactory();
   },
 
   /**
@@ -2582,10 +2752,10 @@ static class Router {
    * @param pathValue
    * @param pathController
    * @param routingParams
-   * @param onRouteEvent
+   * @param onRoute
    *
    */
-  registerPath: function (pathValue, pathController, routingParams, onRouteEvent, routeName, pathModal, pathModalDefaultController) {
+  registerPath: function (pathValue, pathController, routingParams, onRoute, routeName, pathModal, pathModalDefaultController) {
 
     if (Router.endpoints[pathValue]) {
       Errors.throwError(Errors.messages.PATH_ALREADY_EXIST, [pathValue]);
@@ -2607,8 +2777,8 @@ static class Router {
       controller: pathController,
       defaultController: pathModalDefaultController,
       modal: pathModal,
-      routingParams: routingParams,
-      onRouteEvent: onRouteEvent,
+      routingParams: Router.mergeRoutingParams(routingParams || {}),
+      onRoute: onRoute,
       pathPattern: pathPattern,
       routeName: routeName,
       isModal: !Util.isEmpty(pathModal)
@@ -2725,6 +2895,8 @@ static class Router {
 
     if (window.history && window.history.pushState && Config.html5Mode === true) {
       Router.routerHTML5Mode = true;
+    }else{
+        System.eventsInterface.onIncompatible('HISTORY_API');
     }
 
   },
@@ -2747,6 +2919,8 @@ static class Router {
        Errors.throwError(Errors.messages.ROUTING_ENABLED_NOT_DEFINED, []);
      }
 
+     System.routing.create(Router.getRouterFactory());
+
      if (Router.routerHTML5Mode === false && window.location.hash.substring(0, 2) !== '#/') {
        window.location.hash = '#/';
      }
@@ -2754,8 +2928,25 @@ static class Router {
      Router.renderCurrentView();
 
      if (Router.routerHTML5Mode === false) {
-       $(window).bind('hashchange', Router.onHashChanges);
+       this.initHashChangeEvent();
      }
+
+  },
+
+  hashChangeInterval: null,
+  lastHashValue: null,
+  initHashChangeEvent: function(){
+
+    function hashChangeCallback(){
+
+        if(Router.lastHashValue !== window.location.hash){
+            Router.lastHashValue = window.location.hash;
+            Router.onHashChanges();
+        }
+
+    }
+
+    Router.hashChangeInterval = setInterval(hashChangeCallback, 100);
 
   },
 
@@ -2764,19 +2955,18 @@ static class Router {
    *
    * Event function executes when hash changes in not html5 mode
    */
-  onHashChanges: function (e) {
+  onHashChanges: function () {
 
     Log.debug('Executes Router.onHashChanges');
 
     if (window.location.hash.replace('#', '') === Router.preventReloadPage) {
       Router.preventReloadPage = null;
-      Router.fireRouteEvents(e);
+      Router.fireRouteEvents();
       return false;
     }
 
     Router.clearCacheViewData();
-
-    Router.fireRouteEvents(e);
+    Router.fireRouteEvents();
     Router.renderCurrentView();
 
   },
@@ -2794,13 +2984,12 @@ static class Router {
 
       if (Router.getPathName() === Router.preventReloadPage) {
         Router.preventReloadPage = null;
-        Router.fireRouteEvents({});
+        Router.fireRouteEvents();
         return false;
       }
 
       Router.clearCacheViewData();
-
-      Router.fireRouteEvents({});
+      Router.fireRouteEvents();
       Router.renderCurrentView();
 
     }
@@ -2812,17 +3001,19 @@ static class Router {
    *
    * Function iterate all registred events and fire them
    */
-  fireRouteEvents: function (e) {
+  fireRouteEvents: function () {
 
     var currentRoute = Router.getCurrentRoute();
 
-    $.each(Router.events, function (eventName, eventFunction) {
+    for(var eventName in Router.events){
 
-      if (eventFunction) {
-        eventFunction(e, currentRoute, app.currentController);
-      }
+        if (Router.events[eventName]) {
+            Router.events[eventName](currentRoute, app.currentController);
+        }
 
-    });
+    }
+
+    System.eventsInterface.onRouteChange(currentRoute, app.currentController);
 
   },
 
@@ -2897,6 +3088,16 @@ static class Router {
    * Function returns object with params stored in current browser URL
    *
    */
+  getQueryParams: function () {
+    return Router.getURLParams();
+  },
+
+  /**
+   * @public
+   *
+   * Function returns object with params stored in current browser URL
+   *
+   */
   getURLParams: function () {
 
     var params = {};
@@ -2926,6 +3127,16 @@ static class Router {
    */
   getPathParams: function () {
     return Router.getCurrentViewData().data.pathParams;
+  },
+
+  /**
+   * @public
+   *
+   * Function returns current route routing params
+   *
+   */
+  getRoutingParams: function () {
+    return Router.getCurrentViewData().data.routingParams;
   },
 
   /**
@@ -3021,38 +3232,27 @@ static class Router {
 
     var currentEndpointObject = Router.getCurrentViewData();
 
+    if(currentEndpointObject.endpoint == null && currentEndpointObject.data == null){
+        Router.redirect(Router.otherwisePath);
+        return;
+    }
+
     var currentEndpointData = currentEndpointObject.data;
     var currentEndpoint = currentEndpointObject.endpoint;
 
-    if (currentEndpointData === null && Router.endpoints[Router.otherwiseReplacement]) {
-
-      currentEndpointData = {
-        controller: Router.endpoints[Router.otherwiseReplacement].controller,
-        modal: Router.endpoints[Router.otherwiseReplacement].modal,
-        defaultController: Router.endpoints[Router.otherwiseReplacement].defaultController,
-        isModal: Router.endpoints[Router.otherwiseReplacement].isModal,
-        routingParams: Router.endpoints[Router.otherwiseReplacement].routingParams,
-        onRouteEvent: Router.endpoints[Router.otherwiseReplacement].onRouteEvent,
-        onRouteEventWithModal: Router.endpoints[Router.otherwiseReplacement].onRouteEvent,
-      };
-
+    if (currentEndpointData.isModal === true && !Util.isEmpty(app.previousController)) {
+      currentEndpointData.controller = app.previousController;
     } else {
+      currentEndpointData.controller = currentEndpoint.controller;
+    }
 
-      if (currentEndpointData.isModal === true && !Util.isEmpty(app.previousController)) {
-        currentEndpointData.controller = app.previousController;
-      } else {
-        currentEndpointData.controller = currentEndpoint.controller;
-      }
-
-      currentEndpointData.defaultController = currentEndpoint.defaultController;
-      currentEndpointData.modal = currentEndpoint.modal;
-      currentEndpointData.isModal = currentEndpoint.isModal;
-      currentEndpointData.routingParams = currentEndpoint.routingParams;
-      currentEndpointData.onRouteEvent = currentEndpoint.onRouteEvent;
-      currentEndpointData.onRouteEventWithModal = function () {
-        System.render(currentEndpointData.modal, currentEndpointData, currentEndpointData.onRouteEvent);
-      }
-
+    currentEndpointData.defaultController = currentEndpoint.defaultController;
+    currentEndpointData.modal = currentEndpoint.modal;
+    currentEndpointData.isModal = currentEndpoint.isModal;
+    currentEndpointData.routingParams = currentEndpoint.routingParams;
+    currentEndpointData.onRoute = currentEndpoint.onRoute;
+    currentEndpointData.onRouteWithModal = function () {
+      System.render(currentEndpointData.modal, currentEndpointData, currentEndpointData.onRoute);
     }
 
     Router.setCacheViewData('VIEW', currentEndpointData);
@@ -3113,37 +3313,77 @@ static class Router {
       data: null
     };
 
+    var currentEndpoint = Router.findSamePatternEndpoint(hashPattern);
+    var currentEndpointData = Router.getPathData(hashPattern, currentEndpoint.pathPattern);
+
+    if (currentEndpoint.isModal === true) {
+
+      if (Util.isEmpty(app.previousController)) {
+        currentEndpoint.controller = currentEndpoint.defaultController;
+      } else {
+        currentEndpoint.controller = app.previousController;
+      }
+
+    }
+
+    currentEndpointData.routingParams = Router.mergeRoutingParams(currentEndpoint.routingParams || {});
+
+    if(Util.isFunction(currentEndpoint.controller)){
+        currentEndpoint.controller = currentEndpoint.controller(currentEndpointData);
+    }
+
+    viewData = {
+      endpoint: currentEndpoint,
+      data: currentEndpointData
+    };
+
+    Router.setCacheViewData('DATA', viewData);
+
+    return viewData;
+
+  },
+
+  findSamePatternEndpoint: function(hashPattern){
+
+    for (var pathValue in Router.endpoints) {
+
+      var hashPatternPathValue = '';
+      for(var i = 0; i < hashPattern.pattern.length; i++){
+          hashPatternPathValue += hashPattern.pattern[i]+'/';
+      }
+
+      if(pathValue+'/' === '/'+hashPatternPathValue){
+        return Router.endpoints[pathValue];
+      }
+
+    }
+
     for (var pathValue in Router.endpoints) {
 
       if (Router.endpoints[pathValue].pathPattern.pattern.length === hashPattern.pattern.length
         && Router.checkPathIntegrity(hashPattern, Router.endpoints[pathValue].pathPattern)) {
-        var currentEndpoint = Router.endpoints[pathValue];
-        var currentEndpointData = Router.getPathData(hashPattern, Router.endpoints[pathValue].pathPattern);
 
-        if (currentEndpoint.isModal === true) {
-
-          if (Util.isEmpty(app.previousController)) {
-            currentEndpoint.controller = currentEndpoint.defaultController;
-          } else {
-            currentEndpoint.controller = app.previousController;
-          }
-
-        }
-
-        viewData = {
-          endpoint: currentEndpoint,
-          data: currentEndpointData
-        };
-
-        break;
+        return Router.endpoints[pathValue];
 
       }
 
     }
 
-    Router.setCacheViewData('DATA', viewData);
+  },
 
-    return viewData;
+  mergeRoutingParams: function(routingParams){
+
+    for(var prop in Router.commonRoutingParams){
+        if(Router.commonRoutingParams.hasOwnProperty(prop)){
+
+            if(routingParams[prop] === undefined){
+                routingParams[prop] = Router.commonRoutingParams[prop];
+            }
+
+        }
+    }
+
+    return routingParams;
 
   },
 
@@ -3292,7 +3532,7 @@ static class Router {
    */
   getViewData: function () {
     var currentViewData = Router.getCurrentViewData();
-    return $.extend({}, currentViewData.endpoint, currentViewData.data);
+    return Assembler.extend(currentViewData.endpoint, currentViewData.data);
   },
 
   /**
@@ -3314,7 +3554,10 @@ static class Router {
   renderCurrentView: function () {
 
     var currentEndpointData = Router.getCurrentView();
-    Log.debug('current view to render {0}', [currentEndpointData]);
+
+    if(currentEndpointData === undefined){
+        return;
+    }
 
     if (currentEndpointData.isModal === true) {
 
@@ -3324,46 +3567,17 @@ static class Router {
 
         Log.debug('rendering controller & modal, default controller: ' + currentEndpointData.defaultController);
 
-        System.render(currentEndpointData.defaultController, currentEndpointData, currentEndpointData.onRouteEventWithModal);
+        System.render(currentEndpointData.defaultController, currentEndpointData, currentEndpointData.onRouteWithModal);
       } else {
-        System.render(currentEndpointData.modal, currentEndpointData, currentEndpointData.onRouteEvent);
-        Router.refreshCurrentHyperlinkCache();
+        System.render(currentEndpointData.modal, currentEndpointData, currentEndpointData.onRoute);
+        //Router.refreshCurrentHyperlinkCache();
       }
 
     } else {
-      System.render(currentEndpointData.controller, currentEndpointData, currentEndpointData.onRouteEvent);
+      System.render(currentEndpointData.controller, currentEndpointData, currentEndpointData.onRoute);
     }
 
     app.previousController = currentEndpointData.controller;
-
-  },
-
-  /**
-   * @public
-   *
-   * Refresh all hyperlinks on page redirecting to modals
-   * Refresh for current route only
-   *
-   */
-  refreshCurrentHyperlinkCache: function () {
-
-    var currentEndpoint = Router.getCurrentViewData();
-
-    var timestamp = new Date().getTime();
-
-    $('a[href*="' + Router.getPathValueWithoutParams(currentEndpoint.endpoint.pathValue) + '"]').each(function () {
-
-      var hyperLinkUrl = $(this).attr('href');
-
-      if (hyperLinkUrl.indexOf('?') > -1) {
-        hyperLinkUrl += '&t=' + timestamp;
-      } else {
-        hyperLinkUrl += '?t=' + timestamp;
-      }
-
-      $(this).attr('href', hyperLinkUrl);
-
-    });
 
   },
 
@@ -3526,15 +3740,14 @@ static class Router {
      */
   bindLinks: function(element){
 
-    for(var i = 0; i < element.childElements.length; i++){
-
-        this.bindLinksForElement(element.childElements[i]);
-
-        if(element.childElements[i].length > 0){
-            this.bindEvents(element.childElements[i]);
-        }
-
-    }
+//    this.bindLinksForElement(element);
+//    for(var i = 0; i < element.childElements.length; i++){
+//
+//        if(element.childElements[i].length > 0){
+//            this.bindLinks(element.childElements[i]);
+//        }
+//
+//    }
 
   },
 
@@ -3542,9 +3755,9 @@ static class Router {
 
     for(var i = 0; i < element.linksSelectors.length; i++){
 
-        var selector = document.getElementById(element.linksSelectors[i]);
+        var selector = getElementBySpikeId(document, element.linksSelectors[i]);
 
-        element.addEventListener('click', function (e) {
+        selector.addEventListener('click', function (e) {
             e.preventDefault();
 
             var link = this.getAttribute('href');
@@ -3584,58 +3797,75 @@ package spike.core;
 import System from spike.core.System;
 import Config from spike.core.System.config;
 import Templates from spike.core.Templates;
+import Errors from spike.core.Errors;
+import Selectors from spike.core.Selectors;
+import Assembler from spike.core.Assembler;
+import Events from spike.core.Events;
 
 class Element {
 
     rendered: false,
 
-    model: null,
     elementId: null,
     elementSelector: null,
 
     compiledHtml: null,
-
-    parentElement: null,
     childElements: [],
 
     selector: {},
     eventsSelectors: [],
     linksSelectors: [],
 
+    templatePath: null,
+
     rootSelector: function(){
 
         if(this.elementSelector === null){
-            this.elementSelector = document.getElementById(this.elementId);
+            this.elementSelector = getElementBySpikeId(document, this.elementId);
         }
 
-        return document.getElementById(elementId);
+        return this.elementSelector;
     },
 
-    Element: function(parentElement, model){
+    Element: function(parentElement){
+     this.Element(parentElement, null);
+    },
 
-        this.parentElement = parentElement;
-        this.model = model;
+    Element: function(parentElement, params){
 
+        this.constructor_0();
+
+        this.margeParams(params);
         this.createTemplatePath();
         this.createTemplate();
 
-        //System.bindEvents(componentSelector); --powinno byc wywolane w systemie po zakonczeniu ladowania templatek
-        //System.bindLinks(componentSelector);
+    },
 
-//         if(this.init !== undefined){  --nie moze byc bo jak jest include to dopiero templata jest wrzucona do innej
-//            this.init();
-//         }
+    margeParams: function(params){
+
+        if(params){
+            for(var prop in params){
+                this[prop] = params[prop];
+            }
+        }
 
     },
 
-    //W templatce powinno konwertowac na ' + this.include(new app.elements.SomeElement(this, model)) + '
     include: function(childElement){
 
+        childElement.extractElementId();
         this.childElements.push(childElement);
-        this.createTemplatePath();
-        this.createTemplate();
 
-        return this.compiledHtml;
+        return childElement.compiledHtml;
+
+    },
+
+    extractElementId: function(){
+
+        var virtualElement = document.createElement('div');
+        virtualElement.innerHTML = this.compiledHtml;
+
+        this.elementId = getSpikeId(virtualElement.firstChild);
 
     },
 
@@ -3646,10 +3876,15 @@ class Element {
         var elementPath = this.getClass().split('.');
 
         for(var i = 0; i < elementPath.length; i++){
-            this.templatePath += elementPath[i].toLowerCase()+'/';
+            this.templatePath += elementPath[i]+'_';
         }
 
-        this.templatePath = this.templatePath.substring(0, this.templatePath.lastIndexOf('/')-1)+'.html';
+        this.templatePath = this.templatePath.substring(0, this.templatePath.lastIndexOf('_'));
+        var templateFileName = this.templatePath.substring(this.templatePath.lastIndexOf('_')+1, this.templatePath.length);
+        templateFileName = templateFileName.substring(0,1).toLowerCase()+templateFileName.substring(1, templateFileName.length);
+
+        this.templatePath = this.templatePath.substring(0, this.templatePath.lastIndexOf('_'));
+        this.templatePath = this.templatePath+'_'+templateFileName+'_html';
 
         return this.templatePath;
 
@@ -3657,27 +3892,81 @@ class Element {
 
     createTemplate: function () {
 
-     try {
-        this.compiledHtml = Templates.compileTemplate(this, this.templatePath);
-     }catch (err){
-        Errors.throwError('Error occur when executing component {0} template {1}', [this.getClass(), this.templatePath]);
-     }
-
-     var selectorsObj = System.createUniqueSelectors(this.compiledHtml);
-
-     this.compiledHtml = selectorsObj.html;
-     this.selector = selectorsObj.selectors;
-     this.eventsSelectors = selectorsObj.eventsSelectors;
-     this.linksSelectors = selectorsObj.linksSelectors;
-
+     this.compiledHtml = Templates.compileTemplate(this, this.templatePath);
+     Selectors.createUniqueSelectors(this);
 
     },
 
-    render: function () {
+    postConstructChildren: function(){
+
+//        for(var i = 0; i < this.childElements.length; i++){
+//            this.childElements[i].postConstruct();
+//        }
+
     },
 
-    reloadComponent: function(component, componentData){
-    //TODO
+    watchers: {},
+
+    watch: function(field, watchFn){
+
+        if(this.watchers[field] === undefined){
+
+            this.watchers[field] = watchFn;
+
+        }else{
+            Log.warn('Watcher for field {0} exist', [field]);
+        }
+
+    },
+
+    destroy: function(){
+
+//        if(this.childElements.length > 0){
+//            for(var i = 0; i < this.childElements.length; i++){
+//                this.childElements[i].destroy();
+//            }
+//        }
+
+    },
+
+    abstract function render;
+
+    postConstruct: function(){
+        this.postConstructChildren();
+    }
+
+}package spike.core;
+
+import System from spike.core.System;
+import Events from spike.core.Events;
+import Router from spike.core.Router;
+import Element from spike.core.Element;
+import Watchers from spike.core.Watchers;
+
+class GlobalElement extends Element {
+
+    GlobalElement: function(elementId){
+
+        this.constructor_0();
+        this.elementId = elementId;
+        this.createTemplatePath();
+        this.createTemplate();
+        this.render();
+
+    },
+
+    render: function(){
+
+        this.replaceWith();
+
+        Watchers.observe(this);
+
+        this.rendered = true;
+
+        this.postConstructChildren();
+        this.postConstruct();
+
+
     },
 
     replaceWith: function () {
@@ -3685,116 +3974,54 @@ class Element {
         var elementDiv = document.createElement("div");
         elementDiv.innerHTML = this.compiledHtml;
         elementDiv.setAttribute('element-name', this.getClass());
-        elementDiv.setAttribute('id', this.elementId);
-        this.rootSelector().parentNode.replaceChild(elementDiv, this.rootSelector());
+        elementDiv.setAttribute('sp-id', this.elementId);
 
-        this.elementSelector = null;
+        System.getAppView().replaceChild(elementDiv, this.rootSelector());
 
-    }
-
-}package spike.core;
-
-import System from spike.core.System;
-import Events from spike.core.Events;
-import Router from spike.core.Router;
-import Element from spike.core.Element;
-
-class GlobalElement extends Element {
-
-    GlobalElement: function(){
-
-        this.elementSelector = document.body;
-        this.createTemplatePath();
-        this.createTemplate();
+        this.elementSelector = getElementBySpikeId(document, this.elementId);
 
     },
 
-    render: function(){
-
-        this.replaceWith();
-
-        Events.bindEvents(this);
-        Router.bindLinks(this);
-
-        this.rendered = true;
-
-        if(this.init !== undefined){
-            this.init();
-        }
-
+    destroy: function(){
+        this.super.destroy();
+        Watchers.unobservable(this);
     }
 
 }package spike.core;
-
- import System from spike.core.System;
- import Events from spike.core.Events;
- import Router from spike.core.Router;
- import Controller from spike.core.Controller;
-
- class Controller222 extends Controller {
-
-     scrollTop: true,
-     checkNetwork: true,
-
-     Controller: function(model){
-
-         this.model = model;
-         this.elementSelector = System.getView();
-         this.createTemplatePath();
-         this.createTemplate();
-
-     },
-
-     render: function(){
-
-         this.replaceWith();
-
-         Events.bindEvents(this);
-         Router.bindLinks(this);
-
-         this.rendered = true;
-
-         if(this.init !== undefined){
-             this.init();
-         }
-
-     }
-
- }
- package spike.core;
 
 import System from spike.core.System;
 import Events from spike.core.Events;
 import Router from spike.core.Router;
 import Element from spike.core.Element;
+import Assembler from spike.core.Assembler;
+import Watchers from spike.core.Watchers;
 
 class Controller extends Element {
 
     scrollTop: true,
     checkNetwork: true,
 
-    Controller: function(model){
-
-        this.model = model;
-        this.elementSelector = System.getView();
-        this.createTemplatePath();
-        this.createTemplate();
-
+    Controller: function(){
     },
 
     render: function(){
 
-        this.replaceWith();
+        System.getView().innerHTML = this.compiledHtml;
+        this.elementSelector = System.getView().firstChild;
+        this.elementId = this.elementSelector.getAttribute('sp-id');
 
-        Events.bindEvents(this);
-        Router.bindLinks(this);
+        Watchers.observe(this);
 
         this.rendered = true;
 
-        if(this.init !== undefined){
-            this.init();
-        }
+        this.postConstructChildren();
+        this.postConstruct();
 
+    },
+
+    destroy: function(){
+        this.super.destroy();
+        Watchers.unobservable(this);
     }
 
 }package spike.core;
@@ -3804,48 +4031,65 @@ import System from spike.core.System;
 import Errors from spike.core.Errors;
 import ModalInterface from spike.core.System.modalInterface;
 import Element from spike.core.Element;
-
-private enum Status {
-
-    OK: 200,
-    ERROR: 500
-
-}
+import Watchers from spike.core.Watchers;
+import Util from spike.core.Util;
+import Events from spike.core.Events;
+import Router from spike.core.Router;
 
 class Modal extends Element {
 
-    destroyed: false,
+    visible: false,
 
-    Modal: function(model){
-
-        this.parentElement = System.getModalsView();
-        this.model = model;
+    Modal: function(){
 
         this.createTemplatePath();
         this.createTemplate();
+        this.render();
 
-        var x = Status.OK;
+    },
 
-        //System.bindEvents(componentSelector); --powinno byc wywolane w systemie po zakonczeniu ladowania templatek
-        //System.bindLinks(componentSelector);
+    render: function(){
 
-//         if(this.init !== undefined){  --nie moze byc bo jak jest include to dopiero templata jest wrzucona do innej
-//            this.init();
-//         }
+        this.elementId = 'modal-'+Util.hash();
+
+        var modalElement = document.createElement('div');
+        setSpikeId(modalElement, this.elementId);
+        modalElement = ModalInterface.onConstruct(modalElement);
+
+        System.getModalsView().appendChild(modalElement);
+        this.rootSelector().innerHTML = this.compiledHtml;
+
+        Watchers.observe(this);
+
+        ModalInterface.onRender(this);
+        this.rendered = true;
+
+        this.postConstructChildren();
+        this.postConstruct();
 
     },
 
     show: function(){
-        ModalInterface.onShow();
+        this.visible = true;
+        ModalInterface.onShow(this);
     },
 
     hide: function(){
-        ModalInterface.onHide();
+        this.visible = false;
+        ModalInterface.onHide(this);
     },
 
     destroy: function () {
-        this.destroyed = true;
-    },
+
+        if(this.rendered === true){
+             this.rootSelector().remove();
+             ModalInterface.onDestroy(this);
+             this.visible = false;
+             this.super.destroy();
+             Watchers.unobservable(this);
+        }
+
+    }
 
 
 };package spike.core;
@@ -3962,6 +4206,1154 @@ static class Broadcaster {
         }
 
         this.applicationEvents[eventName] = [];
+
+    }
+
+}package spike.core;
+
+import Log from spike.core.Log;
+import Reconcile from spike.core.Reconcile;
+import Events from spike.core.Events;
+
+static class Reconcile {
+
+ restrictedAttributes: [],
+
+ constructRestrictedAttributes: function(){
+
+   //Reconcile.restrictedAttributes = ['spike-unbinded', 'spike-binded'];
+
+//   for(var i = 0; i < Events.allowedEvents.length; i++){
+//     Reconcile.restrictedAttributes.push('spike-event-'+Events.allowedEvents[i]);
+//     Reconcile.restrictedAttributes.push('spike-event-'+Events.allowedEvents[i]+'-link');
+//   }
+
+ },
+
+ escape: function (s) {
+    var n = s;
+    n = n.replace(/&/g, '&amp;');
+    n = n.replace(/</g, '&lt;');
+    n = n.replace(/>/g, '&gt;');
+    n = n.replace(/"/g, '&quot;');
+
+    return n;
+  },
+
+  mapElements: function (nodes) {
+    var map = {};
+    var tags = {};
+    var node;
+
+    var indices = [];
+    for (var i = 0, len = nodes.length; i < len; i++) {
+      node = nodes[i];
+      var id = spike.core.Reconcile.generateId(node, tags);
+      map[id] = node;
+      node._i = i;
+      node._id = id;
+      indices.push(i);
+    }
+
+    return {'map': map, 'indices': indices};
+  },
+
+  generateId: function (node, tags) {
+    // get the tag or create one from the other node types
+    var tag = (node.tagName) ? node.tagName : 'x' + node.nodeType;
+
+    // set the counter to zero
+    if (!tags[tag]) {
+      tags[tag] = 0;
+    }
+
+    // increment the counter for that tag
+    tags[tag]++;
+
+    return tag + tags[tag];
+  },
+
+  generateMoves: function (map, nodes, indices, base, reverse, index) {
+    var moves = [];
+    var compare = [];
+    var operateMap = {};
+    var tags = {};
+
+    // iterate over the nodes and base nodes in the given order
+    for (var i = 0, len = nodes.length; i < len; i++) {
+      var node = nodes[reverse ? (nodes.length - i - 1) : i],
+        bound = base.childNodes[reverse ? (base.childNodes.length - indices[i] - 1) : indices[i]],
+        id = spike.core.Reconcile.generateId(node, tags);
+
+      // skip if force no change
+      if (node.attributes && node.hasAttribute('assume-no-change')) {
+        continue;
+      }
+
+      // skip if we already performed an insertion map
+      if (operateMap[id]) {
+        continue;
+      }
+
+      // check if the node has an id
+      // if it exists in the base map, then move that node to the correct
+      // position, this will usually be the same node, which means no dom move
+      // is necessary, otherwise clone the node from the source (new inserts)
+      var existing = map[id];
+      if (existing) {
+        if (existing !== bound) {
+          var relativeBaseIndex = (reverse ? base.childNodes.length - existing._i - 1 : existing._i);
+          moves.push({
+            'action': 'moveChildElement',
+            'element': existing,
+            'baseIndex': index + '>' + relativeBaseIndex,
+            'sourceIndex': index + '>' + i
+          });
+
+          // move the index so we can retrieve the next appropriate node
+          indices.splice(i, 0, indices.splice(relativeBaseIndex, 1)[0]);
+        }
+        if (!node.isEqualNode(existing)) {
+          compare.push([node, existing]);
+        }
+      } else {
+        var inserted = node.cloneNode(true);
+        var relativeBaseIndex = (reverse ? nodes.length - i - 1 : i);
+        moves.push({
+          'action': 'insertChildElement',
+          'element': inserted,
+          'baseIndex': index + '>' + relativeBaseIndex,
+          'sourceIndex': index + '>' + relativeBaseIndex
+        });
+      }
+      operateMap[id] = true;
+    }
+
+    // Remove any tail nodes in the base
+    for (var i = 0, len = base.childNodes.length; i < len; i++) {
+      var remove = base.childNodes[i];
+      var removeId = remove._id;
+      if (base.childNodes[i].attributes && base.childNodes[i].hasAttribute('assume-no-change')) {
+        continue;
+      }
+      if (!operateMap[removeId]) {
+        moves.push({
+          'action': 'removeChildElement',
+          'element': remove,
+          'baseIndex': index + '>' + remove._i,
+          'sourceIndex': null
+        });
+      }
+    }
+
+    return {'compare': compare, 'diff': moves};
+  },
+
+  diffString: function (source, base, index, baseElement) {
+
+    var o = base == "" ? [] : base.split(/\s+/);
+    var n = source == "" ? [] : source.split(/\s+/);
+    var ns = new Object();
+    var os = new Object();
+
+    for (var i = 0; i < n.length; i++) {
+      if (ns[n[i]] == null)
+        ns[n[i]] = {
+          rows: new Array(),
+          o: null
+        };
+      ns[n[i]].rows.push(i);
+    }
+
+    for (var i = 0; i < o.length; i++) {
+      if (os[o[i]] == null)
+        os[o[i]] = {
+          rows: new Array(),
+          n: null
+        };
+      os[o[i]].rows.push(i);
+    }
+
+    for (var i in ns) {
+      if (ns[i].rows.length == 1 && typeof(os[i]) != "undefined" && os[i].rows.length == 1) {
+        n[ns[i].rows[0]] = {
+          text: n[ns[i].rows[0]],
+          row: os[i].rows[0]
+        };
+        o[os[i].rows[0]] = {
+          text: o[os[i].rows[0]],
+          row: ns[i].rows[0]
+        };
+      }
+    }
+
+    for (var i = 0; i < n.length - 1; i++) {
+      if (n[i].text != null && n[i + 1].text == null && n[i].row + 1 < o.length && o[n[i].row + 1].text == null &&
+        n[i + 1] == o[n[i].row + 1]) {
+        n[i + 1] = {
+          text: n[i + 1],
+          row: n[i].row + 1
+        };
+        o[n[i].row + 1] = {
+          text: o[n[i].row + 1],
+          row: i + 1
+        };
+      }
+    }
+
+    for (var i = n.length - 1; i > 0; i--) {
+      if (n[i].text != null && n[i - 1].text == null && n[i].row > 0 && o[n[i].row - 1].text == null &&
+        n[i - 1] == o[n[i].row - 1]) {
+        n[i - 1] = {
+          text: n[i - 1],
+          row: n[i].row - 1
+        };
+        o[n[i].row - 1] = {
+          text: o[n[i].row - 1],
+          row: i - 1
+        };
+      }
+    }
+
+    var oSpace = base.match(/\s+/g);
+    if (oSpace == null) {
+      oSpace = [''];
+    } else {
+      oSpace.push('');
+    }
+    var nSpace = source.match(/\s+/g);
+    if (nSpace == null) {
+      nSpace = [''];
+    } else {
+      nSpace.push('');
+    }
+
+    var changes = [];
+    var baseIndex = 0;
+    if (n.length == 0) {
+      var deletedText = '';
+      for (var i = 0; i < o.length; i++) {
+        deletedText += o[i] + oSpace[i];
+        baseIndex += o[i].length + oSpace[i].length;
+      }
+      if (o.length > 0) {
+        changes.push({
+          'action': 'deleteText',
+          'element': baseElement,
+          'baseIndex': index,
+          'sourceIndex': index,
+          '_textStart': 0,
+          '_textEnd': baseIndex,
+          '_deleted': deletedText,
+          '_length': deletedText.length
+        });
+      }
+    } else {
+      var current = null;
+      if (n[0].text == null) {
+        for (var i = 0; i < o.length; i++) {
+          if (o[i].text != null) {
+            if (current != null) {
+              changes.push(current);
+            }
+            current = null;
+            continue;
+          }
+
+          if (current == null) {
+            current = {
+              'action': 'deleteText',
+              'element': baseElement,
+              'baseIndex': index,
+              'sourceIndex': index,
+              '_textStart': baseIndex,
+              '_textEnd': 0,
+              '_deleted': '',
+              '_length': 0
+            };
+          }
+
+          // update the current deletion parameters
+          current['_deleted'] += o[i] + oSpace[i];
+          current['_length'] = current['_deleted'].length;
+          baseIndex += current['_length'];
+          current['_textEnd'] = baseIndex;
+        }
+
+        if (current != null) {
+          changes.push(current);
+          current = null;
+        }
+      }
+
+      var k = 0;
+      for (var i = 0; i < n.length; i++) {
+        if (n[i].text == null) {
+
+          // ensure that previous changes are added to the changeset if
+          // they happen to differ from an expected insertion below
+          if (current != null && current['action'] === 'deleteText') {
+            changes.push(current);
+            current = null;
+          }
+
+          if (current == null) {
+            current = {
+              'action': 'insertText',
+              'element': baseElement,
+              'baseIndex': index,
+              'sourceIndex': index,
+              '_textStart': baseIndex,
+              '_textEnd': 0,
+              '_inserted': '',
+              '_length': 0
+            };
+          }
+
+          // update the current insertion parameters
+          current['_inserted'] += n[i] + nSpace[i];
+          current['_length'] = current['_inserted'].length;
+          baseIndex += current['_length'];
+          current['_textEnd'] = baseIndex;
+
+        } else {
+          baseIndex += n[i].text.length + nSpace[i].length;
+          // edge case for white space insertions
+          if (n[k].text == null) {
+            continue;
+          }
+          for (k = n[k].row + 1; k < o.length && o[k].text == null; k++) {
+            // ensure that the previous changes are added to the changeset
+            if (current != null && current['action'] === 'insertText') {
+              changes.push(current);
+              current = null;
+            }
+
+            if (current == null) {
+              current = {
+                'action': 'deleteText',
+                'element': baseElement,
+                'baseIndex': index,
+                'sourceIndex': index,
+                '_textStart': baseIndex,
+                '_textEnd': 0,
+                '_deleted': '',
+                '_length': 0
+              };
+            }
+
+            // update the current insertion parameters
+            current['_deleted'] += o[k] + oSpace[k];
+            current['_length'] = current['_deleted'].length;
+            baseIndex += current['_length'];
+            current['_textEnd'] = baseIndex;
+          }
+        }
+      }
+
+      // ensure that remaining changes are pushed to the changeset
+      if (current != null) {
+        changes.push(current);
+        current = null;
+      }
+    }
+
+    return changes;
+  },
+
+  mapStyleValues: function (styleString) {
+    // remove comments, find key-value pairs outside of quoted semicolon delimited
+    var attrs = styleString ? styleString.replace(/\/\*.*\*\//g, '')
+        .split(/;(?=(?:[^'"]*['"][^'"]*['"])*[^'"]*$)/)
+      : [];
+    var map = {};
+    for (var i = 0; i < attrs.length; i++) {
+      var item = attrs[i].trim();
+      if (!item) {
+        continue;
+      }
+      var index = item.indexOf(':');
+      var name = item.slice(0, index).trim();
+      var value = item.slice(index + 1).trim();
+      if (name.length === 0 || value.length === 0) {
+        continue;
+      }
+      map[name] = value;
+    }
+    return map;
+  },
+
+  diffStyleString: function (source, base, index, baseElement) {
+    var diffActions = [];
+
+    // map both source and base style strings to determine
+    // whether a change was made or a new style value exists
+    var sourceMap = spike.core.Reconcile.mapStyleValues(source);
+    var baseMap = spike.core.Reconcile.mapStyleValues(base);
+    for (var k in sourceMap) {
+      var sourceVal = sourceMap[k];
+      var baseVal = baseMap[k];
+      if (sourceVal != baseVal) {
+        diffActions.push({
+          'action': 'setStyleValue',
+          'name': k,
+          'element': baseElement,
+          'baseIndex': index,
+          'sourceIndex': index,
+          '_deleted': baseVal,
+          '_inserted': sourceVal
+        });
+      }
+    }
+
+    // remove style values which were unset in the source string
+    for (var k in baseMap) {
+      if (sourceMap[k] == null) {
+        diffActions.push({
+          'action': 'removeStyleValue',
+          'name': k,
+          'element': baseElement,
+          'baseIndex': index,
+          'sourceIndex': index,
+          '_deleted': baseMap[k]
+        });
+      }
+    }
+
+    return diffActions;
+  },
+
+  diff: function (source, base, index) {
+    var diffActions = [];
+    if (index == null) {
+      index = '0'; // 0 for root node
+    }
+    // if the source and base is either a text node or a comment node,
+    // then we can simply say the difference is their text content
+    if (source.nodeType === base.nodeType && (source.nodeType === 3 || source.nodeType === 8)) {
+      if (base.nodeValue !== source.nodeValue) {
+        var textActions = spike.core.Reconcile.diffString(source.nodeValue, base.nodeValue, index, base);
+        if (textActions.length > 0) {
+          diffActions = diffActions.concat(textActions);
+        }
+      }
+
+      return diffActions;
+    }
+
+    // look for differences between the nodes by their attributes
+    if (source.attributes && base.attributes) {
+      var attributes = source.attributes,
+        value,
+        name;
+
+      // iterate over the source attributes that we want to copy over to the new base node
+      for (var i = attributes.length; i--;) {
+        value = attributes[i].nodeValue;
+        name = attributes[i].nodeName;
+
+        if(Reconcile.restrictedAttributes.indexOf(name) > -1){
+            continue;
+        }
+
+        var val = base.getAttribute(name);
+        if (val !== value) {
+          if (val == null) {
+
+             diffActions.push({
+                  'action': 'setAttribute',
+                  'name': name,
+                  'element': base,
+                  'baseIndex': index,
+                  'sourceIndex': index,
+                  '_inserted': value
+                });
+
+          } else {
+            // if the attribute happens to be a style
+            // only generate style Updates
+            if (name === 'style') {
+              var styleChanges = spike.core.Reconcile.diffStyleString(value, val, index, base);
+              if (styleChanges.length > 0) {
+                diffActions = diffActions.concat(styleChanges);
+              }
+            } else {
+              diffActions.push({
+                'action': 'setAttribute',
+                'name': name,
+                'element': base,
+                'baseIndex': index,
+                'sourceIndex': index,
+                '_deleted': val,
+                '_inserted': value
+              });
+            }
+          }
+        }
+      }
+
+      // iterate over attributes to remove that the source no longer has
+      attributes = base.attributes;
+      for (var i = attributes.length; i--;) {
+        name = attributes[i].nodeName;
+
+        if(Reconcile.restrictedAttributes.indexOf(name) > -1){
+            continue;
+        }
+
+        if (source.getAttribute(name) === null) {
+          diffActions.push({
+            'action': 'removeAttribute',
+            'name': name,
+            'baseIndex': index,
+            'sourceIndex': index,
+            '_deleted': attributes[i].nodeValue
+          });
+        }
+      }
+    }
+
+    // insert, delete, and move child nodes based on a predictable id
+    var compare = [];
+    if (source.childNodes && base.childNodes) {
+      var mapResult = spike.core.Reconcile.mapElements(base.childNodes),
+        nodes = source.childNodes;
+
+      var map = mapResult['map'];
+      var indices = mapResult['indices'];
+
+      var moves = spike.core.Reconcile.generateMoves(map, nodes, indices.slice(0), base, false, index);
+      if (moves['diff'].length > 1) {
+        var backwardMoves = spike.core.Reconcile.generateMoves(map, nodes, indices.slice(0), base, true, index);
+        if (backwardMoves['diff'].length < moves['diff'].length) {
+          moves = backwardMoves;
+        }
+      }
+      diffActions = diffActions.concat(moves['diff']);
+      compare = moves['compare'];
+    }
+
+    // at this point we should have child nodes of equal length
+    if (compare.length > 0) {
+      for (var i = 0, len = compare.length; i < len; i++) {
+        var sourceChildNode = compare[i][0];
+        var baseChildNode = compare[i][1];
+
+        // perform the diff between the given source and base child nodes
+        var childDiffs = spike.core.Reconcile.diff(
+          sourceChildNode,
+          baseChildNode, index + '>' +
+          baseChildNode._i);
+
+        // if there was any difference, concat those to our existing actions
+        if (childDiffs.length > 0) {
+          diffActions = diffActions.concat(childDiffs);
+        }
+
+        // remove temporary data stored on the node
+        delete baseChildNode._i;
+        delete baseChildNode._id;
+      }
+    }
+
+    return diffActions;
+  },
+
+  sortChange: function (a, b) {
+    if (a['sourceIndex'] === b['sourceIndex']) {
+      if (a['_textStart'] && b['_textStart']) {
+        return (a['_textStart'] > b['_textStart']) ? 1 : -1;
+      }
+      return 0;
+    } else if (!a['sourceIndex'] && b['sourceIndex']) {
+      return -1;
+    } else if (a['sourceIndex'] && !b['sourceIndex']) {
+      return 1;
+    }
+    var aIndices = a['sourceIndex'].split('>');
+    var bIndices = b['sourceIndex'].split('>');
+    var equal = true;
+    var i = 0;
+    while (equal && i < aIndices.length && i < bIndices.length) {
+      var aN = parseInt(aIndices[i], 10);
+      var bN = parseInt(bIndices[i], 10);
+      if (aN === bN) {
+        i++;
+        continue;
+      } else if (isNaN(aN) || isNaN(bN)) {
+        return isNaN(aN) ? 1 : -1;
+      } else {
+        return (aN > bN) ? 1 : -1;
+      }
+    }
+
+    return 0;
+  },
+
+  findChildAtIndex: function (node, index) {
+    if (!index || !node.childNodes || node.childNodes.length === 0) {
+      return null;
+    }
+
+    var result = {};
+    var indices = index.split('>');
+    var found = true;
+    var lastParentIndex = '';
+    for (var i = 1, len = indices.length; i < len; i++) {
+      var nodeIndex = parseInt(indices[i], 10);
+      if (node.childNodes && node.childNodes.length > nodeIndex) {
+        node = node.childNodes[nodeIndex];
+      } else {
+        lastParentIndex = indices.slice(0, i - 1).join('>');
+        found = false;
+        break;
+      }
+    }
+
+    result['lastParent'] = found ? node.parentNode : node;
+    result['lastParentIndex'] = found ? index.slice(0, index.lastIndexOf('>')) : lastParentIndex;
+    result['node'] = found ? node : null;
+    result['found'] = found;
+    return result;
+  },
+
+  apply: function (changes, base, force, showChanges) {
+    // a patch contains a list of changes to be made to a given element
+    var unapplied = [];
+    var moves = [];
+    var removals = [];
+    var conflictChanges = [];
+    var textChanges = {};
+    var styleChanges = {};
+    for (var c = 0, cLen = changes.length; c < cLen; c++) {
+      var change = changes[c];
+      var action = change['action'];
+      var baseIndex = change['baseIndex'];
+      var sourceIndex = change['sourceIndex'];
+      var baseReference = change['_baseReference'];
+      var sourceReference = change['_sourceReference'];
+
+      if (change['_conflict'] && !force) {
+        change['_baseReference'] = spike.core.Reconcile.findChildAtIndex(base, baseIndex);
+        if (sourceIndex && baseIndex !== sourceIndex) {
+          change['_sourceReference'] = spike.core.Reconcile.findChildAtIndex(base, sourceIndex);
+        }
+        conflictChanges.push(change);
+        continue;
+      }
+
+      // find the index from the base element
+      // this is done using a binary index
+      // where 10 is effectively first child element > first child element
+      var node = null;
+      var findBaseChildResult = baseReference;
+      if (findBaseChildResult == null) {
+        findBaseChildResult = spike.core.Reconcile.findChildAtIndex(base, baseIndex);
+        if (findBaseChildResult == null) {
+          unapplied.push(change);
+          continue;
+        }
+      }
+
+      var node = findBaseChildResult['node'];
+      if (!findBaseChildResult['found']) {
+        // if we were going to append the element to the base, then
+        // do so now, for the given changset to be applied
+        if (action === 'insertChildElement') {
+          var lastParent = findBaseChildResult['lastParent'];
+          var insertion = change['element'];
+          if (showChanges) {
+            var insNode = document.createElement('ins');
+            ins.appendChild(insertion);
+            insertion = ins;
+          }
+          moves.push({
+            'parent': lastParent,
+            'insertion': insertion,
+            'source': null,
+            'change': change,
+            'appendOnly': false
+          });
+        } else {
+          unapplied.push(change);
+        }
+        continue;
+      }
+
+      // if we couldn't find the base index node, apply the insert if it
+      // is an appending insert, otherwise, do not apply the change
+      if (node === null) {
+        continue;
+      }
+
+      if (action === 'moveChildElement' || action === 'insertChildElement') {
+        // locate the source index from the base node
+        var sourceNode = node;
+        if (sourceIndex !== baseIndex) {
+          var findSourceChildResult = sourceReference;
+          if (findSourceChildResult == null) {
+            findSourceChildResult = spike.core.Reconcile.findChildAtIndex(base, sourceIndex);
+          }
+          sourceNode = findSourceChildResult !== null ? findSourceChildResult['node'] : null;
+        }
+
+        // a move that is prior to a given source element
+        if (action === 'moveChildElement') {
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': node,
+            'source': sourceNode,
+            'change': change,
+            'appendOnly': false
+          });
+        } else {
+          var insertion = change['element'];
+          if (showChanges) {
+            var insNode = document.createElement('ins');
+            insNode.appendChild(insertion);
+            insertion = insNode;
+          }
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': insertion,
+            'source': sourceNode,
+            'change': change,
+            'appendOnly': false
+          });
+        }
+
+      } else if (action === 'removeChildElement') {
+        if (showChanges) {
+          var delNode = document.createElement('del');
+          delNode.appendChild(node.cloneNode(true));
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': delNode,
+            'source': null,
+            'change': change,
+            'appendOnly': true
+          });
+        }
+        removals.push([node.parentNode, node]);
+      } else if (action === 'deleteText' || action === 'insertText' ||
+        action === 'setStyleValue' || action === 'removeStyleValue') {
+        // all text changes need to be grouped into a
+        // single action, this helps us apply a single set of
+        // operations to the same text node without too much trouble
+        var existingOp = textChanges[change['baseIndex']];
+        if (!existingOp) {
+          existingOp = {
+            'parent': node.parentNode,
+            'source': node,
+            'changes': []
+          };
+        }
+
+        existingOp['changes'].push(change);
+        if (action === 'insertText' || action === 'deleteText') {
+          textChanges[change['baseIndex']] = existingOp;
+        } else {
+          styleChanges[change['baseIndex']] = existingOp;
+        }
+      } else if (action === 'replaceText') {
+        if (!showChanges) {
+          node.nodeValue = change['_inserted'];
+        } else {
+          var deletionNode = document.createElement('del');
+          deletionNode.appendChild(document.createTextNode(change['_deleted']));
+          var insertionNode = document.createElement('ins');
+          insertionNode.appendChild(document.createTextNode(change['_inserted']));
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': deletionNode,
+            'source': node,
+            'change': change,
+            'appendOnly': false
+          });
+          moves.push({
+            'parent': node.parentNode,
+            'insertion': insertionNode,
+            'source': node,
+            'change': change,
+            'appendOnly': false
+          });
+          node.nodeValue = '';
+        }
+      } else if (action === 'setAttribute') {
+        node.setAttribute(change['name'], change['_inserted']);
+      } else if (action === 'removeAttribute') {
+        node.removeAttribute(change['name']);
+      }
+    }
+
+    // perform the moves/insertions last by first sorting the changeset
+    moves.sort(function (a, b) {
+      return spike.core.Reconcile.sortChange(a['change'], b['change']);
+    });
+    for (var i = 0, len = moves.length; i < len; i++) {
+      var move = moves[i];
+      var parent = move['parent'],
+        insertion = move['insertion'],
+        source = move['source'],
+        change = move['change'],
+        appendOnly = move['appendOnly'];
+
+      // if this was an append, then find out the approximate index it should be at
+      // based on the relative index of the change itself, if this is still
+      // null, then just append the item altogether, typically this will
+      // only matter when we are forcing the insertion to happen on conflict resolve
+      if (source === null && !appendOnly) {
+        var sourceIndex = change['sourceIndex'];
+        if (sourceIndex) {
+          var lastIndexStr = sourceIndex.substr(sourceIndex.lastIndexOf('>') + 1, sourceIndex.length);
+          var childIndex = parseInt(lastIndexStr, 10);
+          if (parent.childNodes && parent.childNodes.length > childIndex) {
+            source = parent.childNodes[childIndex];
+          }
+        }
+      }
+      parent.insertBefore(insertion, source);
+    }
+
+    // execute all removal changes
+    for (var i = 0; i < removals.length; i++) {
+      var removal = removals[i];
+      removal[0].removeChild(removal[1]);
+    }
+
+    // execute all text changes
+    for (var b in textChanges) {
+      var nodeChanges = textChanges[b];
+      var node = nodeChanges['source'];
+      var value = node.nodeValue;
+      var nodeOps = nodeChanges['changes'];
+      nodeOps.sort(function (a, b) {
+        return a['_textStart'] > b['_textStart'] ? 1 : -1;
+      });
+      var newStr = '';
+      var valueIndex = 0;
+      for (var i = 0; i < nodeOps.length; i++) {
+        var op = nodeOps[i];
+        if (op['action'] === 'insertText') {
+          newStr += value.substr(valueIndex, op['_textStart']);
+          if (showChanges) {
+            newStr += '<ins>' + spike.core.Reconcile.escape(op['_inserted']) + '</ins>';
+          } else {
+            newStr += op['_inserted'];
+          }
+          if (valueIndex === op['_textStart']) {
+            newStr += value.substr(valueIndex, op['_textEnd']);
+          }
+        } else {
+          newStr += value.substr(valueIndex, op['_textStart']);
+          if (!!showChanges) {
+            newStr += ('<del>' + spike.core.Reconcile.escape(op['_deleted']) + '</del>');
+          }
+        }
+        valueIndex = op['_textEnd'];
+      }
+      newStr += value.substr(valueIndex);
+
+      if (!showChanges) {
+        node.nodeValue = newStr;
+      } else {
+        node.innerHTML = newStr;
+      }
+    }
+
+    // execute all style changes
+    for (var b in styleChanges) {
+      var nodeChanges = styleChanges[b];
+      var node = nodeChanges['source'];
+      var nodeOps = nodeChanges['changes'];
+
+      // generate a map and perform the operations
+      var styleMap = spike.core.Reconcile.mapStyleValues(node.getAttribute('style'));
+      for (var i = 0; i < nodeOps.length; i++) {
+        var op = nodeOps[i];
+        if (op['action'] === 'setStyleValue') {
+          styleMap[op['name']] = op['_inserted'];
+        } else {
+          delete styleMap[op['name']];
+        }
+      }
+
+      // generate the style string result
+      var str = [];
+      for (var k in styleMap) {
+        str.push(k + ': ' + styleMap[k]);
+      }
+
+      // perform the single update to invalidate css styles
+      if (str.length > 0) {
+        node.setAttribute('style', str.join(';') + (str.length === 1 ? ';' : ''));
+      } else {
+        node.removeAttribute('style');
+      }
+    }
+
+    // loop through the conflicts and group them by theirs/mine
+    var conflicts = [];
+    while (conflictChanges.length > 0) {
+      var change = conflictChanges.pop();
+      var conflict = {
+        'mine': [],
+        'theirs': []
+      };
+      conflict[change['_owner']].push(change);
+      if (change['_conflictedWith']) {
+        var conflictedWithChange = change['_conflictedWith'];
+        if (conflictedWithChange) {
+          // iterate over the changes that 'change' is conflicted with
+          for (var k = 0; k < conflictedWithChange.length; k++) {
+            var conflictedWithItem = conflictedWithChange[k];
+            var i = conflictChanges.indexOf(conflictedWithItem);
+            if (i > -1) {
+              conflictChanges.splice(i, 1);
+              conflict[conflictedWithItem['_owner']].push(conflictedWithItem);
+            }
+            // iterate over the changes that 'conflictedWithItem' is conflicted with
+            if (conflictedWithItem['_conflictedWith']) {
+              for (var s = 0; s < conflictedWithItem['_conflictedWith'].length; s++) {
+                var item = conflictedWithItem['_conflictedWith'][s];
+                var i = conflictChanges.indexOf(item);
+                if (i > -1) {
+                  conflictChanges.splice(i, 1);
+                  conflict[item['_owner']].push(item);
+                }
+
+                delete item['_conflictedWith'];
+              }
+            }
+
+            delete conflictedWithItem['_conflictedWith'];
+          }
+
+          // remove temporary reference, since we no longer need it
+          delete change['_conflictedWith'];
+        }
+      }
+      conflicts.push(conflict);
+    }
+
+    return {'unapplied': unapplied, 'conflicts': conflicts};
+  }
+
+}
+package spike.core;
+
+import Assembler from spike.core.Assembler;
+import Log from spike.core.Log;
+import Util from spike.core.Util;
+import Reconcile from spike.core.Reconcile;
+import Events from spike.core.Events;
+import Router from spike.core.Router;
+import Templates from spike.core.Templates;
+
+static class Watchers {
+
+    compileWatchers: function(scope){
+
+        var watcherHtml = Templates.compileTemplate(scope, scope.templatePath);
+        var element = scope.rootSelector();
+
+        if(Util.hashString(watcherHtml) !== Util.hashString(element.outerHTML)){
+            $this.replaceChangedElements(scope, watcherHtml, element);
+        }
+
+    },
+
+    replaceChangedElements: function(scope, watcherHtml, currentElement){
+
+        var elementInDocument = getElementById(getSpikeId(currentElement));
+
+        var watcherVirtual = document.createElement('div');
+        watcherVirtual.innerHTML = watcherHtml;
+
+        if(currentElement.outerHTML !== watcherHtml){
+
+            var changes = Reconcile.diff(watcherVirtual.firstChild, currentElement);
+
+            if(changes.length > 0){
+                Reconcile.apply(changes, elementInDocument);
+            }
+
+        }
+
+    },
+
+
+    @map
+    scopes: {},
+
+    @map
+    observables: {},
+
+    @array
+    observablesArr: [],
+
+    @boolean
+    stopLoop: false,
+
+    observe: function(scope){
+        this.stopLoop = true;
+        this.observables[scope.elementId] = scope;
+        this.createObservablesList();
+        this.stopLoop = false;
+    },
+
+    unobservable: function(scope){
+       this.stopLoop = true;
+       this.observables[scope.elementId] = null;
+       this.createObservablesList();
+       this.stopLoop = false;
+    },
+
+    createObservablesList: function(){
+
+        var list = [];
+        for(var elementId in this.observables){
+
+            if(this.observables[elementId] !== undefined && this.observables[elementId] !== null){
+             list.push(this.observables[elementId]);
+            }
+
+        }
+
+        $this.observablesArr = list;
+
+    },
+
+    excludedProperties: {
+        //'childElements' : 'childElements',
+        'eventsSelectors': 'eventsSelectors',
+        'linksSelectors': 'linksSelectors',
+        'compiledHtml': 'compiledHtml',
+        'elementSelector': 'elementSelector',
+        'templatePath': 'templatePath',
+        'selector': 'selector',
+        '__proto__': '__proto__',
+        'selector':'selector',
+        'exclusion':'exclusion'
+    },
+
+    getScopeCopy: function(scope){
+
+        var copy = {};
+        for(var key in scope) {
+            if(typeof scope[key] !== 'function'){
+
+                if($this.excludedProperties[key] === undefined){
+                  copy[key] = scope[key];
+                }
+
+            }
+        }
+
+        scope.watchExclusion = scope.watchExclusion || [];
+        for(var i = 0; i < scope.watchExclusion.length; i++){
+           new Function("copy", "copy."+scope.watchExclusion[i]+" = '[Circular]';")(copy);
+        }
+
+        return copy;
+
+    },
+
+    fireWatchers: function(scope){
+
+        var oldScope = {};
+
+        if($this.scopes[scope.elementId]){
+            oldScope = JSON.parse($this.scopes[scope.elementId]);
+        }
+
+        for(var propertyPath in scope.watchers){
+
+           var oldScopePropertyValue = Assembler.getDotPathObject(oldScope, propertyPath);
+           var scopePropertyValue = Assembler.getDotPathObject(scope, propertyPath);
+
+           if(JSON.stringify(oldScopePropertyValue) !== JSON.stringify(scopePropertyValue)){
+               scope.watchers[propertyPath](oldScopePropertyValue, scopePropertyValue);
+           }
+
+        }
+
+    },
+
+    isCyclic: function (obj) {
+     var keys = [];
+     var stack = [];
+     var stackSet = new Set();
+     var detected = false;
+
+     function detect(obj, key) {
+       if (!(obj instanceof Object)) { return; } // Now works with other
+                                                 // kinds of object.
+
+       if (stackSet.has(obj)) { // it's cyclic! Print the object and its locations.
+         var oldindex = stack.indexOf(obj);
+         var l1 = (keys.join('.') + '.' + key).replace('obj.','scope.');
+         var l2 = keys.slice(0, oldindex + 1).join('.').replace('obj.','scope.');
+         throw new Error('Spike Framework: Obervables circular structure field: '+l1+' = '+l2+'\nAdd to scope.exclusion given field');
+         detected = true;
+         return;
+       }
+
+       keys.push(key);
+       stack.push(obj);
+       stackSet.add(obj);
+       for (var k in obj) { //dive on the object's children
+         if (obj.hasOwnProperty(k)) { detect(obj[k], k); }
+       }
+
+       keys.pop();
+       stack.pop();
+       stackSet.delete(obj);
+       return;
+     }
+
+     detect(obj, 'obj');
+     return detected;
+   },
+
+    detectScopeChange: function(scope){
+
+        var scopeCopy = $this.getScopeCopy(scope);
+        $this.isCyclic(scopeCopy);
+
+        var stringify = JSON.stringify(scopeCopy);
+
+        if(stringify !== $this.scopes[scope.elementId]){
+
+            Log.log('scope changed during lifecycle '+scope.getClass());
+
+         //   console.log(stringify);
+        //    console.log($this.scopes[scope.elementId]);
+
+            $this.fireWatchers(scope);
+            $this.compileWatchers(scope);
+
+        }
+
+        $this.scopes[scope.elementId] = stringify;
+
+    },
+
+    createWatchLoop: function(scope){
+
+        setTimeout(function(){
+
+            if(!$this.stopLoop){
+
+                for(var i = 0; i < $this.observablesArr.length; i++){
+                    $this.detectScopeChange($this.observablesArr[i]);
+                }
+
+            }
+
+            $this.createWatchLoop();
+
+        }, 2000)
 
     }
 

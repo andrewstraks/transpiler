@@ -31,6 +31,8 @@ public class SpikeClass {
     public List<SpikeClassField> fields = new ArrayList<>();
     public List<SpikeClassFunction> functions = new ArrayList<>();
 
+    //public List<String> extendingFrom = new ArrayList<>();
+
     public SpikeClass(SpikePackage classPackage, String body, List<String> imports) {
         this.classPackage = classPackage;
         this.body = body.trim();
@@ -45,7 +47,10 @@ public class SpikeClass {
         this.createWrapConstructor();
         this.createClassFunctions();
 
-        this.classPackage.spikeFile.extendingMap.add(new ExtendingModel(this.extendsFullName, this.classFullName));
+        //this.extendingFrom.add();
+
+        // this.classPackage.spikeFile.extendingMap.add(new ExtendingModel(this.extendsFullName, this.classFullName));
+
     }
 
     private boolean isInterface() {
@@ -307,44 +312,61 @@ public class SpikeClass {
             fieldsBuilder.append(spikeClassField.compileForConstructor());
         }
 
-
         StringBuilder constructorBuilder = new StringBuilder();
 
         constructorBuilder
-                .append(this.classFullName)
-                .append("=function(args){")
+                //   .append(this.classFullName)
+                .append("__compilant")
+                .append(".constructor=function(args){")
 
                 .append("var __args = [];")
-                .append("if(args && arguments.length == 1){")
-                .append("    if(args instanceof Array){")
-                .append("      if(arguments.length == 1 && arguments[0] instanceof Array) {")
-                .append("           __args = args.length == 0 ? arguments : [args];")
-                .append("       }else{")
-                .append("           __args = args.length == 0 ? arguments : args;")
-                .append("       }")
-                .append("    }else{")
-                .append("        __args = [args];")
+
+                .append("if (args.length == 1) {")
+
+                .append("    if (args.length == 1 && args[0] instanceof Array) {")
+                .append("        __args = args.length == 0 ? args : [args];")
+                .append("    } else {")
+                .append("        __args = args.length == 0 ? args : args;")
                 .append("    }")
-                .append("}else{")
-                .append("    __args = arguments;")
+
+                .append("} else if (args === undefined) {")
+                .append("    __args = [];")
+                .append("} else {")
+                .append("    __args = args;")
                 .append("}")
 
-                .append(fieldsBuilder.toString())
-                .append("if(this['constructor_'+__args.length] !== undefined){")
-                .append("this['constructor_'+__args.length].apply(this, __args);")
+//                .append("var __args = [];")
+//                .append("if(args && arguments.length == 1){")
+//                .append("    if(args instanceof Array){")
+//                .append("      if(arguments.length == 1 && arguments[0] instanceof Array) {")
+//                .append("           __args = args.length == 0 ? arguments : [args];")
+//                .append("       }else{")
+//                .append("           __args = args.length == 0 ? arguments : args;")
+//                .append("       }")
+//                .append("    }else{")
+//                .append("        __args = [args];")
+//                .append("    }")
+//                .append("}else if(args === undefined){")
+//                .append("        __args = [];")
+//                .append("}else{")
+//                .append("    __args = arguments;")
+//                .append("}")
+
+                // .append(fieldsBuilder.toString())
+                .append("if($this['constructor_'+__args.length] !== undefined){")
+                .append("$this['constructor_'+__args.length].apply($this, __args);")
                 .append("}else{")
                 .append("throw new Error('Spike: No matching constructor found ")
                 .append(this.classFullName)
-                .append(" with arguments count: '+__args.length);}};");
+                .append(" with arguments count: '+__args.length);} return $this; };");
 
         constructorBuilder
-                .append(this.classFullName)
-                .append(".prototype.")
-                .append(this.className)
-                .append("=function(){")
-                .append(fieldsBuilder.toString())
+                //  .append(this.classFullName)
+                .append("__compilant")
+                .append(".constructor_0=function(){")
+                //   .append(fieldsBuilder.toString())
                 .append("if(this['constructor_'+arguments.length] !== undefined){")
-                .append("this['constructor_'+arguments.length].apply(this, arguments);")
+                .append("$this['constructor_'+arguments.length].apply(this, arguments);")
                 .append("}else{")
                 .append("throw new Error('Spike: No matching constructor found ")
                 .append(this.classFullName)
@@ -465,7 +487,12 @@ public class SpikeClass {
 
             declaration
                     .append(",")
-                    .append("function(){ return {" + this.compiled + "}}")
+                    .append("function(){")
+                    .append("var __compilant = {};")
+                    .append("var $this = __compilant;")
+                    .append("__compilant = {")
+                    .append(this.compiled)
+                    .append("}; return __compilant; }")
                     .append(");");
 
         } else {
@@ -474,9 +501,17 @@ public class SpikeClass {
                     .append("defineNamespace('")
                     .append(this.classFullName)
                     .append("',")
-                    .append("function(){")
-                    .append(this.compiled)
-                    .append("});");
+                    .append("function(firstArgument){")
+                    .append("var __compilant = {};")
+                    .append("var $this = __compilant;")
+                    .append(this.compiled).append("spike.core.Assembler.extendDynamicClass(")
+                    .append(this.extendsFullName)
+                    .append(",__compilant);")
+                    .append("if(firstArgument === 'EXT') {")
+                    .append("return __compilant;")
+                    .append("} else {")
+                    .append("return __compilant.constructor(arguments);")
+                    .append("}});");
         }
 
         SpikeFile.TOTAL_NAMESPACES++;
